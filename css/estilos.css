@@ -1,270 +1,376 @@
-*{
-    box-sizing: border-box;
-    
-    font-family: 'Montserrat', sans-serif;
-    list-style: none;
+* {
+  box-sizing: border-box;
+  font-family: "Montserrat", sans-serif;
+  list-style: none;
 }
-
-
-
 
 /************************************      NAV       *********************************/
-nav{
-    background-image: url(../imagenes/posiblefondo2.jpg);
+nav {
+  background-image: url(../imagenes/posiblefondo2.jpg);
+  
 }
 
-
-div.container-fluid{
-    padding-left: 0;
-    box-shadow: 2px 2px 20px rgb(0, 0, 0);
-    
+div.container-fluid {
+  padding-left: 0;
+  box-shadow: 2px 2px 20px rgb(0, 0, 0);
+  
+  
 }
 
-nav.navbar.navbar-expand-lg.bg-light{   
-    padding-top: 0;
-    padding-bottom: 0;
-    position: relative;
-    
-    
-
-    width: 100%;
+nav.navbar.navbar-expand-lg.bg-light {
+  padding-top: 0;
+  padding-bottom: 0;
+  position: relative;
+  
+  width: 100%;
 }
 
-.nav-link{
-    color: white;
-    margin-left: 150px;
-    letter-spacing: 1pt;
-    transition-duration: 0.1s;
+.nav-link {
+  color: white;
+  margin-left: 150px;
+  letter-spacing: 1pt;
+  transition-duration: 0.1s;
 }
 
-.nav-link2{
-    color: rgb(255, 255, 255);
-    margin-top: 8px;
-    margin-left: 150px;
-    letter-spacing: 1pt;
-    transition-duration: 0.1s;
-    
+.nav-link2 {
+  color: rgb(255, 255, 255);
+  margin-top: 8px;
+  margin-left: 150px;
+  letter-spacing: 1pt;
+  transition-duration: 0.1s;
 }
 
-.nav-link2:hover{
-     
-    font-size: 20px;
-    letter-spacing: 1.8pt;
-    color: blueviolet;
-    
-    transition: all 0.5s ease-in-out;
+.nav-link2:hover {
+  font-size: 20px;
+  letter-spacing: 1.8pt;
+  color: blueviolet;
+
+  transition: all 0.5s ease-in-out;
 }
 
+.nav-link:hover {
+  letter-spacing: 1.8pt;
+  color: rgb(182, 177, 183);
 
-.nav-link:hover{
-    letter-spacing: 1.8pt;
-    color: rgb(182, 177, 183);
-    
-    transition    : all 0.5s ease-in-out; 
+  transition: all 0.5s ease-in-out;
 }
 
-button.navbar-toggler{
-    background-color: rgba(182, 177, 183, 0.422);
+button.navbar-toggler {
+  background-color: rgba(182, 177, 183, 0.422);
 }
 
 /*************************************************************************************/
 
-#principal{
-    position: relative;
-    display: inline-block;
-    text-align: center;
+#principal {
+  width: 100%;
+  height: 100vh;
+  background: url("../imagenes/fondoiniciojuan.jpg");
+  background-size: cover;
+  background-position: center center;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.texto-principal{
-    background-color: rgba(0, 0, 0, 0.528);
-    position: absolute;
-    top:25%;
-    bottom: 50%;
-    left: 10%;
-    right: 10%;
-    color: white;
-    
-    justify-content: center;
-    
+.texto-principal {
+  background-color: rgba(0, 0, 0, 0.528); 
+  color: white;
+  margin: 30px;
+  text-align: center;
+  padding: 40px;
 }
 
-
-
-.texto-principal h1{
-    
-    font-size: 60px;
-    letter-spacing: 3pt;
-    text-shadow: 5px 5px 5px  black;
+.texto-principal h1 {
+  font-size: 60px;
+  letter-spacing: 3pt;
+  text-shadow: 5px 5px 5px black;
 }
 
-#imagenprincipal{
-    width:100%;
-    height:100%;
-    
+.imagenprincipal {
+  width: 100%;
+  height: 100%;
 }
 
+footer.seccion {
+  background-image: url(../imagenes/posiblefondo2.jpg);
+  color: white;
 
-footer.seccion{
-    background-image: url(../imagenes/posiblefondo1.jpg);
-    color: white;
-    
-    padding-bottom: 0;
+  padding-bottom: 0;
 }
 
-
-
-footer ul{
-    padding-left: 0;
-    list-style: none;   
+footer ul {
+  padding-left: 0;
+  list-style: none;
 }
 
-footer .redes{
-    font-size: 30px;
-    display: flex;
-
-    
+footer .redes {
+  font-size: 30px;
+  display: flex;
 }
-footer .redes a{
-    margin: 0 5px; 
+footer .redes a {
+  margin: 0 5px;
 }
 
-
-
-footer ul li{
-    margin-bottom: 10px;
+footer ul li {
+  margin-bottom: 10px;
 }
 
-footer .logo-footer{
-    display: none;
+footer .logo-footer {
+  display: none;
 }
 
-footer p{
-    margin-bottom: 30px;
+footer p {
+  margin-bottom: 30px;
 }
 
-footer a{
-    padding: 10px;
-    color: rgba(255, 255, 255, 0.391);
-    text-decoration: none;
+footer a {
+  padding: 10px;
+  color: rgba(255, 255, 255, 0.391);
+  text-decoration: none;
 }
 
-footer a:hover{
-    color: blueviolet;
-    text-decoration: none;
-    transition    : all 0.5s ease-in-out;
+footer a:hover {
+  color: blueviolet;
+  text-decoration: none;
+  transition: all 0.5s ease-in-out;
 }
 
-footer .barra-footer{
-    background-color: rgb(255,255,255,0.391);
-    text-align: center;
-    padding-right: 15px;
-    padding-left: 15px;
-    padding-top: 20px;
-    padding-bottom: 20px;
+footer .barra-footer {
+  background-image: url(../imagenes/posiblefondo1.jpg);
+  text-align: center;
+  padding-right: 15px;
+  padding-left: 15px;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
-.botonbotonvioleta{
-    margin-top: 10px;
-    margin-bottom:10px;
-    padding: 10px 10px 10px 10px;
+.botonbotonvioleta {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 10px 10px 10px 10px;
 
-    background-color: blueviolet;
-    box-shadow: 0px 3px 3px black;
-    filter: grayscale(1);
+  background-color: blueviolet;
+  box-shadow: 0px 3px 3px black;
+  filter: grayscale(1);
 }
-.botonbotonvioleta:hover{
-    margin-top: 10px;
-    margin-bottom:10px;
-    padding: 10px 10px 10px 10px;
+.botonbotonvioleta:hover {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 10px 10px 10px 10px;
 
-    background-color: blueviolet;
-    box-shadow: 0px 3px 3px black;
-    transition    : all 0.5s ease-in-out;
-    filter: grayscale(0);
-    font-size: 18px;
-}
-
-
-.botonbotonvioleta a{
-    text-decoration: none;
-    color: white;
-
+  background-color: blueviolet;
+  box-shadow: 0px 3px 3px black;
+  transition: all 0.5s ease-in-out;
+  filter: grayscale(0);
+  font-size: 18px;
 }
 
-
-
-
+.botonbotonvioleta a {
+  text-decoration: none;
+  color: white;
+}
 
 #vermas h2 {
-    text-align: center;
-    background-image: url(../imagenes/posiblefondo1.jpg);
-    
-    padding:30px 10px 10px 10px;
-    color: white;
-    margin-bottom: 0;
+  text-align: center;
+  background-image: url(../imagenes/posiblefondo2.jpg);
+
+  padding: 30px 10px 10px 10px;
+  color: white;
+  margin-bottom: 0;
 }
 
-#vermas p{
-    background-image: url(../imagenes/posiblefondo1.jpg);
-    text-align: justify;
-    padding: 50px 50px 50px 50px;
-    margin-bottom: 0;
-    color: white;
+#vermas p {
+  background-image: url(../imagenes/posiblefondo2.jpg);
+  text-align: justify;
+  padding: 50px 50px 50px 50px;
+  margin-bottom: 0;
+  color: white;
 }
 
-#textovioletavermas{
-    background-image: url(../imagenes/posiblefondo1.jpg);
-    text-align: justify;
-    padding: 0px 50px 50px 50px;
-    margin-bottom: 0;
-    color: white;
+#textovioletavermas {
+  background-image: url(../imagenes/posiblefondo2.jpg);
+  text-align: justify;
+  padding: 0px 50px 50px 50px;
+  margin-bottom: 0;
+  color: white;
+}
+
+#vermas span {
+  color: rgba(255, 255, 255, 0.391);
+  font-weight: bold;
+}
+
+.redes span {
+  padding-top: 8px;
+  font-size: 16px;
+
+  color: rgba(2, 2, 2, 0.391);
+}
+
+.videoprincipal {
+  position: absolute; 
+  top:152%;
+  left: 60%;
+  width: 560px; 
+  height: 315px;
+  filter: grayscale(1);
+  opacity: 25%;
+}
+
+.videoprincipal:hover {
+  position: absolute; 
+  top:155%;
+  left: 60%;
+  width: 580px; 
+  height: 335px;
+  filter: grayscale(0);
+  opacity: 100%;
+  transition: all 0.5s ease-in-out;
+  
 }
 
 
-#vermas span{
-    color:rgba(255, 255, 255, 0.391) ;
-    font-weight: bold;
-}
 
-.redes span{
-    padding-top: 8px;
-    font-size: 16px;
-    
-    color: rgba(255, 255, 255, 0.391);
-}
+
 
 /**************************************************************************************************************************************/
 /*********************************************************** N O S O T R O S **********************************************************/
 
-.contenedor-nosotros{
-    background-image: url(../imagenes/posiblefondo1.jpg);
-   
-    color: white;
+.contenedor-nosotros {
+  background-image: url(../imagenes/posiblefondo1.jpg);
+
+  color: white;
 }
 
-#imagennosotros{
-    width: 100%;
-    height: 100%;
+#imagennosotros {
+  width: 100%;
+  height: 100%;
+  filter: grayscale(1);
+  animation-name: animacion-imagennosotros;
+  animation-duration: 6s;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+.texto-nosotros {
+  text-align: center;
+}
+
+@keyframes animacion-imagennosotros {
+  0% {
     filter: grayscale(1);
-    animation-name: animacion-imagennosotros;
-    animation-duration: 6s;
+  }
+  100% {
+    filter: grayscale(0);
+  }
+}
+
+
+
+.demoliendocafe{
+  display: flex;
+  justify-content: center;
+  padding: 20px 10px 10px 10px;
+  background-image: url(../imagenes/posiblefondo1.jpg);
+  filter: grayscale(1);
+  animation-name: animacion-albumes;
+  animation-duration: 3s;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+.textodemoliendocafe{
+  width: 50%;
+  padding: 20px;
+  margin-left: 3px;
+  background-image: url(../imagenes/posiblefondo2.jpg);
+  color: white;
+}
+
+.laselva{
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+  background-image: url(../imagenes/posiblefondo1.jpg);
+  filter: grayscale(1);
+  animation-name: animacion-albumes;
+  animation-duration: 3s;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+  
+}
+
+.textolaselva{
+    background-image: url(../imagenes/posiblefondo2.jpg);
+    width: 50%;
+    padding: 20px;
+    margin-left: 3px;
+    color: white;
+    
+  }
+
+  @keyframes animacion-albumes {
+    0% {
+      filter: grayscale(1);
+      
+    }
+    100% {
+      filter: grayscale(0);
+      
+    }
+  }
+
+  .imagenalbum1{
+    animation-name: rotarimagen;
+    animation-duration: 1.5s;
     animation-timing-function: ease-in-out;
     animation-fill-mode: forwards;
+  }
 
-}
+  .imagenalbum2{
+    animation-name: rotarimagen;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-fill-mode: forwards;
+  }
 
-.texto-nosotros{
-    text-align: center;
-}
-
-@keyframes animacion-imagennosotros{
+  @keyframes rotarimagen {
     0%{
-        filter: grayscale(1);
-    }
-    100%{
-        filter: grayscale(0);
+      transform:rotate(0deg); 
+      border-radius: 100%;
+      opacity: 1%;
     }
 
-}
+    10%{
+      transform:rotate(0deg); 
+      border-radius: 100%;
+      opacity: 30%;
+    }
+    25%{
+      transform:rotate(0deg); 
+      border-radius: 100%;
+      opacity: 50%;
+    }
+
+
+    100% { transform: rotate(360deg);
+      
+    
+  }
+
+  }
+
+  .iframealbum{
+    opacity: 25%;
+  }
+
+  .iframealbum:hover{
+    opacity: 100%;
+    transition: all 0.5s ease-in-out;
+  }
+ 
+
+
 
 
