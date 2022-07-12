@@ -6,7 +6,7 @@
 
 /************************************      NAV       *********************************/
 nav {
-  background-image: url(../imagenes/posiblefondo2.jpg);
+  background-image: url(../imagenes/posiblefondo2.png);
   
 }
 
@@ -72,7 +72,7 @@ button.navbar-toggler {
 #principal {
   width: 100%;
   height: 100vh;
-  background: url("../imagenes/fondoiniciojuan.jpg");
+  background: url("../imagenes/fondoiniciojuan.png");
   background-size: cover;
   background-position: center center;
   position: relative;
@@ -101,7 +101,7 @@ button.navbar-toggler {
 }
 
 footer.seccion {
-  background-image: url(../imagenes/posiblefondo2.jpg);
+  background-image: url(../imagenes/posiblefondo2.png);
   color: white;
 
   padding-bottom: 0;
@@ -145,7 +145,7 @@ footer a:hover {
 }
 
 footer .barra-footer {
-  background-image: url(../imagenes/posiblefondo1.jpg);
+  background-image: url(../imagenes/posiblefondo1.png);
   text-align: center;
   padding-right: 15px;
   padding-left: 15px;
@@ -182,7 +182,7 @@ footer .barra-footer {
 
 #vermas h2 {
   text-align: center;
-  background-image: url(../imagenes/posiblefondo2.jpg);
+  background-image: url(../imagenes/posiblefondo2.png);
 
   padding: 30px 10px 10px 10px;
   color: white;
@@ -190,7 +190,7 @@ footer .barra-footer {
 }
 
 #vermas p {
-  background-image: url(../imagenes/posiblefondo2.jpg);
+  background-image: url(../imagenes/posiblefondo2.png);
   text-align: justify;
   padding: 50px 50px 50px 50px;
   margin-bottom: 0;
@@ -198,7 +198,7 @@ footer .barra-footer {
 }
 
 #textovioletavermas {
-  background-image: url(../imagenes/posiblefondo2.jpg);
+  background-image: url(../imagenes/posiblefondo2.png);
   text-align: justify;
   padding: 0px 50px 50px 50px;
   margin-bottom: 0;
@@ -252,7 +252,7 @@ footer .barra-footer {
 /*********************************************************** N O S O T R O S **********************************************************/
 
 .contenedor-nosotros {
-  background-image: url(../imagenes/posiblefondo1.jpg);
+  background-image: url(../imagenes/posiblefondo1.png);
 
   color: white;
 }
@@ -288,7 +288,7 @@ footer .barra-footer {
   flex-wrap: wrap;
   justify-content: center;
   padding: 20px 10px 10px 10px;
-  background-image: url(../imagenes/posiblefondo1.jpg);
+  background-image: url(../imagenes/posiblefondo1.png);
   filter: grayscale(1);
   animation-name: animacion-albumes;
   animation-duration: 3s;
@@ -301,7 +301,7 @@ footer .barra-footer {
   width: 50%;
   padding: 20px;
   margin-left: 3px;
-  background-image: url(../imagenes/posiblefondo2.jpg);
+  background-image: url(../imagenes/posiblefondo2.png);
   color: white;
 }
 
@@ -310,7 +310,7 @@ footer .barra-footer {
   flex-wrap: wrap;
   justify-content: center;
   padding: 10px;
-  background-image: url(../imagenes/posiblefondo1.jpg);
+  background-image: url(../imagenes/posiblefondo1.png);
   filter: grayscale(1);
   animation-name: animacion-albumes;
   animation-duration: 3s;
@@ -321,7 +321,7 @@ footer .barra-footer {
 }
 
 .textolaselva{
-    background-image: url(../imagenes/posiblefondo2.jpg);
+    background-image: url(../imagenes/posiblefondo2.png);
     width: 50%;
     padding: 20px;
     margin-left: 3px;
@@ -419,7 +419,7 @@ footer .barra-footer {
   }
  
   footer .barra-footer2 {
-    background-image: url(../imagenes/posiblefondo2.jpg);
+    background-image: url(../imagenes/posiblefondo2.png);
     text-align: center;
     padding-right: 15px;
     padding-left: 15px;
@@ -428,7 +428,7 @@ footer .barra-footer {
     color:rgba(255, 255, 255, 0.391); ;
   }
   footer.seccion {
-    background-image: url(../imagenes/posiblefondo1.jpg);
+    background-image: url(../imagenes/posiblefondo1.png);
     color: white;
   
     padding-bottom: 0;
@@ -453,7 +453,7 @@ footer .barra-footer {
   .galeria{
     display: flex;
     flex-wrap: wrap;
-    background-image: url(../imagenes/posiblefondo1.jpg);
+    background-image: url(../imagenes/posiblefondo1.png);
    
   }
 
@@ -488,7 +488,7 @@ footer .barra-footer {
 
 @media screen and (max-width:382px){
   #discografiamenu{
-    background-image: url(../imagenes/posiblefondo2.jpg);
+    background-image: url(../imagenes/posiblefondo2.png);
   }
   #iframealbum{
     display: none;
