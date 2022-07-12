@@ -376,12 +376,27 @@ footer .barra-footer {
   }
 
 
-
-  .iframealbum{
+  #iframeinvisible{
+    display: none;
+  }
+  #iframeinvisible2{
+    display: none;
+  }
+  
+  
+  #iframealbum{
+    opacity: 25%;
+  }
+  #iframealbum2{
     opacity: 25%;
   }
 
-  .iframealbum:hover{
+  #iframealbum:hover{
+    opacity: 100%;
+    transition: all 0.5s ease-in-out;
+  }
+
+  #iframealbum2:hover{
     opacity: 100%;
     transition: all 0.5s ease-in-out;
   }
@@ -438,6 +453,7 @@ footer .barra-footer {
     width: 80%;
     height: 50%;
   }
+  
   .textodemoliendocafe{
     width: 80%;
     height: 50%;
@@ -454,6 +470,9 @@ footer .barra-footer {
 }
 
 @media screen and (max-width:382px){
+  #discografiamenu{
+    background-image: url(../imagenes/posiblefondo2.jpg);
+  }
   #iframealbum{
     display: none;
   }
@@ -462,8 +481,36 @@ footer .barra-footer {
     display: none;
   }
 
-  
+  #iframeinvisible{
+    display: flex;
+    opacity: 25%;
+  }
 
+  #iframeinvisible2{
+    display: flex;
+    opacity: 25%;
+  }
+
+  #iframeinvisible:hover{
+    opacity: 100%;
+    
+    transition: all 0.5s ease-in-out;
+  }
+  #iframeinvisible2:hover{
+    opacity: 100%;
+    
+    transition: all 0.5s ease-in-out;
+  }
+
+  
+  .textolaselva{
+    font-size: 0.6em;
+
+  }
+
+  .textodemoliendocafe{
+    font-size: 0.6em;
+  }
   
 
 }
