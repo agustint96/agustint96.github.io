@@ -27,25 +27,33 @@ nav.navbar.navbar-expand-lg.bg-light {
 
 .nav-link {
   color: white;
-  margin-left: 150px;
+  margin-left: 190px;
   letter-spacing: 1pt;
   transition-duration: 0.1s;
 }
 
 .nav-link2 {
+  text-decoration: none;
+  font-size: ;
   color: rgb(255, 255, 255);
   margin-top: 8px;
-  margin-left: 150px;
+  margin-left: 205px;
   letter-spacing: 1pt;
   transition-duration: 0.1s;
+  padding-bottom: 13px;
+  
 }
 
-.nav-link2:hover {
-  font-size: 20px;
-  letter-spacing: 1.8pt;
-  color: blueviolet;
 
+.nav-link2:hover {
+  
+  letter-spacing: 1.8pt;
+  color:rgba(255, 255, 255, 0.391);
+  font-size: 16.5px;
+  
+ 
   transition: all 0.5s ease-in-out;
+  transition-delay: 0.3s;
 }
 
 .nav-link:hover {
@@ -338,6 +346,13 @@ footer .barra-footer {
     animation-timing-function: ease-in-out;
     animation-fill-mode: forwards;
   }
+  .imagenalbum1:hover{
+    animation-name: rotarimagen;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-fill-mode: forwards;
+
+  }
 
   .imagenalbum2{
     animation-name: rotarimagen;
@@ -345,6 +360,8 @@ footer .barra-footer {
     animation-timing-function: ease-in-out;
     animation-fill-mode: forwards;
   }
+
+ 
 
   
 
@@ -512,6 +529,7 @@ footer .barra-footer {
     font-size: 0.6em;
   }
   
+
 
 }
 
