@@ -209,27 +209,32 @@ footer .barra-footer {
   color: rgba(255, 255, 255, 0.391);
 }
 
-.videoprincipal {
-  position: absolute; 
-  top:152%;
+
+#vermas{
+  position: relative;
+}
+.videoprincipal{
+  
+  position: absolute;
+  bottom: 9%;
   left: 60%;
-  width: 560px; 
-  height: 315px;
   filter: grayscale(1);
-  opacity: 25%;
+  opacity: 35%;
+  padding:10px;
 }
 
-.videoprincipal:hover {
-  position: absolute; 
-  top:155%;
-  left: 60%;
-  width: 580px; 
-  height: 335px;
+.videoprincipal:hover{
   filter: grayscale(0);
   opacity: 100%;
-  transition: all 0.5s ease-in-out;
-  
+  transition: all ease-in 0.5s;
+  padding: 0px;
 }
+
+ 
+  
+
+
+
 
 
 
@@ -392,6 +397,9 @@ footer .barra-footer {
     padding-bottom: 0;
   }
 
+
+ 
+
   .galeria img{
     width: 50%;
     height: 5%;
@@ -410,5 +418,67 @@ footer .barra-footer {
     display: flex;
     flex-wrap: wrap;
     background-image: url(../imagenes/posiblefondo1.jpg);
+   
   }
+
+/**********************************RESPONSIVE*********************************/
+
+@media screen and (max-width:1391px){
+  .videoprincipal{
+    display: none;
+  }
+}
+
+@media screen and (max-width:1327px){
+  .demoliendocafe{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+  }
+  .imagenalbum1{
+   
+    
+    justify-content: center;
+  }
+
+  .imagenalbum2{
+    
+    
+    
+    justify-content: center;
+  }
+  .laselva{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .textodemoliendocafe{
+    justify-content: center;
+    width: 80%;
+  }
+  .textolaselva{
+    justify-content: center;
+    width: 80%;
+  }
+
+
+}
+
+@media screen and (max-width:520px){
+  .imagenalbum1{
+   
+    padding: 10%;
+    justify-content: center;
+  }
+
+  .imagenalbum2{
+    padding: 10%;
+    justify-content: center;
+  }
+}
+
+
+
 
