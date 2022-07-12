@@ -143,6 +143,7 @@ footer .barra-footer {
   padding-left: 15px;
   padding-top: 20px;
   padding-bottom: 20px;
+  color:rgba(255, 255, 255, 0.391); ;
 }
 
 .botonbotonvioleta {
@@ -205,7 +206,7 @@ footer .barra-footer {
   padding-top: 8px;
   font-size: 16px;
 
-  color: rgba(2, 2, 2, 0.391);
+  color: rgba(255, 255, 255, 0.391);
 }
 
 .videoprincipal {
@@ -335,6 +336,8 @@ footer .barra-footer {
     animation-fill-mode: forwards;
   }
 
+  
+
   @keyframes rotarimagen {
     0%{
       transform:rotate(0deg); 
@@ -354,12 +357,15 @@ footer .barra-footer {
     }
 
 
-    100% { transform: rotate(360deg);
+    100% { transform: rotate(720deg);
+      filter:brightness(89%);
       
     
   }
 
   }
+
+
 
   .iframealbum{
     opacity: 25%;
@@ -370,7 +376,39 @@ footer .barra-footer {
     transition: all 0.5s ease-in-out;
   }
  
+  footer .barra-footer2 {
+    background-image: url(../imagenes/posiblefondo2.jpg);
+    text-align: center;
+    padding-right: 15px;
+    padding-left: 15px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    color:rgba(255, 255, 255, 0.391); ;
+  }
+  footer.seccion {
+    background-image: url(../imagenes/posiblefondo1.jpg);
+    color: white;
+  
+    padding-bottom: 0;
+  }
 
-
-
+  .galeria img{
+    width: 50%;
+    height: 5%;
+    padding: 15px;
+    filter:grayscale(1);
+    opacity: 60%;;
+  }
+  .galeria img:hover{
+    filter: grayscale(0);
+    transition: all 0.9s ease-in-out;
+    padding: 10px;
+    opacity: 100%;
+  }
+  
+  .galeria{
+    display: flex;
+    flex-wrap: wrap;
+    background-image: url(../imagenes/posiblefondo1.jpg);
+  }
 
