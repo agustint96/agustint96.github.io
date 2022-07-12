@@ -27,7 +27,7 @@ nav.navbar.navbar-expand-lg.bg-light {
 
 .nav-link {
   color: white;
-  margin-left: 190px;
+  margin-left: 160px;
   letter-spacing: 1pt;
   transition-duration: 0.1s;
 }
@@ -35,9 +35,9 @@ nav.navbar.navbar-expand-lg.bg-light {
 .nav-link2 {
   text-decoration: none;
   font-size: ;
-  color: rgb(255, 255, 255);
+  color: rgba(255, 255, 255, 0.447);
   margin-top: 8px;
-  margin-left: 205px;
+  margin-left: 175px;
   letter-spacing: 1pt;
   transition-duration: 0.1s;
   padding-bottom: 13px;
@@ -47,13 +47,13 @@ nav.navbar.navbar-expand-lg.bg-light {
 
 .nav-link2:hover {
   
-  letter-spacing: 1.8pt;
+  
   color:rgba(255, 255, 255, 0.391);
-  font-size: 16.5px;
+  
   
  
   transition: all 0.5s ease-in-out;
-  transition-delay: 0.3s;
+
 }
 
 .nav-link:hover {
@@ -158,7 +158,7 @@ footer .barra-footer {
   margin-top: 10px;
   margin-bottom: 10px;
   padding: 10px 10px 10px 10px;
-
+  color: white;
   background-color: blueviolet;
   box-shadow: 0px 3px 3px black;
   filter: grayscale(1);
@@ -487,6 +487,9 @@ footer .barra-footer {
 }
 
 @media screen and (max-width:382px){
+
+
+
   #discografiamenu{
     background-image: url(../imagenes/posiblefondo2.png);
   }
@@ -528,13 +531,76 @@ footer .barra-footer {
   .textodemoliendocafe{
     font-size: 0.6em;
   }
-  
-
 
 }
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*****************************DESARROLLO***************************/
+
+.nombre{
+  background-color: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 30%;
+  display: flex;
+  flex-wrap: wrap;
+
+}
+
+.teclaa{
+  flex-wrap: wrap;
+  padding: 6px;
+  text-align: center;
+  width: 2%;
+  background-color: rgb(125, 139, 151);
+
+  border: 1px solid black;
+  
+  
+  margin: 0.6%;
+  
+}
+
+.teclaa:hover{
+  padding: 6px;
+  text-align: center;
+  width: 2%;
+  background-color: rgb(125, 139, 151);
+
+  border: 1px solid black;
+  
+  
+  margin: 0.6%;
+  
+}
 
 
 
