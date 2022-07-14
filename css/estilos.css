@@ -572,7 +572,8 @@ footer .barra-footer {
 #body-desarrollador{
 
     background-color: black;
-    
+    position: relative;
+    z-index: -2;
     padding: 0;
     margin: 0;
 }
