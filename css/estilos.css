@@ -10,7 +10,7 @@ nav {
   
 }
 
-div.container-fluid {
+.container-fluid {
   padding-left: 0;
   box-shadow: 2px 2px 20px rgb(0, 0, 0);
   
@@ -34,7 +34,7 @@ nav.navbar.navbar-expand-lg.bg-light {
 
 .nav-link2 {
   text-decoration: none;
-  font-size: ;
+  
   color: rgba(255, 255, 255, 0.447);
   margin-top: 8px;
   margin-left: 175px;
@@ -280,6 +280,7 @@ footer .barra-footer {
   margin-left: 3px;
   background-image: url(../imagenes/posiblefondo2.png);
   color: white;
+  box-shadow: 3px 3px 5px black;
 }
 
 .laselva{
@@ -303,6 +304,7 @@ footer .barra-footer {
     padding: 20px;
     margin-left: 3px;
     color: white;
+    box-shadow: 3px 3px 5px black;
     
   }
 
@@ -380,6 +382,8 @@ footer .barra-footer {
 
 
 
+
+
   #iframeinvisible{
     display: none;
   }
@@ -430,12 +434,18 @@ footer .barra-footer {
     filter:grayscale(1);
     opacity: 60%;;
   }
+
+
+
   .galeria img:hover{
     filter: grayscale(0);
     transition: all 0.9s ease-in-out;
     padding: 10px;
     opacity: 100%;
   }
+
+
+  
   
   .galeria{
     display: flex;
@@ -475,7 +485,13 @@ footer .barra-footer {
 
 @media screen and (max-width:382px){
 
-
+  .imagenalbum1:hover{
+    
+      animation-name: rotarimagen;
+      animation-duration: 1.5s;
+      animation-timing-function: ease-in-out;
+      animation-fill-mode: forwards;
+    }
 
   #discografiamenu{
     background-image: url(../imagenes/posiblefondo2.png);
@@ -519,34 +535,7 @@ footer .barra-footer {
     font-size: 0.6em;
   }
 
-  .demoliendocafe img:hover{
   
-    
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 20px 10px 10px 10px;
-    background-image: url(../imagenes/posiblefondo1.png);
-    filter: grayscale();
-    animation-name: animacion-albumes2;
-    animation-duration: 6s;
-    animation-timing-function: ease-in-out;
-    
-    min-width: 250px;
-  }
-  
-  .laselva img:hover{
-    
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 20px 10px 10px 10px;
-    background-image: url(../imagenes/posiblefondo1.png);
-    filter: grayscale();
-    animation-name: animacion-albumes2;
-    animation-duration: 6s;
-    animation-timing-function: ease-in-out;
-    
-    min-width: 250px;
-  }
 
 }
 
@@ -578,45 +567,59 @@ footer .barra-footer {
 
 
 
-/*****************************DESARROLLO***************************/
+/*****************************DESARROLLADOR***************************/
 
-.nombre{
-  background-color: black;
+#body-desarrollador{
+
+    background-color:#000;
+    color: #fff;
+    
+}
+
+
+
+#particles-js {
+	height: 100vh; 
+	width: 100%;
+  position: fixed;
+  z-index: -1;
+}
+
+.contenido-desarrollador{
+background-color: rgba(137, 43, 226, 0.502) ; 
+  color: white;
   display: flex;
+  flex-direction: column;
+  align-items:center;
   justify-content: center;
-  align-items: center;
-  height: 30%;
-  display: flex;
-  flex-wrap: wrap;
-
-}
-
-.teclaa{
-  flex-wrap: wrap;
-  padding: 6px;
-  text-align: center;
-  width: 2%;
-  background-color: rgb(125, 139, 151);
-
-  border: 1px solid black;
-  
-  
-  margin: 0.6%;
+  margin-right: 10%;
+  margin-left: 10%;
+  margin-top: 40%;
   
 }
 
-.teclaa:hover{
-  padding: 6px;
-  text-align: center;
-  width: 2%;
-  background-color: rgb(125, 139, 151);
-
-  border: 1px solid black;
-  
-  
-  margin: 0.6%;
-  
+.contenido-desarrollador p{
+  padding-left: 5%;
+  padding-right: 5%;
 }
+
+.contenido-desarrollador {
+	width: 90%;
+	max-width: 1200px;
+  
+  background-color: rgba(137, 43, 226, 0.517);
+  color: white;
+  background-position:center;
+	margin-left: auto; 
+	margin-right: auto;
+  margin-top: 1%;
+ 
+  padding: 20px 30px;
+  position: relative;
+  z-index: 99;
+  opacity: .85;
+}
+
 
 
 
