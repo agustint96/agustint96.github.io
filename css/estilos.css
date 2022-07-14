@@ -571,9 +571,10 @@ footer .barra-footer {
 
 #body-desarrollador{
 
-    background-color:#000;
-    color: #fff;
+    background-color: black;
     
+    padding: 0;
+    margin: 0;
 }
 
 
@@ -581,26 +582,16 @@ footer .barra-footer {
 #particles-js {
 	height: 100vh; 
 	width: 100%;
-  position: fixed;
+  position: absolute;
   z-index: -1;
 }
 
-.contenido-desarrollador{
-background-color: rgba(137, 43, 226, 0.502) ; 
-  color: white;
-  display: flex;
-  flex-direction: column;
-  align-items:center;
-  justify-content: center;
-  margin-right: 10%;
-  margin-left: 10%;
-  margin-top: 40%;
-  
-}
+
 
 .contenido-desarrollador p{
   padding-left: 5%;
   padding-right: 5%;
+
 }
 
 .contenido-desarrollador {
@@ -609,7 +600,9 @@ background-color: rgba(137, 43, 226, 0.502) ;
   
   background-color: rgba(137, 43, 226, 0.517);
   color: white;
-  background-position:center;
+  
+
+  
 	margin-left: auto; 
 	margin-right: auto;
   margin-top: 1%;
@@ -617,14 +610,23 @@ background-color: rgba(137, 43, 226, 0.502) ;
   padding: 20px 30px;
   position: relative;
   z-index: 99;
-  opacity: .85;
+  opacity: .65;
+  top: 60px;
+  
 }
 
 
+.contenido-desarrollador H1{
+  text-align: center;
+  
+}
 
-
-
-
+.contenido-desarrollador p{
+  padding-left: 5%;
+  padding-right: 5%;
+  
+  
+}
 
 
 
