@@ -7,21 +7,17 @@
 /************************************      NAV       *********************************/
 nav {
   background-image: url(../imagenes/posiblefondo2.png);
-  
 }
 
 .container-fluid {
   padding-left: 0;
-  box-shadow: 2px 2px 20px rgb(0, 0, 0);
-  
-  
+  box-shadow: 2px 2px 20px rgb(0, 0, 0); 
 }
 
 nav.navbar.navbar-expand-lg.bg-light {
   padding-top: 0;
   padding-bottom: 0;
   position: relative;
-  
   width: 100%;
 }
 
@@ -33,8 +29,7 @@ nav.navbar.navbar-expand-lg.bg-light {
 }
 
 .nav-link2 {
-  text-decoration: none;
-  
+  text-decoration: none;  
   color: rgba(255, 255, 255, 0.447);
   margin-top: 8px;
   margin-left: 175px;
@@ -44,16 +39,9 @@ nav.navbar.navbar-expand-lg.bg-light {
   
 }
 
-
 .nav-link2:hover {
-  
-  
   color:blueviolet;
-  
-  
- 
   transition: all 0.5s ease-in-out;
-
 }
 
 .nav-link:hover {
@@ -66,8 +54,13 @@ nav.navbar.navbar-expand-lg.bg-light {
 button.navbar-toggler {
   background-color: rgba(182, 177, 183, 0.422);
 }
+button.navbar-toggler:hover{
+  background-color: rgba(137, 43, 226, 0.432);
+  transition: all 0.5s ease-in-out;
+}
 
 /*************************************************************************************/
+/**************************************INDEX*****************************************/
 
 #principal {
   width: 100%;
@@ -100,59 +93,6 @@ button.navbar-toggler {
   height: 100%;
 }
 
-footer.seccion {
-  background-image: url(../imagenes/posiblefondo2.png);
-  color: white;
-
-  padding-bottom: 0;
-}
-
-footer ul {
-  padding-left: 0;
-  list-style: none;
-}
-
-footer .redes {
-  font-size: 30px;
-  display: flex;
-}
-footer .redes a {
-  margin: 0 5px;
-}
-
-footer ul li {
-  margin-bottom: 10px;
-}
-
-footer .logo-footer {
-  display: none;
-}
-
-footer p {
-  margin-bottom: 30px;
-}
-
-footer a {
-  padding: 10px;
-  color: rgba(255, 255, 255, 0.391);
-  text-decoration: none;
-}
-
-footer a:hover {
-  color: blueviolet;
-  text-decoration: none;
-  transition: all 0.5s ease-in-out;
-}
-
-footer .barra-footer {
-  background-image: url(../imagenes/posiblefondo1.png);
-  text-align: center;
-  padding-right: 15px;
-  padding-left: 5px;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  color:rgba(255, 255, 255, 0.391); ;
-}
 
 .botonbotonvioleta {
   margin-top: 10px;
@@ -160,8 +100,9 @@ footer .barra-footer {
   padding: 10px 10px 10px 10px;
   color: white;
   background-color: blueviolet;
-  box-shadow: 0px 3px 3px black;
+  
   filter: grayscale(1);
+  border-radius: 4px;
 }
 .botonbotonvioleta:hover {
   margin-top: 10px;
@@ -169,7 +110,7 @@ footer .barra-footer {
   padding: 10px 10px 10px 10px;
 
   background-color: blueviolet;
-  box-shadow: 0px 3px 3px black;
+  
   transition: all 0.5s ease-in-out;
   filter: grayscale(0);
   font-size: 18px;
@@ -238,21 +179,64 @@ footer .barra-footer {
   padding: 0px;
 }
 
- 
-  
 
 
+footer.seccion {
+  background-image: url(../imagenes/posiblefondo2.png);
+  color: white;
 
+  padding-bottom: 0;
+}
 
+footer ul {
+  padding-left: 0;
+  list-style: none;
+}
 
+footer .redes {
+  font-size: 30px;
+  display: flex;
+}
+footer .redes a {
+  margin: 0 5px;
+}
 
+footer ul li {
+  margin-bottom: 10px;
+}
 
+footer .logo-footer {
+  display: none;
+}
+
+footer p {
+  margin-bottom: 30px;
+}
+
+footer a {
+  padding: 10px;
+  color: rgba(255, 255, 255, 0.391);
+  text-decoration: none;
+}
+
+footer a:hover {
+  color: blueviolet;
+  text-decoration: none;
+  transition: all 0.5s ease-in-out;
+}
+
+footer .barra-footer {
+  background-image: url(../imagenes/posiblefondo1.png);
+  text-align: center;
+  padding-right: 15px;
+  padding-left: 5px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  color:rgba(255, 255, 255, 0.391); ;
+}
 
 /**************************************************************************************************************************************/
 /*********************************************************** DISCOGRAFIA **********************************************************/
-
-
-
 
 .demoliendocafe{
   background-color: rgba(5, 5, 5, 0.377);
@@ -271,11 +255,6 @@ footer .barra-footer {
   
 }
 
-
-
-
-
-
 .textodemoliendocafe{
   width: 50%;
   padding: 20px;
@@ -284,6 +263,7 @@ footer .barra-footer {
   color: white;
   box-shadow: 3px 3px 5px black;
 }
+
 
 .laselva{
   display: flex;
@@ -302,6 +282,7 @@ footer .barra-footer {
   
 }
 
+
 .textolaselva{
     background-image: url(../imagenes/posiblefondo2.png);
     width: 50%;
@@ -312,14 +293,10 @@ footer .barra-footer {
     
   }
 
-
-
-
-
   @keyframes animacion-albumes {
     0% {
       filter: grayscale(1);
-      
+                                                /****ANIMACION**/     
     }
     100% {
       filter: grayscale(0);
@@ -335,8 +312,6 @@ footer .barra-footer {
     filter: grayscale(0);
   }
 }
-
- 
 
   .imagenalbum1{
     animation-name: rotarimagen;
@@ -355,13 +330,9 @@ footer .barra-footer {
     
   }
 
- 
-
-  
-
   @keyframes rotarimagen {
     0%{
-      transform:rotate(0deg); 
+      transform:rotate(0deg);                     /******** ROTACION*******/
       border-radius: 100%;
       opacity: 1%;
     }
@@ -385,10 +356,6 @@ footer .barra-footer {
   }
 
   }
-
-
-
-
 
   #iframeinvisible{
     display: none;
@@ -431,6 +398,8 @@ footer .barra-footer {
     padding-bottom: 0;
   }
 
+  /**************************************** GALERIA ********************************************/
+  /*********************************************************************************************/
 
 
   .galeria img{
@@ -462,132 +431,8 @@ footer .barra-footer {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-  /**********************************RESPONSIVE*********************************/
-
-@media screen and (max-width:1391px){
-  .videoprincipal{
-    display: none;
-  }
-}
-
-@media screen and (max-width:639px){
-  .imagenalbum1{
-    width: 80%;
-    height: 50%;
-  }
-  
-  .textodemoliendocafe{
-    width: 80%;
-    height: 50%;
-  }
-  .textolaselva{
-    width: 80%;
-    height: 50%;
-  }
-  .imagenalbum2{
-
-    width: 80%;
-    height: 50%;
-  }
-}
-
-@media screen and (max-width:382px){
-
-  .imagenalbum1:hover{
-    
-      animation-name: rotarimagen;
-      animation-duration: 1.5s;
-      animation-timing-function: ease-in-out;
-      animation-fill-mode: forwards;
-    }
-
-  #discografiamenu{
-    background-image: url(../imagenes/posiblefondo2.png);
-  }
-  #iframealbum{
-    display: none;
-  }
-
-  #iframealbum2{
-    display: none;
-  }
-
-  #iframeinvisible{
-    display: flex;
-    opacity: 25%;
-  }
-
-  #iframeinvisible2{
-    display: flex;
-    opacity: 25%;
-  }
-
-  #iframeinvisible:hover{
-    opacity: 100%;
-    
-    transition: all 0.5s ease-in-out;
-  }
-  #iframeinvisible2:hover{
-    opacity: 100%;
-    
-    transition: all 0.5s ease-in-out;
-  }
-
-  
-  .textolaselva{
-    font-size: 0.8em;
-
-  }
-
-  .textodemoliendocafe{
-    font-size: 0.8em;
-  }
-
-  
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*****************************DESARROLLADOR***************************/
+/*****************************DESARROLLADOR************************************/
+/*****************************************************************************/
 
 #body-desarrollador{
 
@@ -734,10 +579,6 @@ z-index: 99;
 }
 
 
-
-
-
-
 @media screen and (min-width:2473px){
 
   .contenedorsaturno a img{
@@ -776,11 +617,179 @@ z-index: 99;
    
   }
 
+  /**********************************RESPONSIVE*********************************/
+
+  @media screen and (max-width:1391px){
+    .videoprincipal{
+      display: none;
+    }
+  }
+  
+  @media screen and (max-width:639px){
+    .imagenalbum1{
+      width: 80%;
+      height: 50%;
+    }
+    
+    .textodemoliendocafe{
+      width: 80%;
+      height: 50%;
+    }
+    .textolaselva{
+      width: 80%;
+      height: 50%;
+    }
+    .imagenalbum2{
+  
+      width: 80%;
+      height: 50%;
+    }
+  }
+  
+  @media screen and (max-width:382px){
+  
+    .imagenalbum1:hover{
+      
+        animation-name: rotarimagen;
+        animation-duration: 1.5s;
+        animation-timing-function: ease-in-out;
+        animation-fill-mode: forwards;
+      }
+  
+    #discografiamenu{
+      background-image: url(../imagenes/posiblefondo2.png);
+    }
+    #iframealbum{
+      display: none;
+    }
+  
+    #iframealbum2{
+      display: none;
+    }
+  
+    #iframeinvisible{
+      display: flex;
+      opacity: 25%;
+    }
+  
+    #iframeinvisible2{
+      display: flex;
+      opacity: 25%;
+    }
+  
+    #iframeinvisible:hover{
+      opacity: 100%;
+      
+      transition: all 0.5s ease-in-out;
+    }
+    #iframeinvisible2:hover{
+      opacity: 100%;
+      
+      transition: all 0.5s ease-in-out;
+    }
+  
+    
+    .textolaselva{
+      font-size: 0.8em;
+  
+    }
+  
+    .textodemoliendocafe{
+      font-size: 0.8em;
+    }
+  
+    
+  
+  }
 
 
 
 
 
 
+/**************************** CONTACTO ******************************************/
+ /******************************************************************************/
 
+ .body-contacto{
+  background-image: url(../imagenes/posiblefondo1.png);
+ }
+
+ .contenedorcontacto{
+  background-image: url(../imagenes/posiblefondo2.png);
+  margin-top: 5%;
+  margin-right: 20%;
+  height: 80%;
+  margin-left: 20%;
+  color: white;
+  
+  display: flex;
+  flex-direction: column;
+  box-shadow: 3px 3px 5px black;
+  
+}
+
+ #exampleInputMensaje{
+  height: 100px;
+  padding: 1.5%;
+  margin: 0%;
+  resize: none;
+ }
+
+ .mb-3{
+  
+  margin-left:10% ;
+  margin-right:10% ;
+ }
+
+ #primer-mb-3{
+  margin-top: 5%;
+ }
+
+ .btn.btn-primary{
+  background-color: blueviolet;
+  margin-left: 47%;
+  margin-bottom: 5%;
+  box-shadow: none;
+  border: 5px solid rgba(137, 43, 226, 0.432);
+  filter: grayscale(1);
+ }
+ .btn.btn-primary:hover{
+  background-color: blueviolet;
+  margin-left: 47.5%;
+  margin-bottom: 5%;
+  box-shadow: none;
+  border: 5px solid rgba(137, 43, 226, 0.432);
+  filter: grayscale(0);
+  transition: all 0.5s ease-in-out;
+ }
+
+.form-control:focus{
+box-shadow: none;
+border: 5px solid rgba(137, 43, 226, 0.432);
+}
+
+.btn.btn-primary:focus{
+  box-shadow: none;
+  border: 5px solid rgba(0, 0, 0, 0.432);
+}
+
+.contenedorcontacto form p{
+  text-align: center;
+  margin-top: 1%;
+  padding-left: 1%;
+  padding-right: 1%;
+}
+
+.vinculorider{
+  color: blueviolet;
+}
+
+.vinculorider:hover{
+  filter: grayscale(1);
+}
+
+.contrataciones{
+  font-size: small;
+  text-align: center;
+  color: gray;
 }
