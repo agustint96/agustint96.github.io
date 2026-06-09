@@ -1,4 +1,59 @@
 const nav = document.getElementById("main-nav");
+const navLinks = nav ? nav.querySelectorAll("a") : [];
+const beepPath = "audio/beep.mp3";
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let beepBuffer = null;
+let beepLoaded = false;
+
+fetch(beepPath)
+  .then((response) => response.arrayBuffer())
+  .then((arrayBuffer) => audioContext.decodeAudioData(arrayBuffer))
+  .then((buffer) => {
+    beepBuffer = buffer;
+    beepLoaded = true;
+  })
+  .catch(() => {
+    beepLoaded = false;
+  });
+
+function resumeAudioContext() {
+  if (audioContext.state === "suspended") {
+    audioContext.resume().catch(() => {});
+  }
+}
+
+function playBeep() {
+  if (!beepLoaded || !beepBuffer) return;
+  const startBeep = () => {
+    const source = audioContext.createBufferSource();
+    source.buffer = beepBuffer;
+    const gain = audioContext.createGain();
+    gain.gain.value = 0.013;
+    source.connect(gain).connect(audioContext.destination);
+    source.start(0);
+  };
+
+  if (audioContext.state === "suspended") {
+    audioContext.resume().then(startBeep).catch(startBeep);
+  } else {
+    startBeep();
+  }
+}
+
+["click", "pointerdown", "keydown", "touchstart"].forEach((eventName) => {
+  document.addEventListener(eventName, resumeAudioContext, {
+    once: true,
+    capture: true,
+  });
+});
+
+navLinks.forEach((link) => {
+  link.addEventListener("pointerenter", () => {
+    if (!link.matches(":hover")) return;
+    playBeep();
+  });
+});
+
 window.addEventListener("scroll", () => {
   const t = window.scrollY > 60;
   (nav.classList.toggle("scrolled", t),
@@ -153,29 +208,32 @@ function drawStars() {
           requestAnimationFrame(d));
       }));
     const d = t.querySelector(".starry-cohete-fondo");
+    const cohetteTop = t.querySelector(".starry-cohete-top");
     if (d) {
       ((d.style.transition =
         "transform 0.18s cubic-bezier(0.4,0,0.2,1), filter 0.18s ease"),
         (t.style.pointerEvents = "auto"));
       let e = !1;
-      const sndOn = new Audio("audio/light_on.mp3");
-      const sndOff = new Audio("audio/light_off.mp3");
-      sndOn.preload = "auto";
-      sndOff.preload = "auto";
-      sndOn.volume = 0.4;
-      sndOff.volume = 0.4;
       t.addEventListener("click", () => {
         ((e = !e),
           e
             ? ((d.style.transform = "translate(1px, 0px)"),
               (d.style.filter =
                 "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))"),
-              (sndOn.currentTime = 0),
-              sndOn.play().catch(() => {}))
+              cohetteTop && (cohetteTop.src = "parallax/cohete_on.png"),
+              (() => {
+                const snd = new Audio("audio/light_on.mp3");
+                snd.volume = 0.4;
+                snd.play().catch(() => {});
+              })())
             : ((d.style.transform = "translate(0, 0)"),
               (d.style.filter = "none"),
-              (sndOff.currentTime = 0),
-              sndOff.play().catch(() => {})));
+              cohetteTop && (cohetteTop.src = "parallax/cohete.png"),
+              (() => {
+                const snd = new Audio("audio/light_off.mp3");
+                snd.volume = 0.4;
+                snd.play().catch(() => {});
+              })()));
       });
     }
     (!(function () {
@@ -183,7 +241,7 @@ function drawStars() {
       if (!t) return;
       const e = new Audio("audio/satelite.mp3");
       ((e.preload = "auto"),
-        (e.volume = 0.2),
+        (e.volume = 0.05),
         t.addEventListener("click", () => {
           window.innerWidth <= 600 ||
             ((e.currentTime = 0), e.play().catch(() => {}));
@@ -194,7 +252,7 @@ function drawStars() {
         if (!t) return;
         const e = new Audio("audio/satelite.mp3");
         ((e.preload = "auto"),
-          (e.volume = 0.2),
+          (e.volume = 0.05),
           t.addEventListener("click", () => {
             window.innerWidth <= 600 ||
               (t.classList.remove("spinning"),
@@ -210,3 +268,14 @@ function drawStars() {
           }));
       })());
   })());
+
+// Typed.js for year animation
+document.addEventListener("DOMContentLoaded", function () {
+  new Typed("#typed-year", {
+    strings: ["2026"],
+    typeSpeed: 100,
+    backSpeed: 0,
+    loop: false,
+    showCursor: false,
+  });
+});
