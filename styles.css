@@ -53,7 +53,7 @@ li,
 p,
 span {
   user-select: text;
-  -webkit-user-select: text;
+  -webkit-user-select: none;
 }
 .starry-cohete-pair {
   cursor: pointer !important;
@@ -258,6 +258,7 @@ nav.nav-compact {
   height: 280px;
   width: 60%;
 }
+
 #group-256 .gl {
   position: absolute;
   bottom: 0;
@@ -388,7 +389,7 @@ nav.nav-compact {
     height: 280px;
   }
   #p3 {
-    height: 280px;
+    height: 275px;
   }
   #group-256,
   #p4,
@@ -428,10 +429,10 @@ nav.nav-compact {
     gap: 10px;
   }
   #p3 {
-    height: 240px;
+    height: 230px;
   }
   #p8 {
-    height: 210px;
+    height: 200px;
   }
   img {
     -webkit-touch-callout: none;
