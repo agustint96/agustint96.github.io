@@ -28,7 +28,7 @@ function playBeep() {
     const source = audioContext.createBufferSource();
     source.buffer = beepBuffer;
     const gain = audioContext.createGain();
-    gain.gain.value = 0.013;
+    gain.gain.value = 0.15;
     source.connect(gain).connect(audioContext.destination);
     source.start(0);
   };
@@ -223,7 +223,7 @@ function drawStars() {
               cohetteTop && (cohetteTop.src = "parallax/cohete_on.png"),
               (() => {
                 const snd = new Audio("audio/light_on.mp3");
-                snd.volume = 0.4;
+                snd.volume = 1;
                 snd.play().catch(() => {});
               })())
             : ((d.style.transform = "translate(0, 0)"),
@@ -231,7 +231,7 @@ function drawStars() {
               cohetteTop && (cohetteTop.src = "parallax/cohete.png"),
               (() => {
                 const snd = new Audio("audio/light_off.mp3");
-                snd.volume = 0.4;
+                snd.volume = 1;
                 snd.play().catch(() => {});
               })()));
       });
@@ -241,7 +241,7 @@ function drawStars() {
       if (!t) return;
       const e = new Audio("audio/satelite.mp3");
       ((e.preload = "auto"),
-        (e.volume = 0.05),
+        (e.volume = 0.25),
         t.addEventListener("click", () => {
           window.innerWidth <= 600 ||
             ((e.currentTime = 0), e.play().catch(() => {}));
