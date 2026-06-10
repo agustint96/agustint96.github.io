@@ -113,12 +113,14 @@ function tick() {
     requestAnimationFrame(tick));
 }
 (document.addEventListener("mousemove", (t) => {
+  if (window.innerWidth <= 600) return;
   targetX = 2 * (t.clientX / window.innerWidth - 0.5);
 }),
   window.addEventListener("deviceorientation", (t) => {
+    if (window.innerWidth <= 600) return;
     null !== t.gamma && (targetX = Math.max(-1, Math.min(1, t.gamma / 30)));
   }),
-  tick());
+  window.innerWidth > 600 && tick());
 const starCanvas = document.getElementById("star-canvas"),
   ctx = starCanvas.getContext("2d"),
   starryBg = starCanvas.parentElement;
@@ -161,9 +163,17 @@ function drawStars() {
     addStars(Math.floor(4 * Math.random()) + 1),
   ),
   starryBg.addEventListener("touchmove", () => {
-    addStars(Math.floor(4 * Math.random()) + 1);
+    if (window.innerWidth <= 600) addStars(1);
+    else addStars(Math.floor(4 * Math.random()) + 1);
   }),
-  starryBg.addEventListener("touchstart", () => addStars(2), { passive: !0 }),
+  starryBg.addEventListener(
+    "touchstart",
+    () => {
+      if (window.innerWidth <= 600) addStars(1);
+      else addStars(2);
+    },
+    { passive: !0 },
+  ),
   setInterval(() => addStars(Math.floor(3 * Math.random()) + 2, 0.75), 300),
   drawStars(),
   (function () {
@@ -177,9 +187,42 @@ function drawStars() {
       i = null,
       o = null,
       l = !1;
+    const isMobileTouch = () => window.innerWidth <= 600;
     (document.addEventListener("mousemove", (t) => {
       ((i = t.clientX), (o = t.clientY), (l = !0));
     }),
+      document.addEventListener(
+        "touchstart",
+        (t) => {
+          if (!t.touches || t.touches.length === 0) return;
+          const touch = t.touches[0];
+          ((i = touch.clientX), (o = touch.clientY), (l = !0));
+        },
+        { passive: true },
+      ),
+      document.addEventListener(
+        "touchmove",
+        (t) => {
+          if (!t.touches || t.touches.length === 0) return;
+          const touch = t.touches[0];
+          ((i = touch.clientX), (o = touch.clientY), (l = !0));
+        },
+        { passive: true },
+      ),
+      document.addEventListener(
+        "touchend",
+        () => {
+          l = !1;
+        },
+        { passive: true },
+      ),
+      document.addEventListener(
+        "touchcancel",
+        () => {
+          l = !1;
+        },
+        { passive: true },
+      ),
       document.addEventListener("mouseleave", () => {
         l = !1;
       }),
@@ -189,8 +232,9 @@ function drawStars() {
         const m = c - e,
           h = u - a,
           v = Math.sqrt(m * m + h * h);
-        if (v > (l ? 220 : 0) + 1) {
-          const t = l ? (v - 220) / v : 1;
+        const followThreshold = l ? (isMobileTouch() ? 120 : 220) : 0;
+        if (v > followThreshold + 1) {
+          const t = l ? (v - followThreshold) / v : 1;
           ((n += m * t * 0.022), (r += h * t * 0.022));
         }
         const p = l ? 0.15 : 0.995;
@@ -266,8 +310,128 @@ function drawStars() {
               (e.currentTime = 0),
               e.play().catch(() => {}));
           }));
+        const bassGroup = document.getElementById("group-256");
+        let bassTarget = bassGroup
+          ? bassGroup.querySelector('.gl img[src="parallax/parallax 2.png"]') ||
+            bassGroup.querySelector(".gl img")
+          : null;
+        if (bassTarget && bassGroup) {
+          bassGroup.style.pointerEvents = "auto";
+          bassTarget.parentElement.style.pointerEvents = "auto";
+          bassTarget.style.pointerEvents = "auto";
+          bassTarget.style.cursor = "default";
+          const bassAudio = new Audio("audio/bass.mp3");
+          bassAudio.preload = "auto";
+          bassAudio.volume = 0.6;
+          bassGroup.addEventListener("click", (ev) => {
+            if (ev.target === bassTarget || bassTarget.contains(ev.target)) {
+              bassAudio.currentTime = 0;
+              bassAudio.play().catch(() => {});
+            }
+          });
+        }
       })());
   })());
+
+// Bass audio + notas musicales
+(function () {
+  const bassGroup = document.getElementById("group-256");
+  if (!bassGroup) return;
+  const bassTarget =
+    bassGroup.querySelector('.gl img[src="parallax/parallax 2.png"]') ||
+    bassGroup.querySelectorAll(".gl img")[0];
+  if (!bassTarget) return;
+
+  const bassAudio = new Audio("audio/bass.mp3");
+  bassAudio.preload = "auto";
+  bassAudio.volume = 0.6;
+
+  const NOTE_CHARS = ["♩", "♪", "♫", "♬"];
+
+  function spawnNotes(x, y) {
+    const count = 4;
+    const spacing = 22;
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement("span");
+      el.textContent =
+        NOTE_CHARS[Math.floor(Math.random() * NOTE_CHARS.length)];
+      const size = 16 + Math.floor(Math.random() * 10);
+      // Notas en fila horizontal hacia la derecha, con pequeño offset vertical alternado
+      const startX = x + i * spacing;
+      const startY = y + (i % 2 === 0 ? 0 : -8);
+      const NOTE_COLORS = ["#1a2d4a8f", "#f19380"];
+      const noteColor = NOTE_COLORS[i % 2];
+      el.style.cssText = `
+        position: fixed;
+        left: ${startX}px;
+        top: ${startY}px;
+        font-size: ${size}px;
+        color: ${noteColor};
+        pointer-events: none;
+        z-index: 99999;
+        user-select: none;
+        line-height: 1;
+        transform-origin: center;
+        opacity: 1;
+      `;
+      document.body.appendChild(el);
+
+      // Velocidad horizontal suave hacia la derecha, sin caída vertical
+      const vx = 0.6 + Math.random() * 0.4;
+      const vy = -0.3 - Math.random() * 0.3;
+      let cx = startX;
+      let cy = startY;
+      let alpha = 1;
+      const holdMs = 3600; // tiempo opaco
+      const fadeDuration = 60; // frames para desvanecer (~1s)
+      let fadeFrame = 0;
+      const startTime = performance.now();
+
+      function animate(now) {
+        cx += vx;
+        cy += vy;
+        el.style.left = cx + "px";
+        el.style.top = cy + "px";
+
+        const elapsed = now - startTime;
+        if (elapsed < holdMs) {
+          // mantenerse visible
+          el.style.opacity = 1;
+          requestAnimationFrame(animate);
+        } else {
+          // desvanecer suavemente
+          fadeFrame++;
+          alpha = Math.max(0, 1 - fadeFrame / fadeDuration);
+          el.style.opacity = alpha;
+          if (alpha > 0) {
+            requestAnimationFrame(animate);
+          } else {
+            el.remove();
+          }
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+  }
+
+  document.addEventListener(
+    "click",
+    function (ev) {
+      const r = bassTarget.getBoundingClientRect();
+      if (
+        ev.clientX >= r.left &&
+        ev.clientX <= r.right &&
+        ev.clientY >= r.top &&
+        ev.clientY <= r.bottom
+      ) {
+        bassAudio.currentTime = 0;
+        bassAudio.play().catch(() => {});
+        spawnNotes(ev.clientX, ev.clientY);
+      }
+    },
+    true,
+  );
+})();
 
 // Typed.js for year animation
 document.addEventListener("DOMContentLoaded", function () {
