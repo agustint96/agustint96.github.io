@@ -265,12 +265,19 @@ nav.nav-compact {
   left: 0;
   height: 100%;
   width: 100%;
+  pointer-events: none;
+}
+#group-256 .gl:has(img[src="parallax/parallax 2.png"]) {
+  pointer-events: auto;
 }
 #group-256 .gl img {
   height: 100%;
   width: auto;
   display: block;
   cursor: default;
+  pointer-events: none;
+}
+#group-256 .gl img[src="parallax/parallax 2.png"] {
   pointer-events: auto;
 }
 #p7 {
@@ -460,5 +467,6 @@ nav.nav-compact {
 @media (min-width: 601px) {
   .starry-p9 {
     pointer-events: auto;
+    cursor: pointer;
   }
 }

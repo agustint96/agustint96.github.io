@@ -319,7 +319,7 @@ function drawStars() {
           bassGroup.style.pointerEvents = "auto";
           bassTarget.parentElement.style.pointerEvents = "auto";
           bassTarget.style.pointerEvents = "auto";
-          bassTarget.style.cursor = "default";
+          bassTarget.style.cursor = "pointer";
           const bassAudio = new Audio("audio/bass.mp3");
           bassAudio.preload = "auto";
           bassAudio.volume = 0.6;
