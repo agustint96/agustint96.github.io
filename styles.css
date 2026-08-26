@@ -115,6 +115,32 @@ nav.nav-compact {
   color: var(--muted);
   text-decoration: none;
   transition: color 0.2s;
+  display: inline-block;
+  animation: navFloat 3.6s ease-in-out infinite;
+}
+.nav-links li:nth-child(1) a {
+  animation-delay: 0s;
+}
+.nav-links li:nth-child(2) a {
+  animation-delay: 0.3s;
+}
+.nav-links li:nth-child(3) a {
+  animation-delay: 0.6s;
+}
+.nav-links li:nth-child(4) a {
+  animation-delay: 0.9s;
+}
+.nav-links li:nth-child(5) a {
+  animation-delay: 1.2s;
+}
+@keyframes navFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
 }
 .nav-links a:hover {
   color: var(--accent);
@@ -203,7 +229,7 @@ nav.nav-compact {
 @media (min-width: 601px) {
   .starry-p9-wrap {
     pointer-events: auto;
-    cursor: pointer;
+    cursor: default;
   }
 }
 .parallax-footer {
@@ -245,6 +271,9 @@ nav.nav-compact {
   bottom: 0;
   height: 320px;
 }
+#p3 img {
+  cursor: default;
+}
 #p4 {
   z-index: 3;
   left: 0;
@@ -279,6 +308,7 @@ nav.nav-compact {
 }
 #group-256 .gl img[src="parallax/parallax 2.png"] {
   pointer-events: auto;
+  cursor: default;
 }
 #p7 {
   z-index: 5;
@@ -467,6 +497,6 @@ nav.nav-compact {
 @media (min-width: 601px) {
   .starry-p9 {
     pointer-events: auto;
-    cursor: pointer;
+    cursor: default;
   }
 }

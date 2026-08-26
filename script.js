@@ -100,16 +100,27 @@ const group256 = document.getElementById("group-256"),
 let targetX = 0,
   currentX = 0;
 const lerp = (t, e, a) => t + (e - t) * a;
+
+if (p3el) {
+  const guitarraAudio = new Audio("audio/Guitarra.mp3");
+  guitarraAudio.preload = "auto";
+  guitarraAudio.volume = 0.12;
+  p3el.addEventListener("click", () => {
+    guitarraAudio.currentTime = 0;
+    guitarraAudio.play().catch(() => {});
+  });
+}
+
 function tick() {
   ((currentX = lerp(currentX, targetX, 0.04)),
     group256 &&
-      (group256.style.transform = `translateX(${80 * currentX * 5e-4 * 100}px)`),
+      (group256.style.transform = `translateX(${MAX_PX * currentX * DEPTH_256 * 100}px)`),
     p3el &&
-      (p3el.style.transform = `translateX(${80 * -currentX * 5e-4 * 100}px)`),
+      (p3el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P3 * 100}px)`),
     p7el &&
-      (p7el.style.transform = `translateX(${80 * currentX * 0.003 * 100}px)`),
+      (p7el.style.transform = `translateX(${MAX_PX * currentX * DEPTH_P7 * 100}px)`),
     p8el &&
-      (p8el.style.transform = `translateX(${80 * -currentX * 8e-4 * 100}px)`),
+      (p8el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P8 * 100}px)`),
     requestAnimationFrame(tick));
 }
 (document.addEventListener("mousemove", (t) => {
@@ -150,7 +161,7 @@ function drawStars() {
     ((ctx.globalAlpha = t.alpha),
       (ctx.fillStyle = "#f19280"),
       ctx.beginPath(),
-      ctx.arc(Math.round(t.x), Math.round(t.y), 1.5, 0, 2 * Math.PI),
+      ctx.arc(Math.round(t.x), Math.round(t.y), starRadius, 0, 2 * Math.PI),
       ctx.fill(),
       (t.y += t.vy),
       (t.alpha -= 0.006));
@@ -280,7 +291,7 @@ function drawStars() {
               })()));
       });
     }
-    (!(function () {
+    (function () {
       const t = document.querySelector(".starry-p9");
       if (!t) return;
       const e = new Audio("audio/satelite.mp3");
@@ -288,49 +299,18 @@ function drawStars() {
         (e.volume = 0.25),
         t.addEventListener("click", () => {
           window.innerWidth <= 600 ||
-            ((e.currentTime = 0), e.play().catch(() => {}));
+            (t.classList.remove("spinning"),
+            t.offsetWidth,
+            t.classList.add("spinning"),
+            t.addEventListener(
+              "animationend",
+              () => t.classList.remove("spinning"),
+              { once: !0 },
+            ),
+            (e.currentTime = 0),
+            e.play().catch(() => {}));
         }));
-    })(),
-      (function () {
-        const t = document.querySelector(".starry-p9");
-        if (!t) return;
-        const e = new Audio("audio/satelite.mp3");
-        ((e.preload = "auto"),
-          (e.volume = 0.05),
-          t.addEventListener("click", () => {
-            window.innerWidth <= 600 ||
-              (t.classList.remove("spinning"),
-              t.offsetWidth,
-              t.classList.add("spinning"),
-              t.addEventListener(
-                "animationend",
-                () => t.classList.remove("spinning"),
-                { once: !0 },
-              ),
-              (e.currentTime = 0),
-              e.play().catch(() => {}));
-          }));
-        const bassGroup = document.getElementById("group-256");
-        let bassTarget = bassGroup
-          ? bassGroup.querySelector('.gl img[src="parallax/parallax 2.png"]') ||
-            bassGroup.querySelector(".gl img")
-          : null;
-        if (bassTarget && bassGroup) {
-          bassGroup.style.pointerEvents = "auto";
-          bassTarget.parentElement.style.pointerEvents = "auto";
-          bassTarget.style.pointerEvents = "auto";
-          bassTarget.style.cursor = "pointer";
-          const bassAudio = new Audio("audio/bass.mp3");
-          bassAudio.preload = "auto";
-          bassAudio.volume = 0.6;
-          bassGroup.addEventListener("click", (ev) => {
-            if (ev.target === bassTarget || bassTarget.contains(ev.target)) {
-              bassAudio.currentTime = 0;
-              bassAudio.play().catch(() => {});
-            }
-          });
-        }
-      })());
+    })();
   })());
 
 // Bass audio + notas musicales
