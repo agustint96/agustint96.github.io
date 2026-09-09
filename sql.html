@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Consola SQL · Agustin Tardella</title>
+    <title>SISOP - Agustin Tardella</title>
 
     <script>
       /* El "sistema operativo" no existe en celulares: si se entra desde un
@@ -22,7 +22,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400&display=swap"
       rel="stylesheet"
     />
     <link rel="icon" type="image/png" href="parallax/parallax 9.png" />
@@ -55,6 +55,10 @@
         --w98-seltext: #f0ece4;
 
         --taskbar-h: 30px;
+
+        /* Columna de iconos del escritorio (para alinear el botón de apagado) */
+        --desk-left: 12px;
+        --desk-col: 82px;
       }
 
       * {
@@ -112,7 +116,7 @@
       .desk {
         position: fixed;
         top: 44px;
-        left: 12px;
+        left: var(--desk-left);
         z-index: 1;
         display: flex;
         flex-direction: column;
@@ -120,7 +124,7 @@
       }
 
       .desk-icon {
-        width: 82px;
+        width: var(--desk-col);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -129,7 +133,7 @@
         background: transparent;
         border: 0;
         cursor: pointer;
-        font-family: "DM Mono", ui-monospace, monospace;
+        font-family: "DM Mono", monospace;
         color: var(--white);
         -webkit-user-select: none;
         user-select: none;
@@ -184,7 +188,7 @@
         min-height: 160px;
         background: var(--w98-face);
         padding: 3px;
-        font-family: "DM Mono", ui-monospace, monospace;
+        font-family: "DM Mono", monospace;
         color: #1b1b18;
         box-shadow:
           inset -1px -1px 0 0 var(--w98-dkshadow),
@@ -395,7 +399,7 @@
         flex-direction: column;
         background: var(--w98-face);
         padding: 3px;
-        font-family: "DM Mono", ui-monospace, monospace;
+        font-family: "DM Mono", monospace;
         color: #1b1b18;
         box-shadow:
           inset -1px -1px 0 0 var(--w98-dkshadow),
@@ -467,7 +471,7 @@
         height: 16px;
         display: grid;
         place-items: center;
-        font-family: "Marlett", "Segoe UI Symbol", sans-serif;
+        font-family: "DM Mono", monospace;
         font-size: 10px;
         font-weight: 700;
         color: #1b1b18;
@@ -698,7 +702,7 @@
 
       .schema .tbl > .tname {
         cursor: pointer;
-        font-weight: 500;
+        font-weight: 700;
         color: var(--navy);
       }
 
@@ -745,7 +749,7 @@
       #editor,
       .editor-hl {
         padding: 8px 10px;
-        font-family: "DM Mono", "Courier New", monospace;
+        font-family: "DM Mono", monospace;
         font-size: 13px;
         line-height: 1.6;
         tab-size: 2;
@@ -784,7 +788,7 @@
 
       .editor-hl .sql-kw {
         color: var(--blue);
-        font-weight: 500;
+        font-weight: 700;
       }
 
       #editor::selection {
@@ -1005,7 +1009,7 @@
         box-shadow:
           inset 0 1px 0 0 var(--w98-hilite),
           inset 0 2px 0 0 var(--w98-face-lite);
-        font-family: "DM Mono", ui-monospace, monospace;
+        font-family: "DM Mono", monospace;
         color: #1b1b18;
       }
 
@@ -1016,8 +1020,12 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        width: 34px;
         height: 22px;
-        padding: 0 9px;
+        padding: 0;
+        /* Centrado con la columna de iconos del escritorio:
+           borde izq. de la barra (3px) + margen = centro de la columna − 17px */
+        margin-left: calc(var(--desk-left) + var(--desk-col) / 2 - 3px - 17px);
         font: inherit;
         color: #1b1b18;
         background: var(--w98-face);
@@ -1035,6 +1043,13 @@
         height: 14px;
         display: block;
         color: #1b1b18;
+        transition: color 0.15s;
+      }
+
+      /* Hover: el símbolo de encendido toma el rosa de los comentarios SQL */
+      .taskbar .power98:hover svg,
+      .taskbar .power98:focus-visible svg {
+        color: var(--accent);
       }
 
       .taskbar .power98:active {
@@ -1150,7 +1165,7 @@
         width: min(380px, 90vw);
         background: var(--w98-face);
         padding: 3px;
-        font-family: "DM Mono", ui-monospace, monospace;
+        font-family: "DM Mono", monospace;
         color: #1b1b18;
         box-shadow:
           inset -1px -1px 0 0 var(--w98-dkshadow),
@@ -1175,7 +1190,7 @@
       }
 
       .dialog .body b {
-        font-family: Spaceport, "DM Mono", monospace;
+        font-family: Spaceport, sans-serif;
         font-size: 15px;
         letter-spacing: 0.12em;
       }
@@ -1212,7 +1227,6 @@
         padding: 3px 7px;
         font:
           11px/1.55 "DM Mono",
-          ui-monospace,
           monospace;
         color: #1b1b18;
         background: #ffffe1;
@@ -1266,10 +1280,342 @@
           padding: 3px 6px;
         }
       }
+
+      /* ---------- Encendido / apagado estilo monitor CRT ---------- */
+      .crt-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 100000;
+        background: #000;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .crt-screen::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: #d7ecff;
+        transform-origin: center;
+        transform: scaleY(0.004);
+        opacity: 0;
+      }
+      .crt-screen.boot {
+        animation: crt-fade 0.34s ease-out 0.34s forwards;
+      }
+      .crt-screen.boot::after {
+        animation: crt-line 0.48s ease-out forwards;
+      }
+      @keyframes crt-line {
+        0% {
+          transform: scaleY(0.004);
+          opacity: 0;
+        }
+        7% {
+          transform: scaleY(0.004);
+          opacity: 1;
+        }
+        13% {
+          transform: scaleY(0.05);
+          opacity: 1;
+          filter: brightness(1.7);
+        }
+        19% {
+          transform: scaleY(0.015);
+          opacity: 0.55;
+        }
+        30% {
+          transform: scaleY(0.55);
+          opacity: 1;
+        }
+        38% {
+          transform: scaleY(0.22);
+          opacity: 0.8;
+        }
+        52% {
+          transform: scaleY(1);
+          opacity: 0.95;
+        }
+        66% {
+          transform: scaleY(1);
+          opacity: 0.32;
+        }
+        100% {
+          transform: scaleY(1);
+          opacity: 0;
+        }
+      }
+      @keyframes crt-fade {
+        0% {
+          opacity: 1;
+        }
+        12% {
+          opacity: 0.5;
+        }
+        20% {
+          opacity: 0.85;
+        }
+        100% {
+          opacity: 0;
+          visibility: hidden;
+        }
+      }
+
+      html.crt-shutdown {
+        background: #000 !important;
+        overflow: hidden;
+      }
+      html.crt-shutdown body {
+        animation: crt-off 0.62s cubic-bezier(0.4, 0, 0.9, 0.3) forwards;
+        transform-origin: center center;
+        pointer-events: none;
+      }
+      @keyframes crt-off {
+        0% {
+          transform: scale(1, 1);
+          filter: brightness(1);
+        }
+        10% {
+          transform: scale(1, 1);
+          filter: brightness(1.6);
+        }
+        15% {
+          transform: scale(1, 0.97);
+          filter: brightness(0.8);
+        }
+        25% {
+          transform: scale(1.01, 0.86);
+          filter: brightness(1.9);
+        }
+        42% {
+          transform: scale(1, 0.45);
+          filter: brightness(1);
+        }
+        62% {
+          transform: scale(1, 0.008);
+          filter: brightness(4);
+        }
+        78% {
+          transform: scale(0.4, 0.006);
+          filter: brightness(7);
+        }
+        100% {
+          transform: scale(0, 0.004);
+          filter: brightness(12);
+          opacity: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .crt-screen {
+          display: none !important;
+        }
+        html.crt-shutdown body {
+          animation: none !important;
+          transform: none !important;
+        }
+      }
+
+      /* ---------- App «Notas» + papelitos post-it ---------- */
+      .notes-app {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 8px;
+        background: #f7e98f;
+        background-image: linear-gradient(#f7e98f, #f3e074);
+      }
+      .notes-app textarea {
+        flex: 1;
+        resize: none;
+        border: 0;
+        outline: 0;
+        padding: 4px 2px;
+        background: transparent;
+        font-family: "DM Mono", monospace;
+        font-size: 13px;
+        line-height: 1.55;
+        color: #4a3f18;
+      }
+      .notes-app textarea::placeholder {
+        color: #b3a24f;
+      }
+      .notes-app .notes-foot {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .postit {
+        position: fixed;
+        z-index: 43;
+        width: 168px;
+        min-height: 116px;
+        padding: 13px 13px 16px;
+        box-sizing: border-box;
+        background: #ffe86b;
+        color: #4a3f18;
+        font-family: "DM Mono", monospace;
+        font-size: 12.5px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        box-shadow:
+          0 1px 1px rgba(0, 0, 0, 0.14),
+          0 9px 20px rgba(0, 0, 0, 0.26);
+        cursor: grab;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        transition:
+          transform 0.28s ease-out,
+          box-shadow 0.15s ease,
+          opacity 0.18s ease;
+      }
+      .postit.live {
+        transition: box-shadow 0.15s ease;
+      }
+      .postit.dragging {
+        cursor: grabbing;
+        box-shadow:
+          0 3px 6px rgba(0, 0, 0, 0.18),
+          0 22px 44px rgba(0, 0, 0, 0.34);
+      }
+      .postit.editing {
+        cursor: text;
+        -webkit-user-select: text;
+        user-select: text;
+      }
+      .postit.pi-gone {
+        opacity: 0;
+        transform: scale(0.82) rotate(0deg) !important;
+      }
+      .postit::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        border-style: solid;
+        border-width: 0 0 18px 18px;
+        border-color: transparent transparent rgba(0, 0, 0, 0.13) transparent;
+      }
+      .postit .pi-text {
+        display: block;
+        width: 100%;
+        min-height: 4.2em;
+        max-height: 320px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        outline: 0;
+        resize: none;
+        overflow: hidden;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        line-height: 1.5;
+        pointer-events: none;
+      }
+      .postit.editing .pi-text {
+        pointer-events: auto;
+        overflow-y: auto;
+      }
+      .postit .pi-close {
+        position: absolute;
+        top: 1px;
+        right: 3px;
+        width: 17px;
+        height: 17px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #7c6a1f;
+        font-family: inherit;
+        font-size: 13px;
+        line-height: 1;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.12s ease;
+      }
+      .postit:hover .pi-close,
+      .postit:focus-within .pi-close {
+        opacity: 0.85;
+      }
+      .postit .pi-close:hover {
+        opacity: 1;
+        color: #b02a2a;
+      }
     </style>
   </head>
 
   <body>
+    <script>
+      /* Monitor CRT encendiéndose: pantalla negra + línea que se abre con parpadeo */
+      (function () {
+        var reduce = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+
+        if (!reduce) {
+          var scr = document.createElement("div");
+          scr.className = "crt-screen boot";
+          document.body.appendChild(scr);
+          setTimeout(function () {
+            if (scr.parentNode) scr.parentNode.removeChild(scr);
+          }, 900);
+        }
+
+        /* Retoma el sonido de encendido donde quedó al salir del portfolio,
+           así se escucha entero aunque la animación haya sido corta. */
+        try {
+          var marca = sessionStorage.getItem("sisopon:desde");
+          if (marca) {
+            sessionStorage.removeItem("sisopon:desde");
+            var pasado = (Date.now() - parseInt(marca, 10)) / 1000;
+            if (isFinite(pasado) && pasado >= 0 && pasado < 15) {
+              var snd = new Audio("audio/sisopon.m4a");
+              snd.volume = 0.6;
+              snd.addEventListener("loadedmetadata", function () {
+                var arrancar = function () {
+                  var offset =
+                    Math.max(0, Date.now() - parseInt(marca, 10)) / 1000;
+                  if (isFinite(snd.duration) && offset >= snd.duration - 0.15)
+                    return;
+                  try {
+                    snd.currentTime = offset;
+                  } catch (e) {}
+                  snd.play().catch(function () {});
+                };
+                arrancar();
+                /* Si el navegador bloquea el autoplay, se retoma al primer toque */
+                ["pointerdown", "keydown"].forEach(function (ev) {
+                  document.addEventListener(
+                    ev,
+                    function reintento() {
+                      document.removeEventListener(ev, reintento, true);
+                      if (snd.paused) arrancar();
+                    },
+                    true,
+                  );
+                });
+              });
+            }
+          }
+        } catch (e) {}
+
+        /* Al volver con "atrás" desde la caché (bfcache): deshacer el estado de
+           apagado que dejó la pantalla en negro */
+        window.addEventListener("pageshow", function (ev) {
+          if (!ev.persisted) return;
+          var h = document.documentElement;
+          h.classList.remove("crt-shutdown");
+          delete h.dataset.apagando;
+          var overlays = document.querySelectorAll(".crt-screen");
+          for (var i = 0; i < overlays.length; i++) overlays[i].remove();
+        });
+      })();
+    </script>
+
     <canvas id="stars"></canvas>
 
     <div class="desk" id="desk">
@@ -1396,6 +1742,38 @@
           <circle cx="19.2" cy="22.4" r="2.1" fill="#f19280" />
         </svg>
         <span>Música</span>
+      </button>
+
+      <button
+        class="desk-icon"
+        type="button"
+        data-open="notas"
+        title="Doble clic para abrir"
+        aria-label="Notas (doble clic para abrir)"
+      >
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path
+            d="M5 4h16l6 6v18H5z"
+            fill="#f6e06a"
+            stroke="#9a8419"
+            stroke-width="1.2"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M21 4l6 6h-6z"
+            fill="#d9c24e"
+            stroke="#9a8419"
+            stroke-width="1.2"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M9 14h11M9 18h11M9 22h7"
+            stroke="#6f5d13"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
+        </svg>
+        <span>Notas</span>
       </button>
     </div>
 
@@ -1588,6 +1966,10 @@ SELECT * FROM Info;</textarea
 
         var LS_DB = "sqlconsole:v1:db";
         var LS_SEED = "sqlconsole:v1:seed";
+
+        // Las define stickyNotes(); las usa la app «Notas».
+        var agregarNota = null;
+        var notasBienvenida = null;
 
         /* ============================================================
          *  BASE «Agus» — esquema semilla
@@ -2344,7 +2726,48 @@ SELECT * FROM Info;</textarea
             resetCounters();
           },
           home: function () {
-            window.location.href = "index.html";
+            var htmlEl = document.documentElement;
+            if (htmlEl.dataset.apagando) return;
+            htmlEl.dataset.apagando = "1";
+
+            var navegado = false;
+            var salir = function () {
+              if (navegado) return;
+              navegado = true;
+              window.location.href = "index.html";
+            };
+
+            if (
+              !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ) {
+              htmlEl.classList.add("crt-shutdown");
+            }
+
+            // Espera a que el sonido de apagado termine de sonar completo
+            var tope = setTimeout(salir, 6000);
+            var salirCorto = function () {
+              clearTimeout(tope);
+              setTimeout(salir, 640);
+            };
+            try {
+              // Sonido propio de apagado del sistema operativo
+              var snd = new Audio("audio/sisopoff.m4a");
+              snd.volume = 1;
+              snd.addEventListener("loadedmetadata", function () {
+                if (isFinite(snd.duration) && snd.duration > 0) {
+                  clearTimeout(tope);
+                  tope = setTimeout(salir, snd.duration * 1000 + 400);
+                }
+              });
+              snd.addEventListener("ended", function () {
+                clearTimeout(tope);
+                salir();
+              });
+              snd.addEventListener("error", salirCorto);
+              snd.play().catch(salirCorto);
+            } catch (e) {
+              salirCorto();
+            }
           },
           about: function () {
             $("about").hidden = false;
@@ -2593,12 +3016,24 @@ SELECT * FROM Info;</textarea
               '<path d="M19 3v5h5" fill="none" stroke="#2f4467" stroke-width="1.3"/>' +
               '<path d="M14 24v-8l6-1.5V22" fill="none" stroke="#2f4467" stroke-width="1.6" stroke-linecap="round"/>' +
               '<circle cx="12.4" cy="24.1" r="2" fill="#f19280"/><circle cx="18.4" cy="22.6" r="2" fill="#f19280"/></svg>',
+            note:
+              '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+              '<path d="M5 4h16l6 6v18H5z" fill="#f6e06a" stroke="#9a8419" stroke-width="1.2"/>' +
+              '<path d="M21 4l6 6h-6z" fill="#d9c24e" stroke="#9a8419" stroke-width="1.2"/>' +
+              '<path d="M9 14h11M9 18h11M9 22h7" stroke="#6f5d13" stroke-width="1.6" stroke-linecap="round"/></svg>',
           };
 
           var SITE_W = 1000;
           var SITE_H = 660;
 
           var APPS = {
+            notas: {
+              title: "Notas",
+              icon: "note",
+              type: "notes",
+              w: 260,
+              h: 240,
+            },
             casus: {
               title: "Casus Liber",
               icon: "game",
@@ -2691,7 +3126,11 @@ SELECT * FROM Info;</textarea
           /* Carpeta «Música»: cada archivo .mp3 abre el reproductor
              embebido (API del widget) de esa canción en soundcloud.com/agust1 */
           var TRACKS = [
-            [2156319342, "Cover de Polyphonic Sprees", "cover-de-polyphonic-sprees"],
+            [
+              2156319342,
+              "Cover de Polyphonic Sprees",
+              "cover-de-polyphonic-sprees",
+            ],
             [1993346843, "Bj (1) 01", "bj-1-01"],
             [1788848782, "Eclipsis", "eclipsis"],
             [1716591981, "Reggae Mezcla", "reggae-mezcla"],
@@ -2956,6 +3395,41 @@ SELECT * FROM Info;</textarea
             bd.appendChild(v);
           }
 
+          function buildNotes(cfg, bd) {
+            var wrap = document.createElement("div");
+            wrap.className = "notes-app";
+            wrap.innerHTML =
+              '<textarea placeholder="Escribí una nota…" spellcheck="false" autocomplete="off"></textarea>' +
+              '<div class="notes-foot">' +
+              '<button class="btn primary" type="button" data-notes="pin">Pegar en el escritorio</button>' +
+              "</div>";
+            var ta = wrap.querySelector("textarea");
+            function pin() {
+              var text = ta.value.replace(/\s+$/, "");
+              if (!text.trim()) {
+                ta.focus();
+                return;
+              }
+              if (typeof agregarNota === "function") agregarNota(text);
+              ta.value = "";
+              ta.focus();
+            }
+            wrap
+              .querySelector('[data-notes="pin"]')
+              .addEventListener("click", pin);
+            ta.addEventListener("keydown", function (e) {
+              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                e.preventDefault();
+                pin();
+              }
+            });
+            bd.appendChild(wrap);
+            setTimeout(function () {
+              ta.focus();
+            }, 30);
+            if (typeof notasBienvenida === "function") notasBienvenida();
+          }
+
           function openImage(src, cap) {
             var id = "img:" + src;
             APPS[id] = {
@@ -3026,6 +3500,7 @@ SELECT * FROM Info;</textarea
             else if (cfg.type === "folder") buildFolder(cfg, bd);
             else if (cfg.type === "photos") buildPhotos(bd);
             else if (cfg.type === "image") buildImage(cfg, bd);
+            else if (cfg.type === "notes") buildNotes(cfg, bd);
 
             document.body.appendChild(w);
             makeDraggable(w, tb);
@@ -3115,7 +3590,9 @@ SELECT * FROM Info;</textarea
           }
 
           /* Selección / apertura de TODOS los iconos del escritorio */
-          var deskIcons = [].slice.call(document.querySelectorAll(".desk-icon"));
+          var deskIcons = [].slice.call(
+            document.querySelectorAll(".desk-icon"),
+          );
           function clearDeskSel() {
             deskIcons.forEach(function (i) {
               i.classList.remove("selected");
@@ -3172,6 +3649,349 @@ SELECT * FROM Info;</textarea
                 Math.min(parseFloat(w.style.top) || 0, maxTop) + "px";
             });
           });
+        })();
+
+        /* ============================================================
+         *  Notas: papelitos post-it que se pegan al escritorio y se
+         *  arrastran; al soltarlos con impulso salen "tirados" (inercia).
+         * ============================================================ */
+        (function stickyNotes() {
+          var LS = "sqlconsole:v1:notas";
+          var reduce = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+          var notas = [];
+          var zc = 42;
+
+          function tbH() {
+            return (
+              parseInt(
+                getComputedStyle(document.documentElement).getPropertyValue(
+                  "--taskbar-h",
+                ),
+                10,
+              ) || 30
+            );
+          }
+          function clamp(v, lo, hi) {
+            return v < lo ? lo : v > hi ? hi : v;
+          }
+          function bounds(el) {
+            return {
+              minX: 2,
+              minY: 2,
+              maxX: Math.max(2, window.innerWidth - el.offsetWidth - 2),
+              maxY: Math.max(
+                2,
+                window.innerHeight - tbH() - el.offsetHeight - 4,
+              ),
+            };
+          }
+          function raise(el) {
+            zc = zc >= 44 ? 42 : zc + 1;
+            el.style.zIndex = zc;
+          }
+
+          function persist() {
+            try {
+              localStorage.setItem(
+                LS,
+                JSON.stringify(
+                  notas.map(function (n) {
+                    return {
+                      id: n.id,
+                      text: n.text.value,
+                      x: parseFloat(n.el.style.left) || 0,
+                      y: parseFloat(n.el.style.top) || 0,
+                      rot: n.rot,
+                    };
+                  }),
+                ),
+              );
+            } catch (e) {}
+          }
+
+          function quitar(n) {
+            var i = notas.indexOf(n);
+            if (i >= 0) notas.splice(i, 1);
+            n.el.classList.add("pi-gone");
+            setTimeout(function () {
+              if (n.el.parentNode) n.el.parentNode.removeChild(n.el);
+            }, 200);
+            persist();
+          }
+
+          function crear(data) {
+            if (typeof data === "string") data = { text: data };
+            data = data || {};
+
+            var el = document.createElement("div");
+            el.className = "postit";
+            var rot =
+              typeof data.rot === "number" ? data.rot : Math.random() * 6 - 3;
+            el.style.transform = "rotate(" + rot + "deg)";
+            el.style.zIndex = 43;
+            el.innerHTML =
+              '<button class="pi-close" type="button" title="Quitar nota" aria-label="Quitar nota">✕</button>' +
+              '<textarea class="pi-text" rows="1" spellcheck="false" wrap="soft"></textarea>';
+            var text = el.querySelector(".pi-text");
+            text.value = data.text || "";
+            document.body.appendChild(el);
+
+            var n = {
+              el: el,
+              text: text,
+              rot: rot,
+              id:
+                data.id ||
+                "n" +
+                  Date.now().toString(36) +
+                  Math.random().toString(36).slice(2, 6),
+            };
+            notas.push(n);
+
+            function autogrow() {
+              text.style.height = "auto";
+              text.style.height = Math.min(text.scrollHeight, 320) + "px";
+            }
+            requestAnimationFrame(autogrow);
+
+            var b = bounds(el);
+            var x =
+              typeof data.x === "number"
+                ? data.x
+                : b.minX + 16 + Math.random() * 90;
+            var y =
+              typeof data.y === "number"
+                ? data.y
+                : b.minY + 66 + Math.random() * 80;
+            el.style.left = clamp(x, b.minX, b.maxX) + "px";
+            el.style.top = clamp(y, b.minY, b.maxY) + "px";
+
+            /* ---- editar en el lugar ---- */
+            function editar() {
+              el.classList.add("editing");
+              text.focus();
+              try {
+                text.setSelectionRange(text.value.length, text.value.length);
+              } catch (_) {}
+            }
+            el.addEventListener("dblclick", function (e) {
+              if (e.target.closest(".pi-close")) return;
+              if (justDragged) return;
+              editar();
+            });
+            text.addEventListener("input", autogrow);
+            text.addEventListener("blur", function () {
+              el.classList.remove("editing");
+              if (!text.value.trim()) quitar(n);
+              else persist();
+            });
+            text.addEventListener("keydown", function (e) {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                text.blur();
+              }
+              e.stopPropagation();
+            });
+            el.querySelector(".pi-close").addEventListener(
+              "click",
+              function (e) {
+                e.stopPropagation();
+                quitar(n);
+              },
+            );
+
+            /* ---- arrastrar + tirar (inercia al soltar) ---- */
+            var drag = false,
+              moved = false,
+              justDragged = false,
+              sx = 0,
+              sy = 0,
+              bx = 0,
+              by = 0,
+              raf = 0,
+              samples = [];
+
+            function stopInertia() {
+              if (raf) {
+                cancelAnimationFrame(raf);
+                raf = 0;
+              }
+            }
+
+            el.addEventListener("pointerdown", function (e) {
+              if (el.classList.contains("editing")) return;
+              if (e.target.closest(".pi-close")) return;
+              stopInertia();
+              drag = true;
+              moved = false;
+              raise(el);
+              el.classList.add("live", "dragging");
+              var r = el.getBoundingClientRect();
+              bx = parseFloat(el.style.left) || r.left;
+              by = parseFloat(el.style.top) || r.top;
+              sx = e.clientX;
+              sy = e.clientY;
+              samples = [{ t: performance.now(), x: e.clientX, y: e.clientY }];
+              try {
+                el.setPointerCapture(e.pointerId);
+              } catch (_) {}
+            });
+
+            el.addEventListener("pointermove", function (e) {
+              if (!drag) return;
+              var dx = e.clientX - sx,
+                dy = e.clientY - sy;
+              if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
+              el.style.left = bx + dx + "px";
+              el.style.top = by + dy + "px";
+              el.style.transform =
+                "rotate(" + (n.rot + clamp(dx * 0.04, -12, 12)) + "deg)";
+              samples.push({
+                t: performance.now(),
+                x: e.clientX,
+                y: e.clientY,
+              });
+              if (samples.length > 5) samples.shift();
+            });
+
+            function soltar(e) {
+              if (!drag) return;
+              drag = false;
+              el.classList.remove("dragging");
+              if (moved) {
+                justDragged = true;
+                setTimeout(function () {
+                  justDragged = false;
+                }, 320);
+              }
+              try {
+                el.releasePointerCapture(e.pointerId);
+              } catch (_) {}
+              var vx = 0,
+                vy = 0;
+              if (samples.length >= 2) {
+                var a = samples[0],
+                  z = samples[samples.length - 1];
+                var dt = Math.max(1, z.t - a.t);
+                vx = ((z.x - a.x) / dt) * 15;
+                vy = ((z.y - a.y) / dt) * 15;
+              }
+              if (reduce || Math.hypot(vx, vy) < 0.8) asentar();
+              else tirar(vx, vy);
+            }
+            el.addEventListener("pointerup", soltar);
+            el.addEventListener("pointercancel", soltar);
+
+            function asentar() {
+              var b = bounds(el);
+              el.classList.remove("live");
+              el.style.left =
+                clamp(parseFloat(el.style.left) || 0, b.minX, b.maxX) + "px";
+              el.style.top =
+                clamp(parseFloat(el.style.top) || 0, b.minY, b.maxY) + "px";
+              el.style.transform = "rotate(" + n.rot + "deg)";
+              persist();
+            }
+
+            function tirar(vx, vy) {
+              var x = parseFloat(el.style.left) || 0;
+              var y = parseFloat(el.style.top) || 0;
+              var fr = 0.93;
+              function paso() {
+                var b = bounds(el);
+                vx *= fr;
+                vy *= fr;
+                x += vx;
+                y += vy;
+                if (x < b.minX) {
+                  x = b.minX;
+                  vx = -vx * 0.42;
+                } else if (x > b.maxX) {
+                  x = b.maxX;
+                  vx = -vx * 0.42;
+                }
+                if (y < b.minY) {
+                  y = b.minY;
+                  vy = -vy * 0.42;
+                } else if (y > b.maxY) {
+                  y = b.maxY;
+                  vy = -vy * 0.42;
+                }
+                el.style.left = x + "px";
+                el.style.top = y + "px";
+                el.style.transform =
+                  "rotate(" + (n.rot + clamp(vx * 1.1, -18, 18)) + "deg)";
+                if (Math.hypot(vx, vy) > 0.18) {
+                  raf = requestAnimationFrame(paso);
+                } else {
+                  raf = 0;
+                  el.classList.remove("live");
+                  el.style.transform = "rotate(" + n.rot + "deg)";
+                  persist();
+                }
+              }
+              raf = requestAnimationFrame(paso);
+            }
+
+            el.addEventListener(
+              "click",
+              function (e) {
+                if (moved) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  moved = false;
+                }
+              },
+              true,
+            );
+
+            persist();
+            return n;
+          }
+
+          /* API que usa la app «Notas» al pegar un papelito */
+          agregarNota = function (texto) {
+            var n = crear({ text: texto });
+            raise(n.el);
+            return n;
+          };
+
+          /* La primera vez que se abre «Notas» en este equipo: nota de bienvenida
+             pegada arriba a la derecha (después se guarda y no vuelve a aparecer). */
+          var primeraVez = false;
+          notasBienvenida = function () {
+            if (!primeraVez) return;
+            primeraVez = false;
+            crear({
+              id: "bienvenida",
+              text: "Hola :)\n\nDejá tus notas y soltalas cuando ya no las necesites",
+              x: window.innerWidth - 168 - 22,
+              y: 40,
+              rot: 3,
+            });
+          };
+
+          window.addEventListener("resize", function () {
+            notas.forEach(function (n) {
+              var b = bounds(n.el);
+              n.el.style.left =
+                clamp(parseFloat(n.el.style.left) || 0, b.minX, b.maxX) + "px";
+              n.el.style.top =
+                clamp(parseFloat(n.el.style.top) || 0, b.minY, b.maxY) + "px";
+            });
+          });
+
+          try {
+            var raw = localStorage.getItem(LS);
+            if (raw === null) {
+              primeraVez = true;
+            } else {
+              var saved = JSON.parse(raw || "[]");
+              if (Array.isArray(saved)) saved.forEach(crear);
+            }
+          } catch (e) {}
         })();
 
         /* ---------- Atajos de teclado en el editor ---------- */

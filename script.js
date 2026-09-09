@@ -54,6 +54,61 @@ navLinks.forEach((link) => {
   });
 });
 
+// Botón de encendido: sonido de arranque + parpadeo CRT antes de abrir la consola SQL
+const powerBtn = document.querySelector(".power-btn");
+if (powerBtn) {
+  powerBtn.addEventListener("click", (e) => {
+    const href = powerBtn.getAttribute("href");
+    if (
+      !href ||
+      e.metaKey ||
+      e.ctrlKey ||
+      e.shiftKey ||
+      e.button === 1 ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+    e.preventDefault();
+    if (powerBtn.dataset.booting) return;
+    powerBtn.dataset.booting = "1";
+
+    const scr = document.createElement("div");
+    scr.className = "crt-screen flare";
+    document.body.appendChild(scr);
+
+    // Arranca el sonido de encendido; la consola lo retoma donde quedó
+    // para que suene entero aunque la animación sea corta.
+    const marcarInicio = (t0) => {
+      try {
+        sessionStorage.setItem("sisopon:desde", String(t0));
+      } catch (err) {}
+    };
+    marcarInicio(Date.now());
+    try {
+      const encendido = new Audio("audio/sisopon.m4a");
+      encendido.volume = 0.6;
+      encendido.addEventListener("playing", () => {
+        // t0 real del audio, descontando lo que ya avanzó
+        marcarInicio(Date.now() - encendido.currentTime * 1000);
+      });
+      encendido.play().catch(() => {});
+    } catch (err) {}
+
+    setTimeout(() => {
+      window.location.href = href;
+    }, 1100);
+  });
+}
+
+// Al volver con "atrás" (bfcache), limpiar el overlay de encendido que quedó
+window.addEventListener("pageshow", () => {
+  document
+    .querySelectorAll(".crt-screen")
+    .forEach((el) => el.remove());
+  if (powerBtn) delete powerBtn.dataset.booting;
+});
+
 window.addEventListener("scroll", () => {
   const t = window.scrollY > 60;
   (nav.classList.toggle("scrolled", t),

@@ -169,6 +169,76 @@ nav.nav-compact {
   outline: none;
 }
 
+/* Encendido: parpadeo estilo monitor CRT antes de entrar a la consola */
+.crt-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: #000;
+  pointer-events: none;
+}
+.crt-screen.flare {
+  animation:
+    crt-flare 0.46s steps(1, end) forwards,
+    crt-hold 1.9s linear 0.46s infinite;
+}
+/* Parpadeo sutil mientras carga el "sistema operativo" (deja ver apenas el fondo) */
+@keyframes crt-hold {
+  0%,
+  46%,
+  52%,
+  74%,
+  78%,
+  100% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.97;
+  }
+  76% {
+    opacity: 0.94;
+  }
+}
+@keyframes crt-flare {
+  0% {
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+    background: #000;
+  }
+  18% {
+    background: #262626;
+  }
+  24% {
+    background: #000;
+  }
+  36% {
+    background: #3d3d3d;
+  }
+  42% {
+    background: #0a0a0a;
+  }
+  54% {
+    background: #2a2a2a;
+  }
+  60% {
+    background: #000;
+  }
+  100% {
+    opacity: 1;
+    background: #000;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .crt-screen {
+    display: none !important;
+  }
+}
+
 .starry-bg {
   flex: 1;
   position: relative;
