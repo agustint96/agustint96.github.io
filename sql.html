@@ -1,0 +1,2293 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Consola SQL · Agustin Tardella</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" href="parallax/parallax 9.png" />
+
+    <style>
+      /* Misma familia display que el portfolio */
+      @font-face {
+        font-family: Spaceport;
+        src: url("fonts/Spaceport_2006.otf");
+        font-display: swap;
+      }
+
+      :root {
+        --navy: #0d1b2e;
+        --navy-mid: #1a2d4a;
+        --blue: #2f4467;
+        --accent: #f19280;
+        --accent2: #7eb8c9;
+        --white: #f0ece4;
+        --muted: rgba(240, 236, 228, 0.55);
+
+        /* Win98 chrome, apenas entibiado hacia el marfil del sitio */
+        --w98-face: #c9c5bb;
+        --w98-face-lite: #e4e1d8;
+        --w98-hilite: #ffffff;
+        --w98-shadow: #808076;
+        --w98-dkshadow: #3a3a34;
+        --w98-field: #f7f5ef;
+        --w98-selbg: #12305a;
+        --w98-seltext: #f0ece4;
+
+        --taskbar-h: 30px;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        min-height: 100vh;
+        background-color: var(--navy);
+        background-image:
+          radial-gradient(
+            ellipse at 50% 0%,
+            rgba(126, 184, 201, 0.12),
+            transparent 60%
+          ),
+          url("parallax/fondo-estrellado.png");
+        background-size: cover, cover;
+        background-attachment: fixed;
+        background-position: center;
+        font-family: "DM Mono", monospace;
+        color: var(--white);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: clamp(12px, 4vw, 40px) clamp(8px, 3vw, 16px);
+        padding-bottom: calc(var(--taskbar-h) + clamp(12px, 4vw, 40px));
+        overflow-x: hidden;
+      }
+
+      /* iOS: background-attachment: fixed provoca saltos */
+      @supports (-webkit-touch-callout: none) {
+        body {
+          background-attachment: scroll;
+        }
+      }
+
+      #stars {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* ---------- Icono de escritorio ---------- */
+      .desk-icon {
+        position: fixed;
+        top: 52px;
+        left: 12px;
+        z-index: 1;
+        width: 82px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 4px;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        font-family: "DM Mono", ui-monospace, monospace;
+        color: var(--white);
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      .desk-icon img {
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+
+      .desk-icon span {
+        font-size: 11px;
+        line-height: 1.25;
+        text-align: center;
+        padding: 1px 3px;
+        text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.8),
+          0 0 2px rgba(0, 0, 0, 0.6);
+      }
+
+      .desk-icon.selected img {
+        opacity: 0.6;
+      }
+
+      .desk-icon.selected span {
+        background: var(--w98-selbg);
+        color: var(--w98-seltext);
+        text-shadow: none;
+        outline: 1px dotted var(--w98-seltext);
+        outline-offset: -1px;
+      }
+
+      .desk-icon:focus-visible {
+        outline: 1px dotted var(--white);
+        outline-offset: 2px;
+      }
+
+      /* ---------- Ventana Windows 98 ---------- */
+      .window {
+        position: relative;
+        z-index: 2;
+        width: min(920px, 96vw);
+        height: min(660px, 84vh);
+        height: min(
+          660px,
+          calc(100dvh - 2 * clamp(12px, 4vw, 40px) - var(--taskbar-h))
+        );
+        display: flex;
+        flex-direction: column;
+        background: var(--w98-face);
+        padding: 3px;
+        font-family: "DM Mono", ui-monospace, monospace;
+        color: #1b1b18;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite),
+          4px 4px 0 rgba(0, 0, 0, 0.28),
+          0 20px 60px rgba(0, 0, 0, 0.45);
+      }
+
+      /* Minimizada: la ventana desaparece; se recupera desde la barra de tareas */
+      .window.minimized {
+        display: none;
+      }
+
+      .window.closed {
+        display: none;
+      }
+
+      /* Barra de título */
+      .title-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 24px;
+        padding: 0 3px 0 4px;
+        background: linear-gradient(
+          90deg,
+          var(--navy) 0%,
+          var(--blue) 60%,
+          #4a6a92 100%
+        );
+        color: var(--white);
+        cursor: grab;
+        user-select: none;
+        flex-shrink: 0;
+      }
+
+      .title-bar:active {
+        cursor: grabbing;
+      }
+
+      .tb-icon {
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+        image-rendering: pixelated;
+        flex-shrink: 0;
+        display: block;
+      }
+
+      .title-bar .tb-text {
+        flex: 1;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .title-bar .tb-btns {
+        display: flex;
+        gap: 2px;
+      }
+
+      .tb-btn {
+        width: 18px;
+        height: 16px;
+        display: grid;
+        place-items: center;
+        font-family: "Marlett", "Segoe UI Symbol", sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        color: #1b1b18;
+        background: var(--w98-face);
+        border: 0;
+        cursor: pointer;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite);
+      }
+
+      .tb-btn:active {
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite),
+          inset 2px 2px 0 0 var(--w98-shadow),
+          inset -2px -2px 0 0 var(--w98-face-lite);
+      }
+
+      /* Barra de menú */
+      .menu-bar {
+        display: flex;
+        gap: 2px;
+        padding: 2px 3px;
+        font-size: 11px;
+        flex-shrink: 0;
+        border-bottom: 1px solid var(--w98-shadow);
+        position: relative;
+        z-index: 20;
+      }
+
+      .menu-bar > button {
+        font: inherit;
+        background: transparent;
+        border: 0;
+        padding: 2px 7px;
+        cursor: pointer;
+        color: #1b1b18;
+      }
+
+      .menu-bar > button:hover,
+      .menu-bar > button.open {
+        background: var(--w98-selbg);
+        color: var(--w98-seltext);
+      }
+
+      .dropdown {
+        position: absolute;
+        top: 100%;
+        min-width: 210px;
+        max-width: calc(100vw - 20px);
+        background: var(--w98-face);
+        padding: 2px;
+        font-size: 11px;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite),
+          3px 3px 0 rgba(0, 0, 0, 0.3);
+      }
+
+      .dropdown[hidden] {
+        display: none;
+      }
+
+      .dropdown button {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        width: 100%;
+        font: inherit;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        padding: 4px 20px 4px 22px;
+        cursor: pointer;
+        color: #1b1b18;
+      }
+
+      .dropdown button:hover {
+        background: var(--w98-selbg);
+        color: var(--w98-seltext);
+      }
+
+      .dropdown button .sh {
+        opacity: 0.7;
+      }
+
+      .dropdown button:hover .sh {
+        opacity: 0.9;
+      }
+
+      .dropdown hr {
+        border: 0;
+        border-top: 1px solid var(--w98-shadow);
+        border-bottom: 1px solid var(--w98-hilite);
+        margin: 3px 2px;
+      }
+
+      /* Toolbar */
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 5px;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        font: inherit;
+        font-size: 11px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        background: var(--w98-face);
+        border: 0;
+        cursor: pointer;
+        color: #1b1b18;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite);
+      }
+
+      .btn:active {
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite),
+          inset 2px 2px 0 0 var(--w98-shadow),
+          inset -2px -2px 0 0 var(--w98-face-lite);
+      }
+
+      .btn[disabled] {
+        color: var(--w98-shadow);
+        text-shadow: 1px 1px 0 var(--w98-hilite);
+        cursor: default;
+      }
+
+      .btn.primary {
+        font-weight: 700;
+      }
+
+      .btn .dot {
+        width: 0;
+        height: 0;
+        border-left: 8px solid #1c6b2e;
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+      }
+
+      .toolbar .sep {
+        width: 1px;
+        align-self: stretch;
+        margin: 2px 2px;
+        background: var(--w98-shadow);
+        box-shadow: 1px 0 0 var(--w98-hilite);
+      }
+
+      .toolbar .db-pill {
+        margin-left: auto;
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        color: #33332c;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .toolbar .db-pill b {
+        color: var(--navy);
+      }
+
+      /* Área de trabajo */
+      .work {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+        padding: 2px 5px 5px;
+        gap: 5px;
+      }
+
+      .sidebar {
+        width: 190px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--w98-field);
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite),
+          inset 2px 2px 0 0 var(--w98-shadow),
+          inset -2px -2px 0 0 var(--w98-face-lite);
+      }
+
+      .sidebar h2 {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        padding: 5px 8px;
+        color: #4a4a40;
+        border-bottom: 1px solid var(--w98-shadow);
+      }
+
+      .schema {
+        flex: 1;
+        overflow: auto;
+        padding: 6px 4px;
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        line-height: 1.6;
+        color: #23231d;
+      }
+
+      .schema .empty {
+        color: var(--w98-shadow);
+        padding: 4px 6px;
+      }
+
+      .schema .tbl {
+        margin-bottom: 6px;
+      }
+
+      .schema .tbl > .tname {
+        cursor: pointer;
+        font-weight: 500;
+        color: var(--navy);
+      }
+
+      .schema .tbl > .tname::before {
+        content: "▦ ";
+        color: var(--accent2);
+      }
+
+      .schema .col {
+        padding-left: 16px;
+        color: #55554a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .schema .col .type {
+        color: #8a8a7c;
+      }
+
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        gap: 5px;
+      }
+
+      .editor-wrap {
+        position: relative;
+        height: 40%;
+        min-height: 90px;
+        display: flex;
+        background: var(--w98-field);
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite),
+          inset 2px 2px 0 0 var(--w98-shadow),
+          inset -2px -2px 0 0 var(--w98-face-lite);
+        resize: vertical;
+        overflow: hidden;
+      }
+
+      #editor,
+      .editor-hl {
+        padding: 8px 10px;
+        font-family: "DM Mono", "Courier New", monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        tab-size: 2;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+        word-break: break-word;
+      }
+
+      #editor {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        border: 0;
+        outline: 0;
+        resize: none;
+        background: transparent;
+        color: transparent;
+        caret-color: #16160f;
+      }
+
+      /* Capa de resaltado detrás del textarea: sólo colorea los comentarios */
+      .editor-hl {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        margin: 0;
+        color: #16160f;
+        pointer-events: none;
+        overflow: visible;
+      }
+
+      .editor-hl .sql-comment,
+      .editor-hl .sql-semi {
+        color: var(--accent);
+      }
+
+      .editor-hl .sql-kw {
+        color: var(--blue);
+        font-weight: 500;
+      }
+
+      #editor::selection {
+        background: var(--w98-selbg);
+        color: var(--w98-seltext);
+      }
+
+      .results-wrap {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        background: var(--w98-field);
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite),
+          inset 2px 2px 0 0 var(--w98-shadow),
+          inset -2px -2px 0 0 var(--w98-face-lite);
+      }
+
+      .results-tabbar {
+        display: flex;
+        gap: 3px;
+        padding: 3px 4px 0;
+        flex-shrink: 0;
+        font-size: 10px;
+      }
+
+      .results-tabbar .tab {
+        padding: 3px 10px;
+        background: var(--w98-face);
+        color: #3a3a32;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-shadow),
+          inset 1px 1px 0 0 var(--w98-hilite);
+      }
+
+      .results-tabbar .tab.active {
+        font-weight: 700;
+        color: var(--navy);
+        position: relative;
+        top: 1px;
+      }
+
+      .results {
+        flex: 1;
+        overflow: auto;
+        padding: 6px;
+        font-family: "DM Mono", monospace;
+        font-size: 12px;
+      }
+
+      .results .placeholder {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        text-align: center;
+        color: var(--w98-shadow);
+      }
+
+      .results .placeholder .big {
+        font-size: 22px;
+        color: var(--accent2);
+      }
+
+      .rs-block {
+        margin-bottom: 14px;
+      }
+
+      .rs-caption {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #6a6a5c;
+        margin-bottom: 3px;
+      }
+
+      table.grid {
+        border-collapse: collapse;
+        width: 100%;
+        background: #fff;
+      }
+
+      table.grid th,
+      table.grid td {
+        border: 1px solid #b7b7ab;
+        padding: 3px 8px;
+        text-align: left;
+        white-space: nowrap;
+        max-width: 320px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      table.grid th {
+        background: var(--w98-face);
+        color: #23231d;
+        font-weight: 700;
+        position: sticky;
+        top: 0;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-shadow),
+          inset 1px 1px 0 0 var(--w98-hilite);
+      }
+
+      table.grid td {
+        color: #1c1c15;
+      }
+
+      table.grid td.null {
+        color: #9a9a8c;
+        font-style: italic;
+      }
+
+      table.grid tr:hover td {
+        background: rgba(18, 48, 90, 0.08);
+      }
+
+      /* Enlaces dentro de resultados: color accent y accesibles */
+      .results a,
+      .dialog .body a {
+        color: var(--accent);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        cursor: pointer;
+      }
+
+      .results a:hover {
+        text-decoration: none;
+      }
+
+      .results a:focus-visible,
+      .dialog .body a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+        text-decoration: none;
+      }
+
+      table.grid td.has-link {
+        cursor: auto;
+      }
+
+      .msg {
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+
+      .msg.ok {
+        color: #1c5e2b;
+      }
+
+      .msg.err {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        background: #fbeaea;
+        border: 1px solid #d9a3a3;
+        color: #8a1f1f;
+        white-space: pre-wrap;
+      }
+
+      .msg.err .x {
+        font-weight: 700;
+        background: #b02a2a;
+        color: #fff;
+        width: 16px;
+        height: 16px;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+
+      /* Status bar */
+      .status-bar {
+        display: flex;
+        gap: 3px;
+        padding: 2px 3px;
+        flex-shrink: 0;
+        font-size: 10px;
+      }
+
+      .status-bar span {
+        padding: 2px 7px;
+        color: #33332c;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-shadow),
+          inset -1px -1px 0 0 var(--w98-hilite);
+      }
+
+      .status-bar span.grow {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .status-bar span b {
+        color: var(--navy);
+      }
+
+      /* ---------- Barra de tareas (Windows 98, sin botón de inicio aún) ---------- */
+      .taskbar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 45;
+        height: var(--taskbar-h);
+        display: flex;
+        align-items: stretch;
+        gap: 4px;
+        padding: 2px 3px;
+        background: var(--w98-face);
+        box-shadow:
+          inset 0 1px 0 0 var(--w98-hilite),
+          inset 0 2px 0 0 var(--w98-face-lite);
+        font-family: "DM Mono", ui-monospace, monospace;
+        color: #1b1b18;
+      }
+
+      /* Botón de apagado (esquina inferior izquierda) */
+      .taskbar .power98 {
+        flex-shrink: 0;
+        align-self: center;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 22px;
+        padding: 0 10px 0 7px;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 700;
+        color: #1b1b18;
+        background: var(--w98-face);
+        border: 0;
+        cursor: pointer;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite);
+      }
+
+      .taskbar .power98 svg {
+        width: 13px;
+        height: 13px;
+        display: block;
+        color: #a11e1e;
+      }
+
+      .taskbar .power98:active {
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite),
+          inset 2px 2px 0 0 var(--w98-shadow),
+          inset -2px -2px 0 0 var(--w98-face-lite);
+      }
+
+      .taskbar .power98:focus-visible {
+        outline: 1px dotted #1b1b18;
+        outline-offset: -4px;
+      }
+
+      .taskbar .tb-sep {
+        flex-shrink: 0;
+        width: 1px;
+        align-self: center;
+        height: 18px;
+        background: var(--w98-shadow);
+        box-shadow: 1px 0 0 var(--w98-hilite);
+      }
+
+      .taskbar .tasks {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .task-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 22px;
+        max-width: 220px;
+        padding: 0 8px;
+        font: inherit;
+        font-size: 11px;
+        text-align: left;
+        background: var(--w98-face);
+        border: 0;
+        cursor: pointer;
+        color: #1b1b18;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite);
+      }
+
+      .task-btn[hidden] {
+        display: none;
+      }
+
+      .task-btn .tb-icon {
+        width: 14px;
+        height: 14px;
+      }
+
+      .task-btn > span {
+        flex: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .task-btn.active {
+        font-weight: 700;
+        background: var(--w98-face-lite);
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite),
+          inset 2px 2px 0 0 var(--w98-shadow),
+          inset -2px -2px 0 0 var(--w98-face-lite);
+      }
+
+      .taskbar .tray {
+        flex-shrink: 0;
+        align-self: center;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-shadow),
+          inset -1px -1px 0 0 var(--w98-hilite);
+      }
+
+      .tray-clock {
+        font-size: 11px;
+        letter-spacing: 0.03em;
+        color: #1b1b18;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 460px) {
+        .task-btn {
+          max-width: 58vw;
+        }
+      }
+
+      /* Diálogo "Acerca de" */
+      .dialog {
+        position: fixed;
+        z-index: 50;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(380px, 90vw);
+        background: var(--w98-face);
+        padding: 3px;
+        font-family: "DM Mono", ui-monospace, monospace;
+        color: #1b1b18;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite),
+          5px 5px 0 rgba(0, 0, 0, 0.4);
+      }
+
+      .dialog[hidden] {
+        display: none;
+      }
+
+      .dialog .title-bar {
+        cursor: default;
+      }
+
+      .dialog .body {
+        padding: 16px 14px;
+        font-size: 11px;
+        line-height: 1.7;
+      }
+
+      .dialog .body b {
+        font-family: Spaceport, "DM Mono", monospace;
+        font-size: 15px;
+        letter-spacing: 0.12em;
+      }
+
+      .dialog .body a {
+        color: var(--accent);
+      }
+
+      .dialog .body .row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .dialog .body .glyph {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
+        image-rendering: pixelated;
+        flex-shrink: 0;
+      }
+
+      .dialog .foot {
+        display: flex;
+        justify-content: center;
+        padding: 0 14px 14px;
+      }
+
+      /* Infotip estilo Windows 98 (texto completo de un campo al hacer hover) */
+      .infotip {
+        position: fixed;
+        z-index: 999;
+        max-width: min(460px, 80vw);
+        padding: 3px 7px;
+        font:
+          11px/1.55 "DM Mono",
+          ui-monospace,
+          monospace;
+        color: #1b1b18;
+        background: #ffffe1;
+        border: 1px solid #000;
+        box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.28);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .infotip[hidden] {
+        display: none;
+      }
+
+      [data-tip] {
+        cursor: help;
+      }
+
+      @media (max-width: 720px) {
+        .sidebar {
+          display: none;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .window {
+          height: 88vh;
+          height: calc(88dvh - var(--taskbar-h));
+        }
+        #editor,
+        .editor-hl {
+          font-size: 16px; /* evita el zoom automático de iOS al enfocar */
+        }
+        .editor-wrap {
+          height: 34%;
+        }
+      }
+
+      @media (max-width: 460px) {
+        .toolbar .db-pill,
+        #stHint,
+        #stTime {
+          display: none;
+        }
+        .toolbar {
+          gap: 4px;
+        }
+        .btn {
+          padding: 5px 10px;
+        }
+        .menu-bar > button {
+          padding: 3px 6px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="stars"></canvas>
+
+    <button
+      class="desk-icon"
+      id="deskIcon"
+      type="button"
+      title="Doble clic para abrir"
+      aria-label="Agus.db — Consola SQL (doble clic para abrir)"
+    >
+      <img src="parallax/iconosql.png" alt="" />
+      <span>Agus.db</span>
+    </button>
+
+    <div class="window closed" id="win">
+      <div class="title-bar" id="titleBar">
+        <img class="tb-icon" src="parallax/iconosql.png" alt="" />
+        <span class="tb-text" id="winTitle">Agus.db — Consola SQL</span>
+        <span class="tb-btns">
+          <button class="tb-btn" data-win="min" title="Minimizar">_</button>
+          <button class="tb-btn" data-win="max" title="Maximizar">▢</button>
+          <button class="tb-btn" data-win="close" title="Cerrar">✕</button>
+        </span>
+      </div>
+
+      <div class="menu-bar" id="menuBar">
+        <button data-menu="archivo">Archivo</button>
+        <button data-menu="editar">Editar</button>
+        <button data-menu="consulta">Consulta</button>
+        <button data-menu="ayuda">Ayuda</button>
+
+        <div class="dropdown" data-for="archivo" hidden>
+          <button data-act="run">
+            Ejecutar consulta <span class="sh">F5</span>
+          </button>
+          <hr />
+          <button data-act="seed-agus">Restaurar base «Agus»</button>
+          <button data-act="reset-db">Vaciar base (lienzo en blanco)</button>
+          <button data-act="home">Volver al inicio</button>
+        </div>
+
+        <div class="dropdown" data-for="editar" hidden>
+          <button data-act="clear-editor">Limpiar editor</button>
+          <button data-act="select-all">
+            Seleccionar todo <span class="sh">Ctrl+A</span>
+          </button>
+          <hr />
+          <button data-act="tpl-create">
+            Insertar plantilla · CREATE TABLE
+          </button>
+        </div>
+
+        <div class="dropdown" data-for="consulta" hidden>
+          <button data-act="run">
+            Ejecutar <span class="sh">Ctrl+Enter</span>
+          </button>
+          <hr />
+          <button data-act="ex-cv">Ejemplo · resumen del CV</button>
+          <button data-act="ex-join">Ejemplo · experiencia reciente</button>
+          <button data-act="ex-demo">
+            Ejemplo · tecnologías por categoría
+          </button>
+          <button data-act="ex-master">Ejemplo · ver el esquema</button>
+        </div>
+
+        <div class="dropdown" data-for="ayuda" hidden>
+          <button data-act="about">Acerca de…</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn primary" id="runBtn" data-act="run">
+          <span class="dot"></span> Ejecutar
+        </button>
+        <button class="btn" data-act="clear-editor">Limpiar</button>
+        <span class="sep"></span>
+        <button class="btn" data-act="tpl-create">+ Nueva tabla…</button>
+        <button class="btn" data-act="ex-demo">Ejemplo</button>
+        <span class="db-pill">Base: <b>Agus</b> · SQLite&nbsp;3</span>
+      </div>
+
+      <div class="work">
+        <aside class="sidebar">
+          <h2>Tablas</h2>
+          <div class="schema" id="schema">
+            <div class="empty">(cargando motor…)</div>
+          </div>
+        </aside>
+
+        <div class="main">
+          <div class="editor-wrap">
+            <textarea
+              id="editor"
+              spellcheck="false"
+              autocomplete="off"
+              autocapitalize="off"
+            >
+-- Escribí tu consulta sobre Agus. Podés usar las tablas del panel izquierdo.
+-- Ejemplo:
+SELECT * FROM Info;</textarea
+            >
+          </div>
+
+          <div class="results-wrap">
+            <div class="results-tabbar">
+              <span class="tab active">Resultados</span>
+            </div>
+            <div class="results" id="results">
+              <div class="placeholder">
+                <span class="big">▤</span>
+                <span>Sin resultados todavía.</span>
+                <span
+                  >Probá <b>SELECT * FROM info;</b> y presioná Ejecutar.</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <span id="stMode" style="min-width: 120px">Iniciando…</span>
+        <span id="stRows">0 filas</span>
+        <span id="stTime">0 ms</span>
+        <span class="grow" id="stHint"
+          >Base «Agus» · SQLite · se guarda en este navegador</span
+        >
+      </div>
+    </div>
+
+    <div class="taskbar" id="taskbar">
+      <button
+        class="power98"
+        type="button"
+        data-act="home"
+        title="Apagar — volver al inicio"
+        aria-label="Apagar y volver al inicio"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M12 3.4v8.2"
+            stroke="currentColor"
+            stroke-width="2.4"
+            stroke-linecap="round"
+          />
+          <path
+            d="M6.7 7.3a8 8 0 1 0 10.6 0"
+            stroke="currentColor"
+            stroke-width="2.4"
+            stroke-linecap="round"
+          />
+        </svg>
+        <span>Apagar</span>
+      </button>
+      <span class="tb-sep"></span>
+      <div class="tasks" id="tasks">
+        <button
+          class="task-btn active"
+          id="taskWin"
+          type="button"
+          title="Agus.db — Consola SQL"
+        >
+          <img class="tb-icon" src="parallax/iconosql.png" alt="" />
+          <span>Agus.db — Consola SQL</span>
+        </button>
+      </div>
+      <div class="tray">
+        <span class="tray-clock" id="trayClock">--:--</span>
+      </div>
+    </div>
+
+    <div class="dialog" id="about" hidden>
+      <div class="title-bar">
+        <img class="tb-icon" src="parallax/iconosql.png" alt="" />
+        <span class="tb-text">Acerca de Consola SQL</span>
+        <span class="tb-btns">
+          <button class="tb-btn" data-act="about-close">✕</button>
+        </span>
+      </div>
+      <div class="body">
+        <div class="row">
+          <img class="glyph" src="parallax/iconosql.png" alt="" />
+          <div>
+            <b>Agus.db</b><br /><br />
+            Consola SQL con mi Curriculum como base de datos SQLite.<br /><br />
+            La base "Agus" y tus cambios viven en este equipo<br />
+            — Archivo → Restaurar base Agus vuelve al esquema original.
+          </div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn" data-act="about-close" style="padding: 4px 22px">
+          Aceptar
+        </button>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+    <script>
+      (function () {
+        "use strict";
+
+        var LS_DB = "sqlconsole:v1:db";
+        var LS_SEED = "sqlconsole:v1:seed";
+
+        /* ============================================================
+         *  BASE «Agus» — esquema semilla
+         *  Subí SEED_VERSION cada vez que cambie SEED_SQL para que la
+         *  base se regenere en los navegadores que ya la tienen.
+         *  (Todavía vacío: esperando las tablas.)
+         * ============================================================ */
+        var SEED_VERSION = "2026-09-09.2";
+        var SEED_SQL = [
+          "-- ===== info : datos personales (clave / valor) =====",
+          "CREATE TABLE info (",
+          "  campo  TEXT PRIMARY KEY,",
+          "  valor  TEXT",
+          ");",
+          "INSERT INTO info (campo, valor) VALUES",
+          "  ('nombre',    'Agustín Tardella'),",
+          "  ('rol',       'Analista Universitario de Sistemas Informáticos | Data Scientist'),",
+          "  ('ubicacion', 'Córdoba, Argentina'),",
+          "  ('email',     'agustintardella7@gmail.com'),",
+          "  ('telefono',  '(+54) 351 3148931'),",
+          "  ('github',    'https://github.com/agustint96'),",
+          "  ('portfolio', 'https://agustint96.github.io'),",
+          "  ('resumen',   'Analista de Soporte IT, Data Scientist y Desarrollador Web con experiencia en resolución de problemas técnicos, mantenimiento de sistemas y análisis de datos.');",
+          "",
+          "-- ===== estudios =====",
+          "CREATE TABLE estudios (",
+          "  id           INTEGER PRIMARY KEY,",
+          "  institucion  TEXT NOT NULL,",
+          "  titulo       TEXT NOT NULL,",
+          "  tipo         TEXT,",
+          "  tecnologias  TEXT,",
+          "  periodo      TEXT,",
+          "  estado       TEXT",
+          ");",
+          "INSERT INTO estudios (id, institucion, titulo, tipo, tecnologias, periodo, estado) VALUES",
+          "  (1, 'Universidad Nacional de Córdoba', 'Analista Universitario de Sistemas Informáticos', 'Carrera', 'Programación, Bases de datos, Redes', '2023 - Actualidad', 'En curso'),",
+          "  (2, 'Mundos E - FCEFyN, UNC', 'Diplomatura en Data Science', 'Diplomatura', 'Python, R, Pandas, NumPy, Estadística', '2024 - 2025', 'Finalizado'),",
+          "  (3, 'CUDI - UTN', 'Diplomatura en IA con Python', 'Diplomatura', 'Python, Machine Learning', '2024', 'Finalizado'),",
+          "  (4, 'UTN - FRC', 'Desarrollo Frontend con React', 'Curso', 'React, JavaScript', '2023', 'Finalizado'),",
+          "  (5, 'Instituto Educativo Económico Nacional (Resistencia, Chaco)', 'Programación y Diseño Web', 'Curso', 'HTML, CSS, JavaScript', '2022', 'Finalizado'),",
+          "  (6, 'Campus Virtual - UNC', 'Excel Intermedio', 'Curso', 'Excel', '2023', 'Finalizado'),",
+          "  (7, 'Departamento Cultural - Facultad de Lenguas, UNC', 'Inglés A2', 'Curso', NULL, '2024', 'Finalizado');",
+          "",
+          "-- ===== experiencia =====",
+          "CREATE TABLE experiencia (",
+          "  id           INTEGER PRIMARY KEY,",
+          "  puesto       TEXT NOT NULL,",
+          "  empresa      TEXT NOT NULL,",
+          "  periodo      TEXT,",
+          "  inicio       INTEGER,",
+          "  fin          INTEGER,",
+          "  tecnologias  TEXT,",
+          "  descripcion  TEXT",
+          ");",
+          "INSERT INTO experiencia (id, puesto, empresa, periodo, inicio, fin, tecnologias, descripcion) VALUES",
+          "  (1, 'Analista de Soporte IT', 'Descar Argentina SRL', '2025 - 2026', 2025, 2026, 'Teamcenter, NX, Solid Edge, Odoo, Polarion, C#, SQL, Python (Pandas, NumPy, Seaborn)', 'Soporte técnico a clientes y equipos de ingeniería con software PLM. Gestión de incidencias en ERP Odoo. Documentación en Polarion bajo ISO 9001. Desarrollo de sistemas internos con C# y SQL. Análisis de datos con Python.'),",
+          "  (2, 'Soporte Técnico', 'Konecta', '2023', 2023, 2023, 'CRM, Redes FTTH, HFC, IP, Firewalls', 'Atención y soporte a clientes con CRM. Resolución de problemas de conectividad FTTH. Diagnóstico de redes y firewalls. Consultas técnicas y de facturación.'),",
+          "  (3, 'Soporte Administrativo e IT', 'Ministerio de Cooperativas y Mutuales', '2020 - 2022', 2020, 2022, 'Testing funcional, Bases de datos, Ciudadano Digital', 'Gestión de documentación y balances en Fiscalización. Soporte en implementación de sistema institucional, carga y validación de datos. Testing funcional y reporte de requerimientos. Colaboración en diseño y gestión de bases de datos.'),",
+          "  (4, 'Auxiliar Administrativo', 'Estudio Jurídico HTP', '2017 - 2019', 2017, 2019, 'Desarrollo web', 'Elaboración de documentos legales y gestión de trámites. Desarrollo web de CoopLegal.');",
+          "",
+          "-- ===== proyectos =====",
+          "CREATE TABLE proyectos (",
+          "  id           INTEGER PRIMARY KEY,",
+          "  nombre       TEXT NOT NULL,",
+          "  descripcion  TEXT,",
+          "  tecnologias  TEXT,",
+          "  url          TEXT,",
+          "  fecha        TEXT",
+          ");",
+          "INSERT INTO proyectos (id, nombre, descripcion, tecnologias, url, fecha) VALUES",
+          "  (1, 'Portfolio personal', 'Sitio personal con fondo parallax animado y cielo estrellado en canvas.', 'HTML, CSS, JavaScript, Canvas', 'https://agustint96.github.io', '2025'),",
+          "  (2, 'Consola SQL Agus', 'Playground SQL con estética Windows 98 sobre SQLite compilado a WebAssembly.', 'JavaScript, sql.js, SQLite', 'https://agustint96.github.io/sql.html', '2026'),",
+          "  (3, 'CoopLegal', 'Sitio web para estudio jurídico.', 'Desarrollo web', NULL, '2017 - 2019');",
+          "",
+          "-- ===== idiomas =====",
+          "CREATE TABLE idiomas (",
+          "  id             INTEGER PRIMARY KEY,",
+          "  idioma         TEXT NOT NULL,",
+          "  nivel          TEXT,",
+          "  certificacion  TEXT,",
+          "  notas          TEXT",
+          ");",
+          "INSERT INTO idiomas (id, idioma, nivel, certificacion, notas) VALUES",
+          "  (1, 'Español', 'Nativo', NULL, NULL),",
+          "  (2, 'Inglés', 'A2', 'Inglés A2 - Facultad de Lenguas, UNC (2024)', 'Uso profesional en contextos técnicos y equipos internacionales.');",
+          "",
+          "-- ===== tecnologias =====",
+          "CREATE TABLE tecnologias (",
+          "  id         INTEGER PRIMARY KEY,",
+          "  nombre     TEXT NOT NULL,",
+          "  categoria  TEXT,",
+          "  nivel      TEXT",
+          ");",
+          "INSERT INTO tecnologias (id, nombre, categoria, nivel) VALUES",
+          "  (1,  'Python',      'Lenguaje / Data', 'Avanzado'),",
+          "  (2,  'R',           'Lenguaje / Data', 'Intermedio'),",
+          "  (3,  'C#',          'Lenguaje',        'Intermedio'),",
+          "  (4,  'JavaScript',  'Lenguaje / Web',  'Intermedio'),",
+          "  (5,  'SQL',         'Base de datos',   'Avanzado'),",
+          "  (6,  'SQL Server',  'Base de datos',   'Intermedio'),",
+          "  (7,  'Pandas',      'Data',            'Avanzado'),",
+          "  (8,  'NumPy',       'Data',            'Intermedio'),",
+          "  (9,  'Seaborn',     'Data',            'Intermedio'),",
+          "  (10, 'React',       'Web',             'Intermedio'),",
+          "  (11, 'HTML / CSS',  'Web',             'Avanzado'),",
+          "  (12, 'Excel',       'Herramienta',     'Intermedio'),",
+          "  (13, 'Odoo (ERP)',  'ERP / CRM',       'Intermedio'),",
+          "  (14, 'CRM',         'ERP / CRM',       'Intermedio'),",
+          "  (15, 'Teamcenter',  'PLM',             'Intermedio'),",
+          "  (16, 'NX',          'PLM',             'Básico'),",
+          "  (17, 'Solid Edge',  'PLM',             'Básico'),",
+          "  (18, 'Polarion',    'ALM / Calidad',   'Intermedio'),",
+          "  (19, 'Linux',       'Sistemas',        'Intermedio'),",
+          "  (20, 'Redes (FTTH, HFC, IP, Firewalls)', 'Sistemas / Redes', 'Intermedio'),",
+          "  (21, 'Git / GitHub','Herramienta',     'Intermedio');",
+          "",
+          "-- ===== musica (a completar con tracks / sets reales) =====",
+          "CREATE TABLE musica (",
+          "  id          INTEGER PRIMARY KEY,",
+          "  titulo      TEXT NOT NULL,",
+          "  tipo        TEXT,",
+          "  plataforma  TEXT,",
+          "  url         TEXT,",
+          "  fecha       TEXT",
+          ");",
+          "INSERT INTO musica (id, titulo, tipo, plataforma, url, fecha) VALUES",
+          "  (1, 'Perfil SoundCloud', 'Perfil', 'SoundCloud', 'https://soundcloud.com/agust1', NULL);",
+        ].join("\n");
+
+        var $ = function (id) {
+          return document.getElementById(id);
+        };
+        var editor = $("editor");
+        var results = $("results");
+        var schemaEl = $("schema");
+        var stMode = $("stMode");
+        var stRows = $("stRows");
+        var stTime = $("stTime");
+        var runBtn = $("runBtn");
+        var win = $("win");
+
+        /* Consulta con la que arranca siempre el editor (la del HTML).
+           Al cerrar el programa se descarta lo que haya y se vuelve a esta. */
+        var DEFAULT_QUERY = editor.value;
+
+        var SQL = null;
+        var db = null;
+        var ready = false;
+
+        /* ---------- Estrellas de fondo (mismo comportamiento que el portfolio) ---------- */
+        (function stars() {
+          var c = $("stars");
+          var ctx = c.getContext("2d");
+          var stars = [];
+          var STAR_R = 1.5;
+
+          function resize() {
+            c.width = window.innerWidth;
+            c.height = window.innerHeight;
+          }
+          resize();
+          window.addEventListener("resize", resize);
+
+          function addStars(n, alpha) {
+            for (var i = 0; i < n; i++) {
+              stars.push({
+                x: Math.random() * c.width,
+                y: Math.random() * c.height,
+                alpha: alpha == null ? 0.9 : alpha,
+                vy: -(0.3 * Math.random() + 0.008),
+              });
+            }
+          }
+
+          function draw() {
+            ctx.clearRect(0, 0, c.width, c.height);
+            stars = stars.filter(function (s) {
+              return s.alpha > 0.01;
+            });
+            for (var i = 0; i < stars.length; i++) {
+              var s = stars[i];
+              ctx.globalAlpha = s.alpha;
+              ctx.fillStyle = "#f19280";
+              ctx.beginPath();
+              ctx.arc(Math.round(s.x), Math.round(s.y), STAR_R, 0, Math.PI * 2);
+              ctx.fill();
+              s.y += s.vy;
+              s.alpha -= 0.006;
+            }
+            ctx.globalAlpha = 1;
+            requestAnimationFrame(draw);
+          }
+
+          addStars(40, 0.5); // siembra inicial tenue
+          // Al mover el mouse (hover sobre el fondo) brotan más estrellas
+          window.addEventListener("mousemove", function () {
+            addStars(Math.floor(Math.random() * 4) + 1);
+          });
+          window.addEventListener(
+            "touchmove",
+            function () {
+              addStars(1);
+            },
+            { passive: true },
+          );
+          // Goteo ambiente, como en el portfolio
+          setInterval(function () {
+            addStars(Math.floor(Math.random() * 3) + 2, 0.75);
+          }, 300);
+          draw();
+        })();
+
+        /* ---------- Infotip: texto completo de un campo al hacer hover ---------- */
+        (function infotip() {
+          var tip = document.createElement("div");
+          tip.className = "infotip";
+          tip.hidden = true;
+          document.body.appendChild(tip);
+          var current = null;
+
+          function place(x, y) {
+            var pad = 8;
+            tip.style.left = "0px";
+            tip.style.top = "0px";
+            var r = tip.getBoundingClientRect();
+            var nx = x + 14;
+            var ny = y + 18;
+            if (nx + r.width > window.innerWidth - pad)
+              nx = Math.max(pad, x - r.width - 10);
+            if (ny + r.height > window.innerHeight - pad)
+              ny = Math.max(pad, y - r.height - 12);
+            tip.style.left = nx + "px";
+            tip.style.top = ny + "px";
+          }
+
+          function hide() {
+            tip.hidden = true;
+            current = null;
+          }
+
+          document.addEventListener("mouseover", function (e) {
+            var el = e.target.closest("[data-tip]");
+            if (!el || el === current) return;
+            var full = el.getAttribute("data-tip");
+            if (!full) return;
+            // Mostrar sólo si el contenido está recortado o es realmente largo
+            var clipped = el.scrollWidth > el.clientWidth + 1;
+            if (!clipped && full.length < 45) return;
+            current = el;
+            tip.textContent = full;
+            tip.hidden = false;
+            place(e.clientX, e.clientY);
+          });
+
+          document.addEventListener("mousemove", function (e) {
+            if (tip.hidden) return;
+            if (
+              current &&
+              !current.contains(e.target) &&
+              e.target !== current
+            ) {
+              hide();
+              return;
+            }
+            place(e.clientX, e.clientY);
+          });
+
+          document.addEventListener("mouseout", function (e) {
+            if (current && !current.contains(e.relatedTarget)) hide();
+          });
+          window.addEventListener("scroll", hide, true);
+          window.addEventListener("blur", hide);
+        })();
+
+        /* ---------- Resaltado del editor (comentarios, palabras reservadas, «;») ---------- */
+        var editorHl = document.createElement("pre");
+        editorHl.className = "editor-hl";
+        editorHl.setAttribute("aria-hidden", "true");
+        editor.parentNode.insertBefore(editorHl, editor);
+
+        function escHl(s) {
+          return s.replace(/[&<>]/g, function (ch) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch];
+          });
+        }
+
+        // Palabras reservadas SQL (el \b a ambos lados evita coincidencias
+        // parciales, así que el orden de la lista no importa).
+        var SQL_KEYWORDS =
+          "SELECT|FROM|WHERE|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|" +
+          "TABLE|VIEW|INDEX|TRIGGER|DROP|ALTER|RENAME|ADD|COLUMN|PRIMARY|KEY|" +
+          "FOREIGN|REFERENCES|UNIQUE|NOT|NULL|DEFAULT|AUTOINCREMENT|CHECK|" +
+          "CONSTRAINT|JOIN|INNER|LEFT|RIGHT|OUTER|CROSS|FULL|NATURAL|ON|USING|" +
+          "GROUP|BY|ORDER|HAVING|LIMIT|OFFSET|DISTINCT|AS|AND|OR|IN|IS|LIKE|" +
+          "GLOB|BETWEEN|EXISTS|CASE|WHEN|THEN|ELSE|END|UNION|ALL|EXCEPT|" +
+          "INTERSECT|PRAGMA|BEGIN|COMMIT|ROLLBACK|TRANSACTION|REPLACE|IF|" +
+          "COLLATE|CAST|WITH|RECURSIVE|ASC|DESC|INTEGER|INT|TEXT|REAL|BLOB|" +
+          "NUMERIC|BOOLEAN|DATE|DATETIME|TIMESTAMP|VARCHAR|CHAR";
+
+        var HL_TOKEN = new RegExp(
+          "(--[^\\n]*|/\\*[\\s\\S]*?\\*/)" + // 1: comentarios
+            "|('(?:[^']|'')*'|\"(?:[^\"]|\"\")*\")" + // 2: cadenas / identificadores
+            "|(\\b(?:" +
+            SQL_KEYWORDS +
+            ")\\b)" + // 3: palabras reservadas
+            "|(;)", // 4: punto y coma
+          "gi",
+        );
+
+        function paintHighlight() {
+          var src = editor.value;
+          var out = "";
+          var last = 0;
+          var m;
+          HL_TOKEN.lastIndex = 0;
+          while ((m = HL_TOKEN.exec(src))) {
+            out += escHl(src.slice(last, m.index));
+            if (m[1] != null) {
+              out += '<span class="sql-comment">' + escHl(m[1]) + "</span>";
+            } else if (m[2] != null) {
+              out += escHl(m[2]); // cadenas: sin color
+            } else if (m[3] != null) {
+              out += '<span class="sql-kw">' + escHl(m[3]) + "</span>";
+            } else {
+              out += '<span class="sql-semi">' + escHl(m[4]) + "</span>";
+            }
+            last = m.index + m[0].length;
+          }
+          out += escHl(src.slice(last));
+          editorHl.innerHTML = out + "\n";
+          editorHl.style.transform = "translateY(" + -editor.scrollTop + "px)";
+        }
+
+        editor.addEventListener("input", paintHighlight);
+        editor.addEventListener("scroll", function () {
+          editorHl.style.transform = "translateY(" + -editor.scrollTop + "px)";
+        });
+        paintHighlight();
+
+        /* ---------- Persistencia de la base ---------- */
+        function u8ToB64(u8) {
+          var s = "";
+          var chunk = 0x8000;
+          for (var i = 0; i < u8.length; i += chunk) {
+            s += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+          }
+          return btoa(s);
+        }
+        function b64ToU8(b64) {
+          var s = atob(b64);
+          var u8 = new Uint8Array(s.length);
+          for (var i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+          return u8;
+        }
+        function saveDb() {
+          try {
+            localStorage.setItem(LS_DB, u8ToB64(db.export()));
+          } catch (e) {
+            /* almacenamiento lleno o bloqueado: seguimos sólo en memoria */
+          }
+        }
+        function loadDb() {
+          try {
+            var raw = localStorage.getItem(LS_DB);
+            if (raw) return new SQL.Database(b64ToU8(raw));
+          } catch (e) {}
+          return new SQL.Database();
+        }
+        function freshDb() {
+          try {
+            db.close();
+          } catch (e) {}
+          db = new SQL.Database();
+          try {
+            localStorage.removeItem(LS_DB);
+          } catch (e) {}
+        }
+        function applySeed() {
+          if (SEED_SQL.trim()) db.exec(SEED_SQL);
+        }
+        function storedSeedVersion() {
+          try {
+            return localStorage.getItem(LS_SEED);
+          } catch (e) {
+            return null;
+          }
+        }
+        function saveSeedVersion() {
+          try {
+            localStorage.setItem(LS_SEED, SEED_VERSION);
+          } catch (e) {}
+        }
+        function hasUserTables() {
+          try {
+            var r = db.exec(
+              "SELECT count(*) FROM sqlite_master " +
+                "WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%'",
+            );
+            return r.length && r[0].values[0][0] > 0;
+          } catch (e) {
+            return false;
+          }
+        }
+        function resetCounters() {
+          stRows.textContent = "0 filas";
+          stTime.textContent = "0 ms";
+          setMode("Listo");
+        }
+
+        /* ---------- Estado de la barra inferior ---------- */
+        function setMode(text) {
+          stMode.textContent = text;
+        }
+
+        /* ---------- Panel de esquema ---------- */
+        function refreshSchema() {
+          schemaEl.innerHTML = "";
+          var objs;
+          try {
+            objs = db.exec(
+              "SELECT name, type FROM sqlite_master " +
+                "WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' " +
+                "ORDER BY type, name",
+            );
+          } catch (e) {
+            objs = [];
+          }
+          if (!objs.length || !objs[0].values.length) {
+            var d = document.createElement("div");
+            d.className = "empty";
+            d.textContent = "(no hay tablas · creá una)";
+            schemaEl.appendChild(d);
+            return;
+          }
+          objs[0].values.forEach(function (row) {
+            var name = row[0];
+            var wrap = document.createElement("div");
+            wrap.className = "tbl";
+            var head = document.createElement("div");
+            head.className = "tname";
+            head.textContent = name;
+            head.title = "Insertar SELECT * FROM " + name;
+            head.addEventListener("click", function () {
+              insertAtCursor("SELECT * FROM " + quoteId(name) + ";\n");
+              editor.focus();
+            });
+            wrap.appendChild(head);
+            try {
+              var info = db.exec("PRAGMA table_info(" + quoteId(name) + ")");
+              if (info.length) {
+                info[0].values.forEach(function (col) {
+                  var c = document.createElement("div");
+                  c.className = "col";
+                  c.innerHTML =
+                    esc(col[1]) +
+                    ' <span class="type">' +
+                    esc(col[2] || "") +
+                    "</span>";
+                  c.setAttribute("data-tip", col[1] + " " + (col[2] || ""));
+                  wrap.appendChild(c);
+                });
+              }
+            } catch (e) {}
+            schemaEl.appendChild(wrap);
+          });
+        }
+
+        function quoteId(id) {
+          return '"' + String(id).replace(/"/g, '""') + '"';
+        }
+
+        /* Vuelca el texto de una celda convirtiendo URLs y emails en enlaces
+           accent que abren en una pestaña nueva. Devuelve true si generó alguno. */
+        function fillCell(td, str) {
+          var re =
+            /(https?:\/\/[^\s]+)|([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/g;
+          var last = 0;
+          var made = false;
+          var m;
+          while ((m = re.exec(str))) {
+            if (m.index > last) {
+              td.appendChild(document.createTextNode(str.slice(last, m.index)));
+            }
+            var token = m[0];
+            var trail = "";
+            if (m[1]) {
+              var t = token.match(/[)\].,;:!?"']+$/);
+              if (t) {
+                trail = t[0];
+                token = token.slice(0, -trail.length);
+              }
+            }
+            var a = document.createElement("a");
+            a.href = m[1] ? token : "mailto:" + token;
+            a.textContent = token;
+            a.title = token;
+            if (m[1]) {
+              a.target = "_blank";
+              a.rel = "noopener noreferrer";
+            }
+            td.appendChild(a);
+            if (trail) td.appendChild(document.createTextNode(trail));
+            last = m.index + m[0].length;
+            made = true;
+          }
+          if (last < str.length) {
+            td.appendChild(document.createTextNode(str.slice(last)));
+          }
+          return made;
+        }
+        function esc(v) {
+          return String(v).replace(/[&<>"]/g, function (ch) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[
+              ch
+            ];
+          });
+        }
+
+        /* ---------- Ejecutar ---------- */
+        function run() {
+          if (!ready) return;
+          paintHighlight();
+          var sql = editor.value.trim();
+          if (!sql) {
+            renderMessage("Escribí una consulta primero.", "ok");
+            return;
+          }
+          setMode("Ejecutando…");
+          var t0 = performance.now();
+          var res;
+          try {
+            res = db.exec(sql);
+          } catch (err) {
+            var ms = (performance.now() - t0).toFixed(1);
+            stTime.textContent = ms + " ms";
+            stRows.textContent = "—";
+            setMode("Error");
+            renderError(err.message || String(err));
+            return;
+          }
+          var ms2 = (performance.now() - t0).toFixed(1);
+          stTime.textContent = ms2 + " ms";
+          saveDb();
+          refreshSchema();
+
+          if (!res.length) {
+            var affected = db.getRowsModified();
+            stRows.textContent = affected + " filas";
+            setMode("Listo");
+            renderMessage(
+              "Sentencia ejecutada. Filas afectadas: " + affected + ".",
+              "ok",
+            );
+            return;
+          }
+
+          var total = res.reduce(function (n, r) {
+            return n + r.values.length;
+          }, 0);
+          stRows.textContent =
+            total +
+            (total === 1 ? " fila" : " filas") +
+            (res.length > 1 ? " · " + res.length + " resultados" : "");
+          setMode("Listo");
+          renderResults(res);
+        }
+
+        function renderResults(res) {
+          results.innerHTML = "";
+          res.forEach(function (rs, i) {
+            var block = document.createElement("div");
+            block.className = "rs-block";
+            if (res.length > 1) {
+              var cap = document.createElement("div");
+              cap.className = "rs-caption";
+              cap.textContent = "Resultado " + (i + 1);
+              block.appendChild(cap);
+            }
+            var table = document.createElement("table");
+            table.className = "grid";
+            var thead = document.createElement("thead");
+            var htr = document.createElement("tr");
+            rs.columns.forEach(function (col) {
+              var th = document.createElement("th");
+              th.textContent = col;
+              th.setAttribute("data-tip", col);
+              htr.appendChild(th);
+            });
+            thead.appendChild(htr);
+            table.appendChild(thead);
+            var tbody = document.createElement("tbody");
+            rs.values.forEach(function (rowVals) {
+              var tr = document.createElement("tr");
+              rowVals.forEach(function (val) {
+                var td = document.createElement("td");
+                if (val === null) {
+                  td.textContent = "NULL";
+                  td.className = "null";
+                } else if (val instanceof Uint8Array) {
+                  td.textContent = "[blob " + val.length + " b]";
+                  td.className = "null";
+                } else {
+                  var s = String(val);
+                  if (fillCell(td, s)) td.classList.add("has-link");
+                  // Tooltip con el valor completo cuando la celda se recorta
+                  td.setAttribute("data-tip", s);
+                }
+                tr.appendChild(td);
+              });
+              tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            block.appendChild(table);
+            if (!rs.values.length) {
+              var em = document.createElement("div");
+              em.className = "msg ok";
+              em.textContent = "0 filas.";
+              block.appendChild(em);
+            }
+            results.appendChild(block);
+          });
+        }
+
+        function renderMessage(text, kind) {
+          results.innerHTML = "";
+          var m = document.createElement("div");
+          m.className = "msg " + (kind || "ok");
+          m.textContent = text;
+          results.appendChild(m);
+        }
+
+        function renderError(text) {
+          results.innerHTML = "";
+          var m = document.createElement("div");
+          m.className = "msg err";
+          var x = document.createElement("span");
+          x.className = "x";
+          x.textContent = "!";
+          var t = document.createElement("span");
+          t.textContent = text;
+          m.appendChild(x);
+          m.appendChild(t);
+          results.appendChild(m);
+        }
+
+        /* ---------- Utilidades de editor ---------- */
+        function insertAtCursor(text) {
+          var s = editor.selectionStart;
+          var e = editor.selectionEnd;
+          editor.value =
+            editor.value.slice(0, s) + text + editor.value.slice(e);
+          var pos = s + text.length;
+          editor.selectionStart = editor.selectionEnd = pos;
+          paintHighlight();
+        }
+
+        var TPL_CREATE =
+          "CREATE TABLE ejemplo (\n" +
+          "  id      INTEGER PRIMARY KEY,\n" +
+          "  nombre  TEXT NOT NULL,\n" +
+          "  valor   REAL,\n" +
+          "  creado  TEXT DEFAULT CURRENT_TIMESTAMP\n" +
+          ");\n";
+
+        var EX_DEMO =
+          "-- Tecnologías por categoría\n" +
+          "SELECT categoria, count(*) AS cantidad,\n" +
+          "       group_concat(nombre, ', ') AS lista\n" +
+          "FROM tecnologias\n" +
+          "GROUP BY categoria\n" +
+          "ORDER BY cantidad DESC;";
+
+        var EX_JOIN =
+          "-- Experiencia laboral, de la más reciente a la más antigua\n" +
+          "SELECT puesto, empresa, periodo\n" +
+          "FROM experiencia\n" +
+          "ORDER BY inicio DESC;";
+
+        var EX_CV =
+          "-- Una foto del CV en una sola consulta\n" +
+          "SELECT 'estudios'    AS tabla, count(*) AS filas FROM estudios\n" +
+          "UNION ALL SELECT 'experiencia',  count(*) FROM experiencia\n" +
+          "UNION ALL SELECT 'proyectos',    count(*) FROM proyectos\n" +
+          "UNION ALL SELECT 'tecnologias',  count(*) FROM tecnologias\n" +
+          "UNION ALL SELECT 'idiomas',      count(*) FROM idiomas\n" +
+          "UNION ALL SELECT 'musica',       count(*) FROM musica;";
+
+        /* ---------- Acciones ---------- */
+        var actions = {
+          run: run,
+          "clear-editor": function () {
+            editor.value = "";
+            paintHighlight();
+            editor.focus();
+          },
+          "select-all": function () {
+            editor.focus();
+            editor.select();
+          },
+          "tpl-create": function () {
+            insertAtCursor(TPL_CREATE);
+            editor.focus();
+          },
+          "ex-master": function () {
+            editor.value =
+              "SELECT name, type, sql FROM sqlite_master ORDER BY type, name;";
+            run();
+          },
+          "ex-demo": function () {
+            editor.value = EX_DEMO;
+            run();
+          },
+          "ex-join": function () {
+            editor.value = EX_JOIN;
+            run();
+          },
+          "ex-cv": function () {
+            editor.value = EX_CV;
+            run();
+          },
+          "seed-agus": function () {
+            if (!SEED_SQL.trim()) {
+              renderMessage(
+                "La base «Agus» todavía no tiene esquema semilla definido.",
+                "ok",
+              );
+              return;
+            }
+            if (
+              !window.confirm(
+                "¿Restaurar la base «Agus»? Se reemplaza todo por el esquema original.",
+              )
+            )
+              return;
+            freshDb();
+            applySeed();
+            saveDb();
+            saveSeedVersion();
+            refreshSchema();
+            renderMessage("Base «Agus» restaurada desde el esquema.", "ok");
+            resetCounters();
+          },
+          "reset-db": function () {
+            if (
+              !window.confirm(
+                "¿Vaciar la base? Se borran todas las tablas y filas.",
+              )
+            )
+              return;
+            freshDb();
+            saveSeedVersion();
+            refreshSchema();
+            renderMessage("Base vacía. Lienzo en blanco.", "ok");
+            resetCounters();
+          },
+          home: function () {
+            window.location.href = "index.html";
+          },
+          about: function () {
+            $("about").hidden = false;
+          },
+          "about-close": function () {
+            $("about").hidden = true;
+          },
+        };
+
+        document.addEventListener("click", function (ev) {
+          var el = ev.target.closest("[data-act]");
+          if (!el) return;
+          var act = el.getAttribute("data-act");
+          if (actions[act]) {
+            ev.preventDefault();
+            actions[act]();
+            closeMenus();
+          }
+        });
+
+        /* ---------- Menús desplegables ---------- */
+        var menuBar = $("menuBar");
+        function closeMenus() {
+          menuBar.querySelectorAll(".dropdown").forEach(function (d) {
+            d.hidden = true;
+          });
+          menuBar.querySelectorAll("button[data-menu]").forEach(function (b) {
+            b.classList.remove("open");
+          });
+        }
+        menuBar.querySelectorAll("button[data-menu]").forEach(function (btn) {
+          btn.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            var name = btn.getAttribute("data-menu");
+            var dd = menuBar.querySelector(
+              '.dropdown[data-for="' + name + '"]',
+            );
+            var isOpen = !dd.hidden;
+            closeMenus();
+            if (!isOpen) {
+              dd.hidden = false;
+              dd.style.left = btn.offsetLeft + "px";
+              btn.classList.add("open");
+            }
+          });
+          btn.addEventListener("mouseenter", function () {
+            if (menuBar.querySelector(".dropdown:not([hidden])")) {
+              btn.click();
+            }
+          });
+        });
+        document.addEventListener("click", closeMenus);
+
+        /* ---------- Programa: abrir / cerrar ---------- */
+        var taskWin = $("taskWin");
+        var deskIcon = $("deskIcon");
+
+        function programRunning() {
+          return !win.classList.contains("closed");
+        }
+        function syncTaskbar() {
+          var running = programRunning();
+          var open = running && !win.classList.contains("minimized");
+          taskWin.hidden = !running; // cerrado => el programa no está en ejecución
+          taskWin.classList.toggle("active", open);
+          taskWin.setAttribute("aria-pressed", open ? "true" : "false");
+        }
+        function openProgram() {
+          var wasClosed = win.classList.contains("closed");
+          win.classList.remove("closed", "minimized");
+          deskIcon.classList.remove("selected");
+          syncTaskbar();
+          // Arranque limpio: la consulta previa se perdió al cerrar,
+          // se vuelve a mostrar (y ejecutar) la consulta de «info».
+          if (wasClosed) {
+            editor.value = DEFAULT_QUERY;
+            paintHighlight();
+            if (ready) run();
+          }
+          try {
+            editor.focus();
+          } catch (e) {}
+        }
+        function closeProgram() {
+          win.classList.remove("minimized", "maximized");
+          win.classList.add("closed");
+          win.style.cssText = ""; // descartar posición/tamaño de la sesión
+          // Descartar la consulta en curso y volver a la de «info».
+          editor.value = DEFAULT_QUERY;
+          paintHighlight();
+          syncTaskbar();
+        }
+
+        /* Icono de escritorio: un clic selecciona, doble clic abre */
+        deskIcon.addEventListener("click", function (e) {
+          e.stopPropagation();
+          deskIcon.classList.add("selected");
+        });
+        deskIcon.addEventListener("dblclick", openProgram);
+        deskIcon.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openProgram();
+          }
+        });
+        document.addEventListener("click", function () {
+          deskIcon.classList.remove("selected");
+        });
+
+        taskWin.addEventListener("click", function () {
+          if (win.classList.contains("minimized")) {
+            win.classList.remove("minimized");
+          } else {
+            win.classList.add("minimized");
+            win.classList.remove("maximized");
+          }
+          syncTaskbar();
+        });
+
+        (function taskClock() {
+          var el = $("trayClock");
+          function pad(n) {
+            return (n < 10 ? "0" : "") + n;
+          }
+          function tick() {
+            var d = new Date();
+            el.textContent = pad(d.getHours()) + ":" + pad(d.getMinutes());
+            el.title = d.toLocaleDateString();
+          }
+          tick();
+          setInterval(tick, 15000);
+        })();
+
+        /* ---------- Botones de la barra de título ---------- */
+        document.querySelectorAll("[data-win]").forEach(function (b) {
+          b.addEventListener("click", function () {
+            var a = b.getAttribute("data-win");
+            if (a === "min") {
+              win.classList.toggle("minimized");
+              win.classList.remove("maximized");
+            } else if (a === "max") {
+              toggleMax();
+            } else if (a === "close") {
+              closeProgram();
+            }
+            syncTaskbar();
+          });
+        });
+        syncTaskbar();
+
+        var maxState = null;
+        function toggleMax() {
+          win.classList.remove("minimized");
+          if (win.classList.contains("maximized")) {
+            win.classList.remove("maximized");
+            win.style.cssText = maxState || "";
+            maxState = null;
+          } else {
+            maxState = win.style.cssText;
+            win.classList.add("maximized");
+            win.style.cssText =
+              "position:fixed;top:8px;left:8px;right:8px;bottom:calc(var(--taskbar-h) + 8px);width:auto;height:auto;";
+          }
+        }
+
+        /* ---------- Arrastrar la ventana por la barra de título ---------- */
+        (function drag() {
+          var bar = $("titleBar");
+          var dragging = false;
+          var sx, sy, ox, oy;
+          bar.addEventListener("pointerdown", function (e) {
+            if (e.target.closest(".tb-btn")) return;
+            if (win.classList.contains("maximized")) return;
+            dragging = true;
+            var r = win.getBoundingClientRect();
+            ox = r.left;
+            oy = r.top;
+            sx = e.clientX;
+            sy = e.clientY;
+            win.style.position = "fixed";
+            win.style.margin = "0";
+            win.style.left = ox + "px";
+            win.style.top = oy + "px";
+            bar.setPointerCapture(e.pointerId);
+          });
+          bar.addEventListener("pointermove", function (e) {
+            if (!dragging) return;
+            win.style.left = ox + (e.clientX - sx) + "px";
+            win.style.top = Math.max(0, oy + (e.clientY - sy)) + "px";
+          });
+          bar.addEventListener("pointerup", function (e) {
+            dragging = false;
+            try {
+              bar.releasePointerCapture(e.pointerId);
+            } catch (er) {}
+          });
+
+          // Al cambiar el tamaño de la ventana del navegador (o rotar el
+          // teléfono), mantener la ventana arrastrada dentro de la vista.
+          window.addEventListener("resize", function () {
+            if (win.classList.contains("maximized")) return;
+            if (!win.style.left && !win.style.top) return;
+            var r = win.getBoundingClientRect();
+            var maxLeft = Math.max(0, window.innerWidth - r.width);
+            var maxTop = Math.max(0, window.innerHeight - 40);
+            win.style.left =
+              Math.min(Math.max(0, parseFloat(win.style.left) || 0), maxLeft) +
+              "px";
+            win.style.top =
+              Math.min(Math.max(0, parseFloat(win.style.top) || 0), maxTop) +
+              "px";
+          });
+        })();
+
+        /* ---------- Atajos de teclado en el editor ---------- */
+        editor.addEventListener("keydown", function (e) {
+          if (
+            e.key === "F5" ||
+            ((e.ctrlKey || e.metaKey) && e.key === "Enter")
+          ) {
+            e.preventDefault();
+            run();
+          } else if (e.key === "Tab") {
+            e.preventDefault();
+            insertAtCursor("  ");
+          }
+        });
+
+        /* ---------- Arranque ---------- */
+        /* El editor arranca siempre con el ejemplo del HTML (no se guarda
+           la última consulta). Lo que sí persiste es la base «Agus». */
+
+        if (typeof initSqlJs !== "function") {
+          setMode("Sin conexión");
+          schemaEl.innerHTML =
+            '<div class="empty">No se pudo cargar el motor SQL (sin internet).</div>';
+          renderError(
+            "No se pudo cargar SQLite (sql.js) desde la CDN. Revisá la conexión y recargá.",
+          );
+          return;
+        }
+
+        initSqlJs({
+          locateFile: function (f) {
+            return "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/" + f;
+          },
+        })
+          .then(function (lib) {
+            SQL = lib;
+            db = loadDb();
+
+            /* Sembrar la base «Agus» si hay esquema y todavía no está
+               aplicado (primera visita o SEED_VERSION nueva). */
+            if (
+              SEED_SQL.trim() &&
+              (storedSeedVersion() !== SEED_VERSION || !hasUserTables())
+            ) {
+              try {
+                if (storedSeedVersion() !== SEED_VERSION) freshDb();
+                applySeed();
+                saveDb();
+                saveSeedVersion();
+              } catch (e) {
+                renderError(
+                  "Error al sembrar la base «Agus»: " + (e.message || e),
+                );
+              }
+            } else if (!storedSeedVersion()) {
+              saveSeedVersion();
+            }
+
+            ready = true;
+            setMode("Listo");
+            refreshSchema();
+            // El programa arranca cerrado (sólo el icono del escritorio);
+            // la consulta se ejecuta recién al abrirlo con doble clic.
+            if (!win.classList.contains("closed")) {
+              run();
+              editor.focus();
+            }
+          })
+          .catch(function (err) {
+            setMode("Error de carga");
+            schemaEl.innerHTML =
+              '<div class="empty">No se pudo iniciar el motor.</div>';
+            renderError("No se pudo iniciar SQLite: " + (err.message || err));
+          });
+      })();
+    </script>
+  </body>
+</html>
