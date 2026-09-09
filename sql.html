@@ -1447,7 +1447,9 @@
 
       .postit {
         position: fixed;
-        z-index: 43;
+        /* Sólo por encima del escritorio (iconos = 1); cualquier ventana,
+           barra de tareas o diálogo (>= 20) los tapa. */
+        z-index: 2;
         width: 168px;
         min-height: 116px;
         padding: 13px 13px 16px;
@@ -3661,7 +3663,9 @@ SELECT * FROM Info;</textarea
             "(prefers-reduced-motion: reduce)",
           ).matches;
           var notas = [];
-          var zc = 42;
+          /* Rango 2-4: sólo por encima del escritorio (iconos = 1) y siempre
+             por debajo de cualquier ventana (>= 20). */
+          var zc = 2;
 
           function tbH() {
             return (
@@ -3688,7 +3692,7 @@ SELECT * FROM Info;</textarea
             };
           }
           function raise(el) {
-            zc = zc >= 44 ? 42 : zc + 1;
+            zc = zc >= 4 ? 2 : zc + 1;
             el.style.zIndex = zc;
           }
 
@@ -3730,7 +3734,7 @@ SELECT * FROM Info;</textarea
             var rot =
               typeof data.rot === "number" ? data.rot : Math.random() * 6 - 3;
             el.style.transform = "rotate(" + rot + "deg)";
-            el.style.zIndex = 43;
+            el.style.zIndex = 3;
             el.innerHTML =
               '<button class="pi-close" type="button" title="Quitar nota" aria-label="Quitar nota">✕</button>' +
               '<textarea class="pi-text" rows="1" spellcheck="false" wrap="soft"></textarea>';
