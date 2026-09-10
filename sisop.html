@@ -2493,6 +2493,7 @@ SELECT * FROM Info;</textarea
           estado = "cerrado";
           el.hidden = true;
           cerrarChat();
+          olvidarChat();
           sacarTask();
           guardar();
         }
@@ -2526,13 +2527,16 @@ SELECT * FROM Info;</textarea
         });
 
         /* ═══════════════ CHAT ═══════════════ */
-        function guardarChat() {
+        /* El historial vive sólo en memoria: no se persiste y se borra al
+           cerrar el atendedor. Nada sobrevive a un reload ni a un cierre. */
+        function guardarChat() {}
+        function olvidarChat() {
+          historial = [];
           try {
-            localStorage.setItem(
-              LS_CHAT,
-              JSON.stringify(historial.slice(-16)),
-            );
+            localStorage.removeItem(LS_CHAT);
           } catch (e) {}
+          decirBot(SALUDO);
+          decirUser("");
         }
         function decirBot(texto, clase) {
           globoBot.textContent = texto;
@@ -2655,6 +2659,7 @@ SELECT * FROM Info;</textarea
         chatX.addEventListener("click", function (e) {
           e.stopPropagation();
           cerrarChat();
+          olvidarChat();
         });
         chat.addEventListener("pointerdown", function (e) {
           e.stopPropagation();
@@ -2737,16 +2742,11 @@ SELECT * FROM Info;</textarea
         });
 
         /* ---------- estado inicial ---------- */
+        /* El chat nunca se restaura: el historial arranca vacío en cada carga
+           y se descarta cualquier resto guardado por versiones anteriores. */
+        historial = [];
         try {
-          var ch = JSON.parse(localStorage.getItem(LS_CHAT) || "[]");
-          if (Array.isArray(ch))
-            historial = ch.filter(function (m) {
-              return (
-                m &&
-                (m.role === "user" || m.role === "assistant") &&
-                typeof m.content === "string"
-              );
-            });
+          localStorage.removeItem(LS_CHAT);
         } catch (e) {}
 
         /* El atendedor NUNCA arranca abierto: siempre cerrado, se abre sólo
