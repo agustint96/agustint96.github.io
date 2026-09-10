@@ -1504,6 +1504,34 @@
         background: var(--accent);
       }
 
+      /* botón para activar/silenciar los audios: mismo estilo que la ✕,
+         pero en la esquina inferior izquierda del cuadro de diálogo */
+      .atendedor-chat-audio {
+        position: absolute;
+        bottom: -9px;
+        left: -9px;
+        z-index: 3;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        display: grid;
+        place-items: center;
+        color: #14202f;
+        background: #fff;
+        border: 2.5px solid #14202f;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+      .atendedor-chat-audio svg {
+        display: block;
+        width: 15px;
+        height: 15px;
+        fill: currentColor;
+      }
+      .atendedor-chat-audio:hover {
+        background: var(--accent);
+      }
+
       /* Diálogo "Acerca de" */
       .dialog {
         position: fixed;
@@ -2330,6 +2358,23 @@ SELECT * FROM Info;</textarea
         >
           ✕
         </button>
+        <button
+          class="atendedor-chat-audio"
+          type="button"
+          aria-label="Silenciar audios"
+          title="Silenciar audios"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 9v6h4l5 4V5L8 9H4z" />
+            <path
+              d="M15 8.8a4 4 0 0 1 0 6.4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
         <form class="at-globo at-globo-input" id="atendedorForm">
           <input
             id="atendedorInput"
@@ -2377,6 +2422,7 @@ SELECT * FROM Info;</textarea
         var globoBot = document.getElementById("atGloboBot");
         var globoUser = document.getElementById("atGloboUser");
         var chatX = chat.querySelector(".atendedor-chat-x");
+        var chatAudioBtn = chat.querySelector(".atendedor-chat-audio");
         /* Frases con las que el Atendedor te recibe: siempre arranca cortante. */
         var RECIBE = [
           "¿Quién te conoce?",
@@ -2569,6 +2615,28 @@ SELECT * FROM Info;</textarea
         ];
         var audioIdx = 0;
         var audioActual = null;
+        var LS_AUDIO = "sisop:atendedor:audio";
+        var audioOn = true;
+        try {
+          audioOn = localStorage.getItem(LS_AUDIO) !== "0";
+        } catch (e) {}
+        var SVG_AUDIO_ON =
+          '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+          '<path d="M4 9v6h4l5 4V5L8 9H4z"/>' +
+          '<path d="M15 8.8a4 4 0 0 1 0 6.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+          "</svg>";
+        var SVG_AUDIO_OFF =
+          '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+          '<path d="M4 9v6h4l5 4V5L8 9H4z"/>' +
+          '<path d="M15 9l6 6M21 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+          "</svg>";
+        function pintarAudioBtn() {
+          if (!chatAudioBtn) return;
+          chatAudioBtn.innerHTML = audioOn ? SVG_AUDIO_ON : SVG_AUDIO_OFF;
+          var t = audioOn ? "Silenciar audios" : "Activar audios";
+          chatAudioBtn.title = t;
+          chatAudioBtn.setAttribute("aria-label", t);
+        }
         function audioReset() {
           audioIdx = 0;
           if (audioActual) {
@@ -2583,6 +2651,7 @@ SELECT * FROM Info;</textarea
           var paso = AUDIO_GUION[audioIdx];
           if (paso[0] !== quien) return; // todavía no le toca: mudo
           audioIdx++;
+          if (!audioOn) return; // audios silenciados: avanza igual, pero mudo
           try {
             if (audioActual) audioActual.pause();
             audioActual = new Audio("bot/audio/" + paso[1]);
@@ -2724,6 +2793,22 @@ SELECT * FROM Info;</textarea
           cerrarChat();
           olvidarChat();
         });
+        if (chatAudioBtn) {
+          pintarAudioBtn();
+          chatAudioBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            audioOn = !audioOn;
+            try {
+              localStorage.setItem(LS_AUDIO, audioOn ? "1" : "0");
+            } catch (e) {}
+            if (!audioOn && audioActual) {
+              try {
+                audioActual.pause();
+              } catch (e) {}
+            }
+            pintarAudioBtn();
+          });
+        }
         chat.addEventListener("pointerdown", function (e) {
           e.stopPropagation();
         });
