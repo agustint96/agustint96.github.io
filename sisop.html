@@ -4185,6 +4185,59 @@ SELECT * FROM Info;</textarea
               h: 200,
             };
           });
+          /* Sub-sección «Albumedia»: cada disco comentado de
+             agustint96.github.io/albumedia abre su página en un iframe.
+             [archivo, "Álbum — Artista"] */
+          var ALBUMES = [
+            ["UnhortodoxBehaviour.html", "Unhortodox Behaviour — Brand X"],
+            ["Thefinalcut.html", "The Final Cut — Pink Floyd"],
+            ["TheWhiteAlbum.html", "The White Album — The Beatles"],
+            ["ArcoIris.html", "Arco Iris — Arco Iris"],
+            ["PhysicalGraffiti.html", "Physical Graffiti — Led Zeppelin"],
+            [
+              "TheProsAndCons.html",
+              "The Pros and Cons of Hitch Hiking — Roger Waters",
+            ],
+            ["Peperina.html", "Peperina — Serú Girán"],
+            [
+              "PequeñasAnecdotas.html",
+              "Pequeñas anécdotas sobre las instituciones — Sui Generis",
+            ],
+            ["thewall.html", "The Wall — Pink Floyd"],
+            [
+              "pubisangelical.html",
+              "Pubis angelical / Yendo de la cama al living — Charly García",
+            ],
+            ["agitorlucensv.html", "Agitor Lucens V — Arco Iris"],
+            ["thequeenisdead.html", "The Queen Is Dead — The Smiths"],
+            ["transa.html", "Transa — Caetano Veloso"],
+            [
+              "triofattoruso.html",
+              "En Vivo En Medio Y Medio — Trío Fattoruso",
+            ],
+          ];
+          ALBUMES.forEach(function (a) {
+            APPS["alb:" + a[0]] = {
+              title: a[1],
+              icon: "web",
+              type: "iframe",
+              linkUrl: "https://agustint96.github.io/albumedia/" + a[0],
+              url: "https://agustint96.github.io/albumedia/" + a[0],
+              w: SITE_W,
+              h: SITE_H,
+            };
+          });
+          APPS.albumediaDiscos = {
+            title: "Albumedia — discos comentados",
+            icon: "folder",
+            type: "folder",
+            w: 470,
+            h: 360,
+            items: ALBUMES.map(function (a) {
+              return "alb:" + a[0];
+            }),
+          };
+
           APPS.musica = {
             title: "Música",
             icon: "music",
@@ -4193,7 +4246,7 @@ SELECT * FROM Info;</textarea
             h: 420,
             items: TRACKS.map(function (t) {
               return "tr" + t[0];
-            }),
+            }).concat(["albumediaDiscos"]),
           };
 
           var open = {}; // id -> { win, taskBtn }
