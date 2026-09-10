@@ -4064,6 +4064,7 @@ SELECT * FROM Info;</textarea
               url: "https://agustint96.github.io/Casusliber/",
               w: 760,
               h: 580,
+              game: true,
             },
             pagsweb: {
               title: "Pags Web",
@@ -4530,6 +4531,8 @@ SELECT * FROM Info;</textarea
             w.addEventListener("pointerdown", function () {
               bringToFront(w);
             });
+            /* Casus Liber arranca maximizada */
+            if (cfg.game) maximize(w);
             tb.querySelector('[data-w="min"]').addEventListener(
               "click",
               function (e) {
