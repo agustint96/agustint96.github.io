@@ -2090,114 +2090,255 @@
         line-height: 1.55;
         color: #3a3a32;
       }
-      .rec-stage {
+      /* ===== Cuerpo del dictáfono ===== */
+      .rec-deck {
+        position: relative;
         display: flex;
         flex-direction: column;
+        gap: 9px;
+        padding: 11px 12px 13px;
+        border-radius: 10px 10px 13px 13px;
+        background: linear-gradient(
+          180deg,
+          #eceae2 0%,
+          #d7d3c8 42%,
+          #c3bfb4 100%
+        );
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.8),
+          inset 0 -2px 4px rgba(0, 0, 0, 0.18),
+          inset 2px 0 3px rgba(0, 0, 0, 0.1),
+          inset -2px 0 3px rgba(0, 0, 0, 0.1),
+          0 2px 5px rgba(0, 0, 0, 0.28);
+      }
+      .rec-deck-head {
+        display: flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 0 2px;
       }
-      .rec-mic {
-        width: 74px;
-        height: 74px;
-        border: 0;
+      .rec-brand {
+        font-size: 9px;
+        letter-spacing: 0.22em;
+        font-weight: 700;
+        color: #6a6558;
+        text-transform: uppercase;
+      }
+      .rec-led {
+        width: 9px;
+        height: 9px;
         border-radius: 50%;
-        cursor: pointer;
-        background: var(--w98-face);
-        color: var(--navy);
+        background: #7a2020;
+        box-shadow:
+          inset 0 0 2px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(0, 0, 0, 0.25);
+      }
+      .rec-deck.recording .rec-led {
+        background: #ff3b30;
+        box-shadow:
+          0 0 6px 1px rgba(255, 59, 48, 0.9),
+          0 0 0 1px rgba(0, 0, 0, 0.2);
+        animation: rec-pulse 1s ease-in-out infinite;
+      }
+
+      /* ===== Ventana del cassette ===== */
+      .rec-cassette {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 84px;
+        padding: 0 16px;
+        border-radius: 7px;
+        background: linear-gradient(160deg, #3b4254 0%, #262b38 70%);
+        box-shadow:
+          inset 0 2px 6px rgba(0, 0, 0, 0.55),
+          inset 0 0 0 2px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+      }
+      .rec-cassette::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          115deg,
+          rgba(255, 255, 255, 0.14) 0%,
+          rgba(255, 255, 255, 0) 38%
+        );
+        pointer-events: none;
+      }
+      .rec-tape {
+        flex: 1;
+        height: 7px;
+        max-width: 92px;
+        background: linear-gradient(#5a4632, #2f2519);
+        box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+      }
+      .rec-reel {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        flex-shrink: 0;
         display: grid;
         place-items: center;
+        background: radial-gradient(circle at 38% 34%, #4a4f5c, #20242e 70%);
         box-shadow:
-          inset -1px -1px 0 0 var(--w98-dkshadow),
-          inset 1px 1px 0 0 var(--w98-hilite),
-          inset -2px -2px 0 0 var(--w98-shadow),
-          inset 2px 2px 0 0 var(--w98-face-lite);
+          inset 0 0 0 2px rgba(0, 0, 0, 0.4),
+          inset 0 2px 4px rgba(0, 0, 0, 0.5),
+          0 1px 2px rgba(0, 0, 0, 0.4);
+      }
+      .rec-reel i {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: repeating-conic-gradient(
+          #e7e3d8 0deg 26deg,
+          #b8b3a6 26deg 60deg
+        );
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+        position: relative;
+      }
+      .rec-reel i::after {
+        content: "";
+        position: absolute;
+        inset: 34%;
+        border-radius: 50%;
+        background: #20242e;
+        box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.7);
+      }
+      .rec-cassette.spin .rec-reel i {
+        animation: rec-reel-spin 1.4s linear infinite;
+      }
+      @keyframes rec-reel-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* ===== Contador ===== */
+      .rec-counter {
+        align-self: center;
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        padding: 3px 12px;
+        border-radius: 3px;
+        background: #10160f;
+        box-shadow:
+          inset 0 1px 3px rgba(0, 0, 0, 0.8),
+          0 1px 0 rgba(255, 255, 255, 0.5);
+      }
+      .rec-time {
+        font-family: "DM Mono", monospace;
+        font-size: 17px;
+        letter-spacing: 0.14em;
+        color: #7ec96b;
+        text-shadow: 0 0 5px rgba(126, 201, 107, 0.55);
+      }
+      .rec-deck.recording .rec-time {
+        color: #ff6a5e;
+        text-shadow: 0 0 6px rgba(255, 106, 94, 0.6);
+      }
+      .rec-counter-max {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: #3f6b39;
+      }
+
+      /* ===== Botón de transporte (REC / STOP) ===== */
+      .rec-transport {
+        display: flex;
+        justify-content: center;
+      }
+      .rec-mic {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        min-width: 132px;
+        padding: 9px 18px;
+        border: 0;
+        border-radius: 7px;
+        cursor: pointer;
+        color: #f0ece4;
+        background: linear-gradient(180deg, #4a5162 0%, #2c313e 100%);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.14),
+          inset 0 -3px 6px rgba(0, 0, 0, 0.4),
+          0 2px 0 #1b1f27,
+          0 3px 5px rgba(0, 0, 0, 0.35);
       }
       .rec-mic:active {
+        transform: translateY(2px);
         box-shadow:
-          inset 1px 1px 0 0 var(--w98-dkshadow),
-          inset -1px -1px 0 0 var(--w98-hilite),
-          inset 2px 2px 0 0 var(--w98-shadow),
-          inset -2px -2px 0 0 var(--w98-face-lite);
+          inset 0 1px 0 rgba(255, 255, 255, 0.1),
+          inset 0 -1px 4px rgba(0, 0, 0, 0.4),
+          0 1px 3px rgba(0, 0, 0, 0.3);
       }
       .rec-mic[disabled] {
         cursor: default;
-        opacity: 0.6;
+        opacity: 0.55;
+      }
+      .rec-mic-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
       }
       .rec-mic-glyph {
-        width: 24px;
-        height: 34px;
-        position: relative;
-        display: block;
+        width: 15px;
+        height: 15px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: #ff3b30;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
       }
-      /* micrófono (reposo / listo) */
-      .rec-mic-glyph::before {
-        content: "";
-        position: absolute;
-        left: 50%;
-        top: 0;
-        width: 16px;
-        height: 24px;
-        margin-left: -8px;
-        border-radius: 8px;
-        background: var(--accent2);
-        box-shadow: inset 0 0 0 1.5px var(--navy);
-      }
-      .rec-mic-glyph::after {
-        content: "";
-        position: absolute;
-        left: 50%;
-        bottom: 0;
-        width: 14px;
-        height: 10px;
-        margin-left: -7px;
-        border: 1.6px solid var(--navy);
-        border-top: 0;
-        border-radius: 0 0 9px 9px;
-      }
-      /* grabando: cuadrado de "detener" + latido */
       .rec-mic[data-state="rec"] {
-        background: #f6dede;
+        background: linear-gradient(180deg, #b23a30 0%, #7d221b 100%);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.16),
+          inset 0 -3px 6px rgba(0, 0, 0, 0.4),
+          0 2px 0 #4e1510,
+          0 3px 5px rgba(0, 0, 0, 0.35);
       }
       .rec-mic[data-state="rec"] .rec-mic-glyph {
-        width: 22px;
-        height: 22px;
-      }
-      .rec-mic[data-state="rec"] .rec-mic-glyph::before {
-        inset: 0;
-        width: 22px;
-        height: 22px;
-        margin: 0;
-        border-radius: 3px;
-        background: #b02a2a;
-        box-shadow: none;
+        border-radius: 2px;
+        background: #f0ece4;
         animation: rec-pulse 1s ease-in-out infinite;
       }
-      .rec-mic[data-state="rec"] .rec-mic-glyph::after {
-        display: none;
+      .rec-mic[data-state="done"] .rec-mic-glyph {
+        border-radius: 3px;
+        background: var(--accent2);
       }
+
+      /* ===== Rejilla del parlante ===== */
+      .rec-grille {
+        height: 13px;
+        border-radius: 3px;
+        background: radial-gradient(
+            circle at center,
+            #7c766a 0 1.1px,
+            transparent 1.4px
+          )
+          0 0 / 8px 7px;
+        opacity: 0.5;
+      }
+
       @keyframes rec-pulse {
         0%,
         100% {
           opacity: 1;
         }
         50% {
-          opacity: 0.45;
+          opacity: 0.4;
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        .rec-mic[data-state="rec"] .rec-mic-glyph::before {
+        .rec-cassette.spin .rec-reel i,
+        .rec-deck.recording .rec-led,
+        .rec-mic[data-state="rec"] .rec-mic-glyph {
           animation: none;
         }
-      }
-      .rec-time {
-        font-size: 12px;
-        letter-spacing: 0.04em;
-        color: #55554a;
-      }
-      .rec-mic[data-state="rec"] ~ .rec-time {
-        color: #b02a2a;
-        font-weight: 700;
       }
       .rec-player {
         width: 100%;
@@ -2317,11 +2458,15 @@
         text-align: center;
       }
       .rec-item {
-        padding: 6px;
-        background: var(--w98-face-lite);
+        padding: 6px 6px 6px 9px;
+        background: #fbf9f2;
+        border-left: 4px solid var(--accent2);
         box-shadow:
           inset -1px -1px 0 0 var(--w98-shadow),
           inset 1px 1px 0 0 var(--w98-hilite);
+      }
+      .rec-item.heard {
+        border-left-color: var(--w98-shadow);
       }
       .rec-item.heard {
         opacity: 0.66;

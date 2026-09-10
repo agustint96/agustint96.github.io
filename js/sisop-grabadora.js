@@ -65,11 +65,27 @@
     wrap.innerHTML = [
       '<div class="rec-view" data-view="dejar">',
       '  <p class="rec-lede">Dejale un mensaje de voz a Agus. Lo escucha cuando vuelve a la compu.</p>',
-      '  <div class="rec-stage">',
-      '    <button type="button" class="rec-mic" aria-label="Grabar">',
-      '      <span class="rec-mic-glyph"></span>',
-      "    </button>",
-      '    <div class="rec-time" aria-live="polite">0:00 / 2:00</div>',
+      '  <div class="rec-deck">',
+      '    <div class="rec-deck-head">',
+      '      <span class="rec-led" aria-hidden="true"></span>',
+      '      <span class="rec-brand">Grabadora</span>',
+      "    </div>",
+      '    <div class="rec-cassette" aria-hidden="true">',
+      '      <div class="rec-reel rec-reel-l"><i></i></div>',
+      '      <div class="rec-tape"></div>',
+      '      <div class="rec-reel rec-reel-r"><i></i></div>',
+      "    </div>",
+      '    <div class="rec-counter">',
+      '      <span class="rec-time" aria-live="polite">0:00</span>',
+      '      <span class="rec-counter-max">/ 2:00</span>',
+      "    </div>",
+      '    <div class="rec-transport">',
+      '      <button type="button" class="rec-mic" aria-label="Grabar">',
+      '        <span class="rec-mic-glyph"></span>',
+      '        <span class="rec-mic-label">REC</span>',
+      "      </button>",
+      "    </div>",
+      '    <div class="rec-grille" aria-hidden="true"></div>',
       "  </div>",
       '  <audio class="rec-player" controls hidden></audio>',
       '  <input class="rec-name" type="text" maxlength="40" autocomplete="off" placeholder="Tu nombre (opcional)" />',
@@ -108,6 +124,9 @@
     var vPin = wrap.querySelector('[data-view="pin"]');
     var vBandeja = wrap.querySelector('[data-view="bandeja"]');
     var micBtn = wrap.querySelector(".rec-mic");
+    var micLabel = wrap.querySelector(".rec-mic-label");
+    var deck = wrap.querySelector(".rec-deck");
+    var cassette = wrap.querySelector(".rec-cassette");
     var timeEl = wrap.querySelector(".rec-time");
     var player = wrap.querySelector(".rec-player");
     var nameEl = wrap.querySelector(".rec-name");
@@ -141,26 +160,36 @@
       grabando = false,
       enviando = false;
 
+    function setSpin(on) {
+      cassette.classList.toggle("spin", !!on);
+      deck.classList.toggle("recording", grabando);
+    }
+
     function setMicUI(state) {
       // state: idle | rec | done | sent
       micBtn.dataset.state = state;
+      deck.dataset.state = state;
       micBtn.disabled = state === "sent";
       if (state === "rec") {
         micBtn.setAttribute("aria-label", "Detener");
         micBtn.title = "Detener";
+        if (micLabel) micLabel.textContent = "STOP";
       } else {
         micBtn.setAttribute("aria-label", "Grabar");
         micBtn.title = "Grabar";
+        if (micLabel)
+          micLabel.textContent = state === "done" ? "REGRABAR" : "REC";
       }
       var hasClip = state === "done";
       player.hidden = !hasClip;
       actions.hidden = !hasClip;
-      if (state === "idle") timeEl.textContent = "0:00 / 2:00";
+      if (state !== "rec") setSpin(false);
+      if (state === "idle" || state === "sent") timeEl.textContent = "0:00";
     }
 
     function tick() {
       var ms = Date.now() - startTs;
-      timeEl.textContent = fmt(ms) + " / 2:00";
+      timeEl.textContent = fmt(ms);
       if (ms >= MAX_MS) stop();
     }
 
@@ -196,6 +225,7 @@
       grabando = true;
       startTs = Date.now();
       setMicUI("rec");
+      setSpin(true);
       timer = setInterval(tick, 200);
     }
 
@@ -477,6 +507,17 @@
       setPin(p);
       pinInput.value = "";
       cargarLista(true);
+    });
+
+    // Los carretes también giran mientras se escucha la toma recién grabada.
+    player.addEventListener("play", function () {
+      if (!grabando) cassette.classList.add("spin");
+    });
+    player.addEventListener("pause", function () {
+      if (!grabando) cassette.classList.remove("spin");
+    });
+    player.addEventListener("ended", function () {
+      if (!grabando) cassette.classList.remove("spin");
     });
 
     setMicUI("idle");

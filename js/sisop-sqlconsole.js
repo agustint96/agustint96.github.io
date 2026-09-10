@@ -1082,7 +1082,7 @@
         icon: "mic",
         type: "recorder",
         w: 340,
-        h: 470,
+        h: 508,
       },
       casus: {
         title: "Casus Liber",
