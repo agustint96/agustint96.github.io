@@ -117,10 +117,16 @@
         position: fixed;
         top: 44px;
         left: var(--desk-left);
+        /* Alto acotado entre el borde superior y la barra de tareas: al
+           achicar la ventana los iconos se reacomodan en columnas nuevas. */
+        bottom: calc(var(--taskbar-h) + 8px);
+        max-width: calc(100vw - 2 * var(--desk-left));
         z-index: 1;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        gap: 10px 6px;
       }
 
       .desk-icon {
@@ -146,8 +152,16 @@
         object-fit: contain;
         image-rendering: pixelated;
       }
-      .desk-icon svg {
+      .desk-icon svg,
+      #deskAtendedor img {
         image-rendering: auto;
+      }
+      #deskAtendedor img {
+        border-radius: 50%;
+        object-fit: cover;
+        object-position: 50% 30%;
+        background: var(--white);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
       }
 
       .desk-icon span {
@@ -1155,6 +1169,341 @@
         }
       }
 
+      /* ---------- Asistente «El atendedor» ----------
+         Efecto: el personaje SALE de la burbuja — la cabeza queda por fuera
+         del círculo y el cuerpo adentro. Se logra con dos capas de la misma
+         imagen, alineadas al pixel:
+           · capa 1: dentro de .assistant-blob (overflow oculto) → cuerpo
+             recortado por el círculo irregular que se menea.
+           · capa 2: .assistant-head, encima y sin recortar, con máscara que
+             sólo deja ver la parte de arriba (la cabeza asomando). */
+      .assistant {
+        /* ── TAMAÑO: cambiá este número. 1 = actual, 0.8 = 80%, 0.6 = 60%… ── */
+        --k: 0.7;
+
+        position: fixed;
+        right: 6px;
+        bottom: calc(var(--taskbar-h) + 8px);
+        z-index: 44; /* sobre las ventanas (20-40), bajo la barra (45) */
+        width: calc(190px * var(--k));
+        height: calc(203px * var(--k));
+        padding: 0;
+        border: 0;
+        background: transparent;
+        cursor: grab;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        transition: transform 0.18s ease;
+      }
+      .assistant[hidden] {
+        display: none;
+      }
+      .assistant.dragging {
+        cursor: grabbing;
+        transition: none;
+      }
+      /* cierre: sólo una «✕» blanca, sin fondo ni recuadro; aparece al hover */
+      .assistant-close {
+        position: absolute;
+        top: calc(16px * var(--k));
+        right: calc(38px * var(--k));
+        z-index: 2;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        display: grid;
+        place-items: center;
+        font: 700 13px/1 "DM Mono", monospace;
+        color: #fff;
+        background: none;
+        border: 0;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.12s ease;
+        text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.85),
+          0 0 3px rgba(0, 0, 0, 0.7);
+      }
+      .assistant:hover .assistant-close,
+      .assistant-close:focus-visible {
+        opacity: 1;
+      }
+      .assistant-close:hover {
+        color: var(--accent);
+      }
+      /* contenedor que “flota” como burbuja (blob + cabeza juntos) */
+      .assistant-body {
+        position: absolute;
+        inset: 0;
+        animation: assistant-float 6.5s ease-in-out infinite;
+      }
+      /* la burbuja: círculo deforme de color claro, va DETRÁS y recorta el
+         cuerpo del atendedor (que va 100% opaco adentro). */
+      .assistant-blob {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        width: calc(150px * var(--k));
+        height: calc(150px * var(--k));
+        margin-left: calc(-75px * var(--k));
+        background: var(--white);
+        border-radius: 46% 54% 43% 57% / 56% 44% 56% 44%;
+        overflow: hidden;
+        box-shadow:
+          0 8px 22px rgba(0, 0, 0, 0.33),
+          inset 0 6px 12px rgba(255, 255, 255, 0.6),
+          inset 0 -14px 24px rgba(13, 27, 46, 0.08);
+        animation: assistant-blob 9s ease-in-out infinite;
+      }
+      /* las dos capas comparten exactamente esta caja (blob y body están
+         alineados abajo y centrados, así que los mismos valores calzan) */
+      .assistant-img {
+        position: absolute;
+        left: 50%;
+        bottom: calc(-4px * var(--k));
+        width: calc(188px * var(--k));
+        margin-left: calc(-94px * var(--k));
+        pointer-events: none;
+        -webkit-user-drag: none;
+      }
+      /* capa 2: sólo la cabeza (arriba), se desvanece a la altura del cuello */
+      .assistant-head {
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          #000 0,
+          #000 30%,
+          transparent 46%
+        );
+        mask-image: linear-gradient(
+          to bottom,
+          #000 0,
+          #000 30%,
+          transparent 46%
+        );
+        filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.28));
+      }
+      .assistant:hover:not(.dragging) {
+        transform: translateY(-3px);
+      }
+      .assistant.poke {
+        animation: assistant-poke 0.5s ease;
+      }
+      @keyframes assistant-float {
+        0%,
+        100% {
+          transform: translate(0, 0) rotate(0deg) scale(1);
+        }
+        25% {
+          transform: translate(-3px, -6px) rotate(-1.6deg) scale(1.015, 0.99);
+        }
+        50% {
+          transform: translate(2px, -10px) rotate(0.8deg) scale(0.99, 1.015);
+        }
+        75% {
+          transform: translate(3px, -4px) rotate(1.6deg) scale(1.01, 0.995);
+        }
+      }
+      /* Sólo se deforma el contorno del círculo (la máscara), no se mueve su
+         contenido: así la capa «cuerpo» sigue calzando con la capa «cabeza».
+         El vaivén de burbuja lo da assistant-float sobre .assistant-body. */
+      @keyframes assistant-blob {
+        0%,
+        100% {
+          border-radius: 46% 54% 43% 57% / 56% 44% 56% 44%;
+        }
+        33% {
+          border-radius: 58% 42% 55% 45% / 42% 58% 42% 58%;
+        }
+        66% {
+          border-radius: 42% 58% 50% 50% / 52% 46% 54% 48%;
+        }
+      }
+      @keyframes assistant-poke {
+        0% {
+          transform: translateY(0) rotate(0);
+        }
+        30% {
+          transform: translateY(-8px) rotate(-5deg);
+        }
+        60% {
+          transform: translateY(0) rotate(4deg);
+        }
+        100% {
+          transform: translateY(0) rotate(0);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .assistant,
+        .assistant.poke,
+        .assistant-body,
+        .assistant-blob {
+          transition: none;
+          animation: none;
+        }
+      }
+
+      /* ---------- Chat del Atendedor.ia: globos de historieta ---------- */
+      .atendedor-chat {
+        position: absolute;
+        right: -6px;
+        bottom: calc(100% - 26px);
+        width: 236px;
+        max-width: 76vw;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        cursor: default;
+        -webkit-user-select: text;
+        user-select: text;
+        font-family: "Comic Sans MS", "Comic Sans", "Segoe Print", "Chalkboard SE",
+          "Marker Felt", cursive;
+      }
+      .atendedor-chat[hidden] {
+        display: none;
+      }
+      /* si el atendedor está pegado al techo, los globos van hacia abajo */
+      .assistant.chat-abajo .atendedor-chat {
+        bottom: auto;
+        top: calc(100% - 20px);
+        flex-direction: column-reverse;
+      }
+
+      .at-globo {
+        position: relative;
+        background: #fff;
+        color: #1b1b18;
+        border: 2.5px solid #14202f;
+        border-radius: 16px;
+        padding: 9px 12px;
+        font-size: 13px;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.22);
+      }
+      .at-globo[hidden] {
+        display: none;
+      }
+
+      /* globo del atendedor: cola apuntando hacia él (abajo-derecha) */
+      .at-globo-bot {
+        align-self: stretch;
+      }
+      .at-globo-bot::after {
+        content: "";
+        position: absolute;
+        right: 30px;
+        bottom: -9px;
+        width: 14px;
+        height: 14px;
+        background: #fff;
+        border-right: 2.5px solid #14202f;
+        border-bottom: 2.5px solid #14202f;
+        transform: rotate(45deg);
+      }
+      .assistant.chat-abajo .at-globo-bot::after {
+        bottom: auto;
+        top: -9px;
+        border: 0;
+        border-left: 2.5px solid #14202f;
+        border-top: 2.5px solid #14202f;
+      }
+      .at-globo-bot.pensando {
+        color: #6a6a6a;
+        letter-spacing: 2px;
+        animation: at-parpadeo 1.1s ease-in-out infinite;
+      }
+      .at-globo-bot.at-error {
+        background: #ffe1d8;
+        border-color: #8a3a26;
+        color: #7a2e1c;
+      }
+      .at-globo-bot.at-error::after {
+        background: #ffe1d8;
+        border-color: #8a3a26;
+      }
+      @keyframes at-parpadeo {
+        0%,
+        100% {
+          opacity: 0.4;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      /* globo de lo último que dijo el visitante */
+      .at-globo-user {
+        align-self: flex-end;
+        max-width: 88%;
+        background: #ffe4dc;
+        border-color: #b5533f;
+      }
+
+      /* globo donde el visitante escribe */
+      .at-globo-input {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 5px 4px 12px;
+        background: #f6f3ea;
+      }
+      .at-globo-input input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        color: #1b1b18;
+        outline: 0;
+      }
+      .at-globo-input input::placeholder {
+        color: #9a9a8f;
+      }
+      .at-globo-input button {
+        flex-shrink: 0;
+        width: 25px;
+        height: 25px;
+        padding: 0;
+        border: 2.5px solid #14202f;
+        border-radius: 50%;
+        font-size: 9px;
+        color: #14202f;
+        background: #f6cf6e;
+        cursor: pointer;
+        line-height: 1;
+      }
+      .at-globo-input button:active {
+        transform: translateY(1px);
+      }
+      .atendedor-chat.cargando .at-globo-input {
+        opacity: 0.55;
+        pointer-events: none;
+      }
+
+      .atendedor-chat-x {
+        position: absolute;
+        top: -9px;
+        right: -9px;
+        z-index: 3;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        display: grid;
+        place-items: center;
+        font: 700 11px/1 "DM Mono", monospace;
+        color: #14202f;
+        background: #fff;
+        border: 2.5px solid #14202f;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+      .atendedor-chat-x:hover {
+        background: var(--accent);
+      }
+
       /* Diálogo "Acerca de" */
       .dialog {
         position: fixed;
@@ -1522,6 +1871,44 @@
         pointer-events: auto;
         overflow-y: auto;
       }
+
+      /* Con tamaño fijado a mano: el papelito respeta ese alto/ancho y el texto
+         llena el interior (scrollea si sobra). */
+      .postit.pi-sized {
+        min-height: 0;
+        overflow: hidden;
+      }
+      .postit.pi-sized .pi-text {
+        position: absolute;
+        inset: 13px 13px 16px;
+        width: auto;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+      }
+      .postit.pi-sized.editing .pi-text {
+        pointer-events: auto;
+      }
+
+      /* Tirador de la esquina para cambiar el tamaño */
+      .postit .pi-resize {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 20px;
+        height: 20px;
+        z-index: 1;
+        cursor: nwse-resize;
+        touch-action: none;
+      }
+      .postit.resizing {
+        cursor: nwse-resize;
+        box-shadow:
+          0 3px 6px rgba(0, 0, 0, 0.18),
+          0 22px 44px rgba(0, 0, 0, 0.34);
+      }
+
       .postit .pi-close {
         position: absolute;
         top: 1px;
@@ -1777,6 +2164,17 @@
         </svg>
         <span>Notas</span>
       </button>
+
+      <button
+        class="desk-icon"
+        id="deskAtendedor"
+        type="button"
+        title="Doble clic para abrir"
+        aria-label="Atendedor.ia (doble clic para abrir)"
+      >
+        <img src="bot/atendedor1.png" alt="" />
+        <span>Atendedor.ia</span>
+      </button>
     </div>
 
     <div class="window closed" id="win">
@@ -1803,7 +2201,6 @@
           <hr />
           <button data-act="seed-agus">Restaurar base «Agus»</button>
           <button data-act="reset-db">Vaciar base (lienzo en blanco)</button>
-          <button data-act="home">Volver al inicio</button>
         </div>
 
         <div class="dropdown" data-for="editar" hidden>
@@ -1894,6 +2291,489 @@ SELECT * FROM Info;</textarea
         >
       </div>
     </div>
+
+    <div
+      class="assistant"
+      id="assistant"
+      role="img"
+      aria-label="Atendedor.ia"
+      title="Atendedor.ia — arrastralo; clickealo para molestarlo"
+      hidden
+    >
+      <span class="assistant-body">
+        <span class="assistant-blob" aria-hidden="true">
+          <img class="assistant-img" src="bot/atendedor1.png" alt="" />
+        </span>
+        <img
+          class="assistant-img assistant-head"
+          id="assistantImg"
+          src="bot/atendedor1.png"
+          alt=""
+          aria-hidden="true"
+        />
+        <button
+          class="assistant-close"
+          type="button"
+          aria-label="Cerrar Atendedor.ia"
+          title="Cerrar"
+        >
+          ✕
+        </button>
+      </span>
+
+      <div class="atendedor-chat" id="atendedorChat" hidden>
+        <button
+          class="atendedor-chat-x"
+          type="button"
+          aria-label="Cerrar chat"
+          title="Cerrar"
+        >
+          ✕
+        </button>
+        <form class="at-globo at-globo-input" id="atendedorForm">
+          <input
+            id="atendedorInput"
+            type="text"
+            autocomplete="off"
+            placeholder="Escribile al atendedor…"
+            maxlength="500"
+          />
+          <button type="submit" aria-label="Enviar" title="Enviar">▶</button>
+        </form>
+        <div class="at-globo at-globo-user" id="atGloboUser" hidden></div>
+        <div
+          class="at-globo at-globo-bot"
+          id="atGloboBot"
+          aria-live="polite"
+        ></div>
+      </div>
+    </div>
+
+    <script>
+      /* Atendedor.ia: aplicación de escritorio + chat con IA (Cloudflare
+         Workers AI, vía el Worker de atendedor-worker/). Se abre desde su icono,
+         tiene botón en la barra de tareas, se arrastra, y recuerda su posición,
+         si estaba abierto y la conversación. */
+      (function () {
+        /* ═══════════════════════════════════════════════════════════════════
+           URL del Worker de Cloudflare. Pegala acá después del deploy
+           (ver atendedor-worker/README.md). Si queda vacía, el chat avisa
+           que falta configurarlo.
+           ═══════════════════════════════════════════════════════════════════ */
+        var ATENDEDOR_API =
+          "https://atendedor-ia.agustintardella7.workers.dev";
+
+        function init() {
+        var el = document.getElementById("assistant");
+        var icon = document.getElementById("deskAtendedor");
+        var tasks = document.getElementById("tasks");
+        if (!el || !icon || !tasks) return;
+
+        var capas = el.querySelectorAll(".assistant-img");
+        var cerrar = el.querySelector(".assistant-close");
+        var chat = document.getElementById("atendedorChat");
+        var chatForm = document.getElementById("atendedorForm");
+        var chatInput = document.getElementById("atendedorInput");
+        var globoBot = document.getElementById("atGloboBot");
+        var globoUser = document.getElementById("atGloboUser");
+        var chatX = chat.querySelector(".atendedor-chat-x");
+        var SALUDO =
+          "¡Hola! Soy el Atendedor. Preguntame lo que quieras sobre Agus: su experiencia, sus proyectos, qué tecnologías maneja, cómo contactarlo…";
+        var REST = "bot/atendedor1.png";
+        var POKED = "bot/atendedor2.png";
+        var LS = "sisop:atendedor";
+        var LS_CHAT = "sisop:atendedor:chat";
+        var volver = 0;
+        var estado = "cerrado"; // "cerrado" | "abierto" | "min"
+        var taskBtn = null;
+        var historial = [];
+        var enviando = false;
+
+        var pre = new Image();
+        pre.src = POKED; // precarga para que el cambio sea instantáneo
+
+        function taskbarH() {
+          return (
+            parseInt(
+              getComputedStyle(document.documentElement).getPropertyValue(
+                "--taskbar-h",
+              ),
+              10,
+            ) || 30
+          );
+        }
+        function setSrc(src) {
+          for (var i = 0; i < capas.length; i++) capas[i].src = src;
+        }
+
+        /* ---------- posición (arrastrable, se guarda) ---------- */
+        function colocar(x, y) {
+          var maxX = Math.max(2, window.innerWidth - el.offsetWidth - 2);
+          var maxY = Math.max(
+            2,
+            window.innerHeight - taskbarH() - el.offsetHeight - 2,
+          );
+          x = Math.max(2, Math.min(x, maxX));
+          y = Math.max(2, Math.min(y, maxY));
+          el.style.left = x + "px";
+          el.style.top = y + "px";
+          el.style.right = "auto";
+          el.style.bottom = "auto";
+        }
+        function guardar() {
+          try {
+            localStorage.setItem(
+              LS,
+              JSON.stringify({
+                open: estado !== "cerrado",
+                x: parseFloat(el.style.left),
+                y: parseFloat(el.style.top),
+              }),
+            );
+          } catch (e) {}
+        }
+
+        /* ---------- barra de tareas ---------- */
+        function taskActiva(v) {
+          if (!taskBtn) return;
+          taskBtn.classList.toggle("active", !!v);
+          taskBtn.setAttribute("aria-pressed", v ? "true" : "false");
+        }
+        function ponerTask() {
+          if (taskBtn) return;
+          taskBtn = document.createElement("button");
+          taskBtn.type = "button";
+          taskBtn.className = "task-btn active";
+          taskBtn.title = "Atendedor.ia";
+          taskBtn.innerHTML =
+            '<img class="tb-icon" src="bot/atendedor1.png" alt="" />' +
+            "<span>Atendedor.ia</span>";
+          taskBtn.addEventListener("click", function () {
+            if (estado === "min") restaurar();
+            else minimizar();
+          });
+          tasks.appendChild(taskBtn);
+        }
+        function sacarTask() {
+          if (taskBtn) {
+            taskBtn.remove();
+            taskBtn = null;
+          }
+        }
+
+        /* ---------- abrir / cerrar / minimizar ---------- */
+        function abrir() {
+          var primera = estado === "cerrado";
+          estado = "abierto";
+          el.hidden = false;
+          ponerTask();
+          taskActiva(true);
+          if (primera && !el.style.left) {
+            requestAnimationFrame(function () {
+              colocar(
+                window.innerWidth - el.offsetWidth - 8,
+                window.innerHeight - taskbarH() - el.offsetHeight - 8,
+              );
+            });
+          }
+          guardar();
+        }
+        function restaurar() {
+          estado = "abierto";
+          el.hidden = false;
+          taskActiva(true);
+        }
+        function minimizar() {
+          estado = "min";
+          el.hidden = true;
+          cerrarChat();
+          taskActiva(false);
+        }
+        function cerrarApp() {
+          estado = "cerrado";
+          el.hidden = true;
+          cerrarChat();
+          sacarTask();
+          guardar();
+        }
+        function activarDesdeIcono() {
+          if (estado === "cerrado") abrir();
+          else if (estado === "min") restaurar();
+        }
+
+        /* ---------- cara: reposo / hablando ---------- */
+        function rebote() {
+          el.classList.remove("poke");
+          void el.offsetWidth;
+          el.classList.add("poke");
+        }
+        function caraHabla(v) {
+          clearTimeout(volver);
+          if (v) {
+            setSrc(POKED);
+          } else {
+            volver = setTimeout(function () {
+              setSrc(REST);
+            }, 600);
+          }
+        }
+        el.addEventListener("animationend", function (e) {
+          if (
+            e.animationName &&
+            e.animationName.indexOf("assistant-poke") === 0
+          )
+            el.classList.remove("poke");
+        });
+
+        /* ═══════════════ CHAT ═══════════════ */
+        function guardarChat() {
+          try {
+            localStorage.setItem(
+              LS_CHAT,
+              JSON.stringify(historial.slice(-16)),
+            );
+          } catch (e) {}
+        }
+        function decirBot(texto, clase) {
+          globoBot.textContent = texto;
+          globoBot.className =
+            "at-globo at-globo-bot" + (clase ? " " + clase : "");
+        }
+        function decirUser(texto) {
+          if (texto) {
+            globoUser.textContent = texto;
+            globoUser.hidden = false;
+          } else {
+            globoUser.hidden = true;
+          }
+        }
+        function toggleChat() {
+          if (chat.hidden) abrirChat();
+          else cerrarChat();
+        }
+        function abrirChat() {
+          chat.hidden = false;
+          rebote();
+          /* si no entra arriba, los globos van hacia abajo */
+          var r = el.getBoundingClientRect();
+          el.classList.toggle("chat-abajo", r.top < 360);
+
+          var ultAsist = "",
+            ultUser = "";
+          for (var i = historial.length - 1; i >= 0; i--) {
+            if (!ultAsist && historial[i].role === "assistant")
+              ultAsist = historial[i].content;
+            if (!ultUser && historial[i].role === "user")
+              ultUser = historial[i].content;
+            if (ultAsist && ultUser) break;
+          }
+          decirBot(ultAsist || SALUDO);
+          decirUser(ultUser);
+
+          setTimeout(function () {
+            try {
+              chatInput.focus();
+            } catch (e) {}
+          }, 40);
+        }
+        function cerrarChat() {
+          chat.hidden = true;
+        }
+
+        function enviar(texto) {
+          texto = (texto || "").trim();
+          if (!texto || enviando) return;
+
+          decirUser(texto);
+          chatInput.value = "";
+
+          if (!ATENDEDOR_API) {
+            decirBot(
+              "Todavía no estoy enchufado: falta pegar la URL del Worker (ATENDEDOR_API) en sisop.html. Ver atendedor-worker/README.md.",
+              "at-error",
+            );
+            return;
+          }
+
+          historial.push({ role: "user", content: texto });
+          guardarChat();
+
+          enviando = true;
+          chat.classList.add("cargando");
+          caraHabla(true);
+          decirBot("…", "pensando");
+
+          fetch(ATENDEDOR_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: historial.slice(-8) }),
+          })
+            .then(function (r) {
+              return r
+                .json()
+                .catch(function () {
+                  return {};
+                })
+                .then(function (data) {
+                  return { ok: r.ok, data: data };
+                });
+            })
+            .then(function (res) {
+              var reply =
+                (res.data && res.data.reply) ||
+                (res.ok
+                  ? "Me quedé sin palabras. Probá de nuevo."
+                  : "No pude responder ahora. Probá en un rato.");
+              if (res.ok) {
+                decirBot(reply);
+                historial.push({ role: "assistant", content: reply });
+                guardarChat();
+              } else {
+                decirBot(reply, "at-error");
+              }
+            })
+            .catch(function () {
+              decirBot(
+                "No me pude conectar. ¿Hay internet? Probá de nuevo.",
+                "at-error",
+              );
+            })
+            .then(function () {
+              enviando = false;
+              chat.classList.remove("cargando");
+              caraHabla(false);
+              try {
+                chatInput.focus();
+              } catch (e) {}
+            });
+        }
+
+        chatForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          enviar(chatInput.value);
+        });
+        chatX.addEventListener("click", function (e) {
+          e.stopPropagation();
+          cerrarChat();
+        });
+        chat.addEventListener("pointerdown", function (e) {
+          e.stopPropagation();
+        });
+        chat.addEventListener("click", function (e) {
+          e.stopPropagation();
+        });
+
+        /* ---------- arrastre ---------- */
+        var drag = false,
+          movido = false,
+          sx = 0,
+          sy = 0,
+          ox = 0,
+          oy = 0;
+        el.addEventListener("pointerdown", function (e) {
+          if (e.target.closest(".assistant-close")) return;
+          if (e.target.closest(".atendedor-chat")) return;
+          drag = true;
+          movido = false;
+          var r = el.getBoundingClientRect();
+          ox = r.left;
+          oy = r.top;
+          sx = e.clientX;
+          sy = e.clientY;
+          el.classList.add("dragging");
+          try {
+            el.setPointerCapture(e.pointerId);
+          } catch (_) {}
+        });
+        el.addEventListener("pointermove", function (e) {
+          if (!drag) return;
+          var dx = e.clientX - sx,
+            dy = e.clientY - sy;
+          if (Math.abs(dx) + Math.abs(dy) > 3) movido = true;
+          colocar(ox + dx, oy + dy);
+        });
+        function soltar(e) {
+          if (!drag) return;
+          drag = false;
+          el.classList.remove("dragging");
+          try {
+            el.releasePointerCapture(e.pointerId);
+          } catch (_) {}
+          if (movido) guardar();
+        }
+        el.addEventListener("pointerup", soltar);
+        el.addEventListener("pointercancel", soltar);
+        el.addEventListener("click", function (e) {
+          if (e.target.closest(".assistant-close")) return;
+          if (e.target.closest(".atendedor-chat")) return;
+          if (movido) {
+            movido = false;
+            return;
+          }
+          toggleChat();
+        });
+
+        cerrar.addEventListener("click", function (e) {
+          e.stopPropagation();
+          cerrarApp();
+        });
+
+        /* ---------- icono de escritorio ---------- */
+        icon.addEventListener("dblclick", activarDesdeIcono);
+        icon.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            activarDesdeIcono();
+          }
+        });
+
+        window.addEventListener("resize", function () {
+          if (estado === "abierto" && el.style.left) {
+            colocar(
+              parseFloat(el.style.left) || 0,
+              parseFloat(el.style.top) || 0,
+            );
+          }
+        });
+
+        /* ---------- estado inicial ---------- */
+        try {
+          var ch = JSON.parse(localStorage.getItem(LS_CHAT) || "[]");
+          if (Array.isArray(ch))
+            historial = ch.filter(function (m) {
+              return (
+                m &&
+                (m.role === "user" || m.role === "assistant") &&
+                typeof m.content === "string"
+              );
+            });
+        } catch (e) {}
+
+        var guardado = null;
+        try {
+          guardado = localStorage.getItem(LS);
+        } catch (e) {}
+        if (guardado === null) {
+          abrir(); // primera visita: se muestra para que se vea
+        } else {
+          var s = {};
+          try {
+            s = JSON.parse(guardado) || {};
+          } catch (e) {}
+          if (typeof s.x === "number" && !isNaN(s.x)) {
+            el.hidden = false; /* necesita layout para medir en colocar() */
+            colocar(s.x, s.y);
+            el.hidden = true;
+          }
+          if (s.open) abrir();
+        }
+        }
+
+        if (document.readyState === "loading")
+          document.addEventListener("DOMContentLoaded", init);
+        else init();
+      })();
+    </script>
 
     <div class="taskbar" id="taskbar">
       <button
@@ -2043,7 +2923,7 @@ SELECT * FROM Info;</textarea
           ");",
           "INSERT INTO proyectos (id, nombre, descripcion, tecnologias, url, fecha) VALUES",
           "  (1, 'Portfolio personal', 'Sitio personal con fondo parallax animado y cielo estrellado en canvas.', 'HTML, CSS, JavaScript, Canvas', 'https://agustint96.github.io', '2025'),",
-          "  (2, 'Consola SQL Agus', 'Playground SQL con estética Windows 98 sobre SQLite compilado a WebAssembly.', 'JavaScript, sql.js, SQLite', 'https://agustint96.github.io/sql.html', '2026'),",
+          "  (2, 'Consola SQL Agus', 'Playground SQL con estética Windows 98 sobre SQLite compilado a WebAssembly.', 'JavaScript, sql.js, SQLite', 'https://agustint96.github.io/sisop.html', '2026'),",
           "  (3, 'CoopLegal', 'Sitio web para estudio jurídico.', 'Desarrollo web', NULL, '2017 - 2019');",
           "",
           "-- ===== idiomas =====",
@@ -3702,12 +4582,15 @@ SELECT * FROM Info;</textarea
                 LS,
                 JSON.stringify(
                   notas.map(function (n) {
+                    var sized = n.el.classList.contains("pi-sized");
                     return {
                       id: n.id,
                       text: n.text.value,
                       x: parseFloat(n.el.style.left) || 0,
                       y: parseFloat(n.el.style.top) || 0,
                       rot: n.rot,
+                      w: sized ? n.el.offsetWidth : null,
+                      h: sized ? n.el.offsetHeight : null,
                     };
                   }),
                 ),
@@ -3737,8 +4620,10 @@ SELECT * FROM Info;</textarea
             el.style.zIndex = 3;
             el.innerHTML =
               '<button class="pi-close" type="button" title="Quitar nota" aria-label="Quitar nota">✕</button>' +
-              '<textarea class="pi-text" rows="1" spellcheck="false" wrap="soft"></textarea>';
+              '<textarea class="pi-text" rows="1" spellcheck="false" wrap="soft"></textarea>' +
+              '<span class="pi-resize" title="Cambiar tamaño" aria-hidden="true"></span>';
             var text = el.querySelector(".pi-text");
+            var grip = el.querySelector(".pi-resize");
             text.value = data.text || "";
             document.body.appendChild(el);
 
@@ -3755,8 +4640,17 @@ SELECT * FROM Info;</textarea
             notas.push(n);
 
             function autogrow() {
+              if (el.classList.contains("pi-sized")) return;
               text.style.height = "auto";
               text.style.height = Math.min(text.scrollHeight, 320) + "px";
+            }
+
+            /* Tamaño fijado a mano (si venía guardado) */
+            if (typeof data.w === "number" && typeof data.h === "number") {
+              el.classList.add("pi-sized");
+              text.style.height = "";
+              el.style.width = data.w + "px";
+              el.style.height = data.h + "px";
             }
             requestAnimationFrame(autogrow);
 
@@ -3782,6 +4676,7 @@ SELECT * FROM Info;</textarea
             }
             el.addEventListener("dblclick", function (e) {
               if (e.target.closest(".pi-close")) return;
+              if (e.target.closest(".pi-resize")) return;
               if (justDragged) return;
               editar();
             });
@@ -3827,6 +4722,7 @@ SELECT * FROM Info;</textarea
             el.addEventListener("pointerdown", function (e) {
               if (el.classList.contains("editing")) return;
               if (e.target.closest(".pi-close")) return;
+              if (e.target.closest(".pi-resize")) return;
               stopInertia();
               drag = true;
               moved = false;
@@ -3950,6 +4846,57 @@ SELECT * FROM Info;</textarea
               },
               true,
             );
+
+            /* ---- cambiar el tamaño desde la esquina ---- */
+            var rz = false,
+              rzx = 0,
+              rzy = 0,
+              rzw = 0,
+              rzh = 0;
+
+            grip.addEventListener("pointerdown", function (e) {
+              if (el.classList.contains("editing")) return;
+              e.stopPropagation();
+              e.preventDefault();
+              stopInertia();
+              rz = true;
+              rzx = e.clientX;
+              rzy = e.clientY;
+              rzw = el.offsetWidth;
+              rzh = el.offsetHeight;
+              el.classList.add("pi-sized", "resizing", "live");
+              text.style.height = "";
+              el.style.transform = "rotate(" + n.rot + "deg)";
+              raise(el);
+              try {
+                grip.setPointerCapture(e.pointerId);
+              } catch (_) {}
+            });
+
+            grip.addEventListener("pointermove", function (e) {
+              if (!rz) return;
+              var maxW = Math.max(160, window.innerWidth * 0.7);
+              var maxH = Math.max(120, (window.innerHeight - tbH()) * 0.8);
+              el.style.width = clamp(rzw + (e.clientX - rzx), 92, maxW) + "px";
+              el.style.height = clamp(rzh + (e.clientY - rzy), 64, maxH) + "px";
+            });
+
+            function endResize(e) {
+              if (!rz) return;
+              rz = false;
+              el.classList.remove("resizing", "live");
+              try {
+                grip.releasePointerCapture(e.pointerId);
+              } catch (_) {}
+              var b = bounds(el);
+              el.style.left =
+                clamp(parseFloat(el.style.left) || 0, b.minX, b.maxX) + "px";
+              el.style.top =
+                clamp(parseFloat(el.style.top) || 0, b.minY, b.maxY) + "px";
+              persist();
+            }
+            grip.addEventListener("pointerup", endResize);
+            grip.addEventListener("pointercancel", endResize);
 
             persist();
             return n;

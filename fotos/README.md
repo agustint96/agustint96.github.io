@@ -1,7 +1,7 @@
 # Carpeta FOTOS
 
 Las imágenes de esta carpeta se muestran en la ventana **FOTOS** del
-escritorio de `sql.html`.
+escritorio de `sisop.html`.
 
 ## Cómo agregar fotos
 

@@ -145,7 +145,7 @@ nav.nav-compact {
 .nav-links a:hover {
   color: var(--accent);
 }
-/* Botón de encendido -> Consola SQL (sql.html) — sólo el símbolo,
+/* Botón de encendido -> Consola SQL (sisop.html) — sólo el símbolo,
    misma estética que los links del nav */
 .power-btn {
   position: fixed;

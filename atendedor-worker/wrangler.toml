@@ -1,0 +1,14 @@
+name = "atendedor-ia"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# Workers AI — no necesita API key, sólo este binding.
+[ai]
+binding = "AI"
+
+# Límite de frecuencia por IP (opcional). Si al hacer deploy `wrangler` se queja
+# de esta sección, borrá las 4 líneas de abajo: el Worker igual funciona.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "2001"
+simple = { limit = 12, period = 60 }
