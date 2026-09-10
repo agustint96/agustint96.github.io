@@ -1,0 +1,20 @@
+name = "grabadora"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# El PIN de la bandeja NO va acá (es secreto). Se carga con:
+#   wrangler secret put INBOX_PIN
+# o desde el dashboard: Settings -> Variables and Secrets.
+
+# KV: creá el namespace y pegá su id acá (o bindéalo desde el dashboard).
+#   wrangler kv namespace create MENSAJES
+[[kv_namespaces]]
+binding = "MENSAJES"
+id = "PEGAR_ID_DEL_NAMESPACE"
+
+# (Opcional) límite anti-abuso por IP. Si no lo querés, borrá este bloque.
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "2001"
+simple = { limit = 6, period = 60 }
