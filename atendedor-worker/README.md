@@ -5,8 +5,10 @@ llamar a un modelo de IA directamente sin exponer credenciales, así que le pega
 a este Worker, que corre en Cloudflare y usa **Workers AI** (modelos Llama que
 corren en la infra de Cloudflare, **sin API key externa**).
 
-- **Costo:** gratis hasta 10.000 "neuronas"/día (≈ 75–150 respuestas/día con el
-  modelo por defecto). Más que eso: US$ 0,011 cada 1.000 neuronas. No pide tarjeta.
+- **Costo:** gratis hasta 10.000 "neuronas"/día (con el modelo 8B por defecto,
+  ~1000+ respuestas/día; con el 70B de respaldo, ~100). Más que eso: US$ 0,011
+  cada 1.000 neuronas, o el plan Workers Paid (US$ 5/mes). No pide tarjeta.
+  La cuota resetea a medianoche UTC (21 h de Córdoba).
 - La info de la que se nutre está en `../bot/atendedor-kb.md`. Editás ese archivo,
   `git push`, y el Worker lo toma solo (lo cachea ~1 hora).
 - Los recorridos de colectivos de Córdoba salen de
@@ -111,7 +113,7 @@ Editás lo que quieras, `git push`, y a los ~5 minutos el bot ya responde distin
 
 | Constante | Qué hace |
 |---|---|
-| `MODEL` | Modelo de Workers AI. Default `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. Para el doble de respuestas/día (menos calidad): `@cf/meta/llama-3.1-8b-instruct-fp8`. |
+| `MODELS` | Lista de modelos de Workers AI, en orden. Se usa el primero; si falla por algo que no sea la cuota diaria, cae al siguiente. Default: `llama-3.1-8b` (barato, ~1000+ respuestas/día gratis) con `llama-3.3-70b` de respaldo. La cuota gratis (10.000 neuronas/día) es de la cuenta, no por modelo: cuando se agota, el bot avisa que vuelvan más tarde (resetea a medianoche UTC = 21 h Córdoba). |
 | `ALLOWED_ORIGINS` | Desde qué dominios se puede llamar. Tocá si movés el sitio. |
 | `KB_URL` | De dónde lee la ficha. |
 | `MAX_TOKENS` | Largo máximo de cada respuesta. |

@@ -13,9 +13,18 @@ const ALLOWED_ORIGINS = [
   "http://127.0.0.1:8801",
 ];
 
-// Modelo de Workers AI. Alternativa más barata (más respuestas/día, menos
-// calidad): "@cf/meta/llama-3.1-8b-instruct-fp8"
-const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// Modelos de Workers AI, en orden de preferencia. Se prueba el primero; si falla
+// por algo que NO sea la cuota diaria (modelo saturado, caído), se prueba el
+// siguiente.
+//   - 8B: barato, ~10x más respuestas/día en el plan gratis. El de todos los días.
+//   - 70B: más "vivo", pero quema la cuota gratis rapidísimo. Queda de respaldo.
+// OJO: la cuota gratis (10.000 neuronas/día) es de la CUENTA, no por modelo:
+// cuando se acaba, se acaba para todos. El respaldo cubre caídas del modelo,
+// NO sirve para estirar la cuota.
+const MODELS = [
+  "@cf/meta/llama-3.1-8b-instruct-fp8",
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+];
 
 // De dónde saca la ficha (tono + qué sabe del SISOP y de Agus).
 // La cachea ~5 min en el borde de Cloudflare.
@@ -29,7 +38,7 @@ const DATA_URL = "https://agustint96.github.io/bot/data/cordoba_transporte_compl
 
 const MAX_CHARS_PER_MSG = 800; // recorta mensajes larguísimos
 const MAX_TURNS = 8; // sólo los últimos N mensajes de la charla
-const MAX_TOKENS = 420; // largo máximo de la respuesta
+const MAX_TOKENS = 360; // largo máximo de la respuesta
 
 // Cuántas líneas de colectivo como mucho se le pasan al modelo por pregunta, y
 // cuánto se recorta cada recorrido. Subir esto = respuestas más completas pero
@@ -125,17 +134,59 @@ export default {
     let system = PERSONA + "\n\n===== FICHA =====\n" + kb;
     if (colectivos) system += "\n\n===== DATOS REALES DE COLECTIVOS =====\n" + colectivos;
 
-    let ai;
-    try {
-      ai = await env.AI.run(MODEL, {
-        messages: [{ role: "system", content: system }, ...history],
-        max_tokens: MAX_TOKENS,
-        temperature: 0.4,
-      });
-    } catch (_) {
+    if (!env.AI || typeof env.AI.run !== "function") {
+      return json(
+        {
+          error: "ai_binding_missing",
+          detail:
+            "Falta el binding de Workers AI. En el Worker: Settings → Bindings → Add → Workers AI, con Variable name = AI (mayúsculas). Después Deploy.",
+          reply: "No estoy enchufado a la IA. Avisale a Agus que revise el binding.",
+        },
+        500,
+        cors,
+      );
+    }
+
+    let ai = null;
+    let lastDetail = "";
+    let sinCuota = false;
+    for (const model of MODELS) {
+      try {
+        ai = await env.AI.run(model, {
+          messages: [{ role: "system", content: system }, ...history],
+          max_tokens: MAX_TOKENS,
+          temperature: 0.4,
+        });
+        break; // salió bien
+      } catch (err) {
+        lastDetail = String((err && (err.message || err.name)) || err || "error desconocido");
+        console.error("AI.run falló:", model, "|", lastDetail, "| system_chars:", system.length);
+        // Cuota diaria agotada: probar otro modelo no ayuda (la cuota es de la cuenta).
+        if (/\b4006\b|daily free allocation|out of neurons|neurons/i.test(lastDetail)) {
+          sinCuota = true;
+          break;
+        }
+        // Otro error (modelo saturado/caído): probamos el siguiente de la lista.
+      }
+    }
+
+    if (!ai) {
+      if (sinCuota) {
+        return json(
+          {
+            error: "sin_cuota",
+            detail: lastDetail,
+            reply:
+              "Cerré por hoy, papá. Se me acabó la nafta hasta las 21 (hora de Córdoba). Volvé más tarde.",
+          },
+          429,
+          cors,
+        );
+      }
       return json(
         {
           error: "ai_error",
+          detail: lastDetail,
           reply: "Se me trabó un engranaje. Probá de nuevo en un toque.",
         },
         502,
