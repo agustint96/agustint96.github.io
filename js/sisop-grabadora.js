@@ -78,7 +78,7 @@
       '    <button type="button" class="btn primary" data-rec="send">Enviar mensaje</button>',
       "  </div>",
       '  <p class="rec-msg" role="status"></p>',
-      '  <button type="button" class="rec-owner" data-rec="owner">Soy Agus · ver bandeja</button>',
+      '  <button type="button" class="rec-owner" data-rec="owner">Ver bandeja</button>',
       "</div>",
 
       '<div class="rec-view" data-view="pin" hidden>',
