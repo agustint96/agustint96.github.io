@@ -92,10 +92,11 @@ Debería devolver `{"reply":"..."}`.
 ## Editar qué sabe y CÓMO habla el bot
 
 **Todo eso vive en [`../bot/atendedor-kb.md`](../bot/atendedor-kb.md).** Ese archivo
-tiene dos partes:
+tiene tres partes:
 
 - **PARTE 1 — cómo habla**: personaje, idioma, largo, reglas de conversación, frases de ejemplo.
-- **PARTE 2 — qué sabe**: bio, formación, experiencia, proyectos, etc.
+- **PARTE 2 — qué sabe del SISOP**: su tema principal (este escritorio y sus programas).
+- **PARTE 3 — sobre Agus**: bio, formación, experiencia, proyectos. El bot **sólo** la usa si le preguntan explícitamente por él.
 
 Editás lo que quieras, `git push`, y a los ~5 minutos el bot ya responde distinto.
 **No hace falta volver a tocar Cloudflare para esto.**
