@@ -2379,6 +2379,20 @@ SELECT * FROM Info;</textarea
         var chatX = chat.querySelector(".atendedor-chat-x");
         var SALUDO =
           "¡Hola! Soy el Atendedor. Preguntame lo que quieras sobre Agus: su experiencia, sus proyectos, qué tecnologías maneja, cómo contactarlo…";
+        /* Frases con las que el Atendedor te recibe: siempre arranca cortante. */
+        var RECIBE = [
+          "¿Quién te conoce?",
+          "¿Quién te conoce, papá?",
+          "Atiendo boludos…",
+          "Sos boludo y no tenés huevo",
+          "Me importa un carajo, tomatela te dije…",
+          "¡Preguntale a otro!",
+          "No te doy bola",
+          "¿No te das cuenta que atiendo boludos?",
+        ];
+        function fraseRecibe() {
+          return RECIBE[Math.floor(Math.random() * RECIBE.length)];
+        }
         var REST = "bot/atendedor1.png";
         var POKED = "bot/atendedor2.png";
         var LS = "sisop:atendedor";
@@ -2500,6 +2514,8 @@ SELECT * FROM Info;</textarea
         function activarDesdeIcono() {
           if (estado === "cerrado") abrir();
           else if (estado === "min") restaurar();
+          /* Al abrir el atendedor te recibe hablándote, chat a la vista. */
+          abrirChat();
         }
 
         /* ---------- cara: reposo / hablando ---------- */
@@ -2535,7 +2551,7 @@ SELECT * FROM Info;</textarea
           try {
             localStorage.removeItem(LS_CHAT);
           } catch (e) {}
-          decirBot(SALUDO);
+          decirBot(fraseRecibe());
           decirUser("");
         }
         function decirBot(texto, clase) {
@@ -2562,17 +2578,12 @@ SELECT * FROM Info;</textarea
           var r = el.getBoundingClientRect();
           el.classList.toggle("chat-abajo", r.top < 360);
 
-          var ultAsist = "",
-            ultUser = "";
-          for (var i = historial.length - 1; i >= 0; i--) {
-            if (!ultAsist && historial[i].role === "assistant")
-              ultAsist = historial[i].content;
-            if (!ultUser && historial[i].role === "user")
-              ultUser = historial[i].content;
-            if (ultAsist && ultUser) break;
-          }
-          decirBot(ultAsist || SALUDO);
-          decirUser(ultUser);
+          /* Siempre te recibe hablándote y cortante, sin importar lo que se
+             haya charlado antes. */
+          decirUser("");
+          decirBot(fraseRecibe());
+          caraHabla(true);
+          caraHabla(false);
 
           setTimeout(function () {
             try {
