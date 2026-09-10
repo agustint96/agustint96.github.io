@@ -2749,24 +2749,16 @@ SELECT * FROM Info;</textarea
             });
         } catch (e) {}
 
-        var guardado = null;
+        /* El atendedor NUNCA arranca abierto: siempre cerrado, se abre sólo
+           desde su icono del escritorio. Sólo restauramos su última posición. */
         try {
-          guardado = localStorage.getItem(LS);
-        } catch (e) {}
-        if (guardado === null) {
-          abrir(); // primera visita: se muestra para que se vea
-        } else {
-          var s = {};
-          try {
-            s = JSON.parse(guardado) || {};
-          } catch (e) {}
+          var s = JSON.parse(localStorage.getItem(LS) || "{}") || {};
           if (typeof s.x === "number" && !isNaN(s.x)) {
             el.hidden = false; /* necesita layout para medir en colocar() */
             colocar(s.x, s.y);
             el.hidden = true;
           }
-          if (s.open) abrir();
-        }
+        } catch (e) {}
         }
 
         if (document.readyState === "loading")
