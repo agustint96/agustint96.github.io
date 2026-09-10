@@ -89,19 +89,29 @@ Debería devolver `{"reply":"..."}`.
 
 ---
 
-## Ajustes (en `worker.js`, arriba de todo)
+## Editar qué sabe y CÓMO habla el bot
+
+**Todo eso vive en [`../bot/atendedor-kb.md`](../bot/atendedor-kb.md).** Ese archivo
+tiene dos partes:
+
+- **PARTE 1 — cómo habla**: personaje, idioma, largo, reglas de conversación, frases de ejemplo.
+- **PARTE 2 — qué sabe**: bio, formación, experiencia, proyectos, etc.
+
+Editás lo que quieras, `git push`, y a los ~5 minutos el bot ya responde distinto.
+**No hace falta volver a tocar Cloudflare para esto.**
+
+## Ajustes del Worker (en `worker.js`, sólo si hace falta)
 
 | Constante | Qué hace |
 |---|---|
 | `MODEL` | Modelo de Workers AI. Default `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. Para el doble de respuestas/día (menos calidad): `@cf/meta/llama-3.1-8b-instruct-fp8`. |
 | `ALLOWED_ORIGINS` | Desde qué dominios se puede llamar. Tocá si movés el sitio. |
-| `KB_URL` | De dónde lee la ficha de Agus. |
+| `KB_URL` | De dónde lee la ficha. |
 | `MAX_TOKENS` | Largo máximo de cada respuesta. |
 | `MAX_TURNS` | Cuántos mensajes de la charla se mandan como contexto. |
-| `PERSONA` | Personalidad e instrucciones base. El tono fino editalo en `../bot/atendedor-kb.md`. |
 
-Tras tocar `worker.js`: volver a pegarlo en el editor del dashboard y **Deploy**
-(o `wrangler deploy`).
+Sólo si tocás `worker.js`: volver a pegarlo en el editor del dashboard y **Deploy**
+(o `wrangler deploy`). El tono NO se toca acá — se toca en la ficha.
 
 ## Ver cuánto va gastando
 
