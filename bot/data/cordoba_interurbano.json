@@ -1,0 +1,96 @@
+[
+  {
+    "empresa": "Sarmiento",
+    "categoria": "Transporte Interurbano Gran Córdoba (conecta Córdoba capital con localidades del área metropolitana)",
+    "destinos": [
+      "Córdoba - Unquillo (Regular)",
+      "Córdoba - Unquillo x Aeropuerto",
+      "Córdoba - Alta Gracia x Ruta 5",
+      "Córdoba - Lozada",
+      "Córdoba - Malagueño",
+      "Córdoba - Alta Gracia x Falda del Carmen",
+      "Córdoba - Villa Allende - Saldán",
+      "Córdoba - Cuesta Blanca",
+      "Córdoba - Tanti",
+      "Córdoba - Carlos Paz - Malagueño",
+      "Córdoba - Cruz del Eje (regular común)",
+      "Córdoba - Cruz del Eje (regular diferencial)",
+      "Córdoba - Villa de Soto (regular común)",
+      "Córdoba - Villa de Soto (regular diferencial)",
+      "Córdoba - Villa Dolores x Cruz del Eje",
+      "Córdoba - Villa Dolores x Los Gigantes"
+    ],
+    "destinos_texto_original": "Córdoba - Unquillo (Regular) Córdoba - Unquillo x Aeropuerto Córdoba - Alta Gracia x Ruta 5 Córdoba - Lozada Córdoba - Malagueño Córdoba - Alta Gracia x Falda del Carmen. Córdoba - Villa Allende - Saldán Córdoba - Cuesta Blanca Córdoba - Tanti Córdoba - Carlos Paz - Malagueño Córdoba - Cruz del Eje (regular común) Córdoba - Cruz del Eje (regular diferencial) Córdoba - Villa de Soto (regular común) Córdoba - Villa de Soto (regular diferencial) Córdoba - Villa Dolores x Cruz del Eje Córdoba - Villa Dolores x Los Gigantes"
+  },
+  {
+    "empresa": "Intercórdoba",
+    "categoria": "Transporte Interurbano Gran Córdoba (conecta Córdoba capital con localidades del área metropolitana)",
+    "destinos": [
+      "Córdoba - Río Ceballos",
+      "Córdoba - La Quebrada",
+      "Córdoba - Unquillo/Cabana",
+      "Córdoba - Unquillo x Aeropuerto",
+      "Córdoba - Unquillo x Talar x E53",
+      "Córdoba - Cárcel - Bouwer"
+    ],
+    "destinos_texto_original": "Córdoba - Río Ceballos Córdoba - La Quebrada Córdoba - Unquillo/Cabana Córdoba - Unquillo x Aeropuerto Córdoba - Unquillo x Talar x E53 Córdoba - Cárcel - Bouwer"
+  },
+  {
+    "empresa": "ERSA",
+    "categoria": "Transporte Interurbano Gran Córdoba (conecta Córdoba capital con localidades del área metropolitana)",
+    "destinos": [
+      "Córdoba - Jesús María x Río Ceballos",
+      "Córdoba - Agua de Oro",
+      "Córdoba - Río Ceballos",
+      "Córdoba (B° Rivadavia) Línea 29 - Bouwer",
+      "Córdoba - Villa Allende x Aeropuerto",
+      "Córdoba - Juárez Celman",
+      "Córdoba - Deán Funes",
+      "Córdoba - Quilino",
+      "Córdoba - Tulumba",
+      "Córdoba - Lucio V. Mansilla",
+      "Córdoba - Cruz del Eje x Deán Funes",
+      "Córdoba - Obispo Trejo",
+      "Córdoba - Sebastian Elcano",
+      "Córdoba - Río Seco",
+      "Córdoba - La Dormida",
+      "Córdoba - Villa Candelaria",
+      "Córdoba - Capilla del Siton",
+      "Córdoba - Totoral",
+      "Córdoba - Cruz del Eje x Punilla",
+      "Córdoba - Villa de Soto x Punilla",
+      "Córdoba - Serrezuela x Punilla",
+      "Córdoba - Villa Dolores x Cruz del Eje",
+      "Córdoba - Villa Dolores x Altas Cumbres"
+    ],
+    "destinos_texto_original": "Córdoba - Jesús María x Río Ceballos. Córdoba - Agua de Oro. Córdoba - Río Ceballos. Córdoba (B° Rivadavia) Línea 29 - Bouwer. Córdoba - Villa Allende x Aeropuerto. Córdoba - Juárez Celman Córdoba - Deán Funes Córdoba - Quilino Córdoba - Tulumba Córdoba - Lucio V. Mansilla Córdoba - Cruz del Eje x Deán Funes Córdoba - Obispo Trejo Córdoba - Sebastian Elcano Córdoba - Río Seco Córdoba - La Dormida Córdoba - Villa Candelaria Córdoba - Capilla del Siton Córdoba - Totoral Córdoba - Cruz del Eje x Punilla Córdoba - Villa de Soto x Punilla Córdoba - Serrezuela x Punilla Córdoba - Villa Dolores x Cruz del Eje Córdoba - Villa Dolores x Altas Cumbres",
+    "servicios_locales_regionales_texto": "Cruz del Eje - Deán Funes; Cruz del Eje - Serrezuela; Cruz del Eje - Taninga; Deán Funes - Quilino; Deán Funes - Lucio V. Mansilla; Deán Funes - Tulumba; Deán Funes - La Dormida; Deán Funes - Totoral; Río Seco - Villa Candelaria; La Dormida - Caminiaga; Deán Funes - San Pedro Norte - La Dormida"
+  },
+  {
+    "empresa": "Buses Lep",
+    "categoria": "Transporte Interurbano Gran Córdoba (conecta Córdoba capital con localidades del área metropolitana)",
+    "destinos": [
+      "Córdoba - Juarez Celman"
+    ],
+    "destinos_texto_original": "Córdoba - Juarez Celman"
+  },
+  {
+    "empresa": "Fonobus",
+    "categoria": "Transporte Interurbano Gran Córdoba (conecta Córdoba capital con localidades del área metropolitana)",
+    "destinos": [
+      "Córdoba - Saldán - Villa Allende Golf",
+      "Córdoba - Ascochinga",
+      "Córdoba - Río Ceballos",
+      "Córdoba - Jesús María",
+      "Córdoba - Talar Mendiolaza",
+      "Córdoba - Carlos Paz",
+      "Córdoba - Agua de oro X Río ceballos",
+      "Córdoba - La Dormida",
+      "Córdoba - Rio Seco",
+      "Córdoba - Totoral",
+      "Córdoba - Quilino",
+      "Córdoba - Deán Funes"
+    ],
+    "destinos_texto_original": "Córdoba - Saldán - Villa Allende Golf. Córdoba - Ascochinga Córdoba - Río Ceballos Córdoba - Jesús María Córdoba - Talar Mendiolaza Córdoba - Carlos Paz Córdoba - Agua de oro X Río ceballos Córdoba - La Dormida Córdoba - Rio Seco Córdoba - Totoral Córdoba - Quilino Córdoba - Deán Funes"
+  }
+]

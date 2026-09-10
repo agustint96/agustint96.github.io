@@ -1,0 +1,72 @@
+[
+  {
+    "linea": "A",
+    "corredor": "Trolebús",
+    "empresa_actual": "Tamse",
+    "recorrido_texto": "El recorrido de la línea A comienza en barrio Fragueiro y termina en barrio Güemes. Ida: De Avellaneda y De los Santos – M. Fragueiro – Pje. Pacheco – J.J de Urquiza – Del Campillo – Av. Roque Saenz Peña – Av. General Paz – Av. Vélez Sarsfield – Rotonda Plaza de Las Américas. Regreso: De rotonda Plaza de las Américas – Richardson – Belgrano – M. T. De Alvear – Belgrano – Tucumán – La Tablada – Bv. Mitre – Lavalleja – Bedoya – J.J. Urquiza – Pasaje Pacheco – M. Fragueiro – De Escola hasta Avellaneda.",
+    "barrio_inicio": "Fragueiro",
+    "barrio_fin": "Güemes",
+    "recorrido_ida": "De Avellaneda y De los Santos – M. Fragueiro – Pje. Pacheco – J.J de Urquiza – Del Campillo – Av. Roque Saenz Peña – Av. General Paz – Av. Vélez Sarsfield – Rotonda Plaza de Las Américas.",
+    "recorrido_vuelta": "De rotonda Plaza de las Américas – Richardson – Belgrano – M. T. De Alvear – Belgrano – Tucumán – La Tablada – Bv. Mitre – Lavalleja – Bedoya – J.J. Urquiza – Pasaje Pacheco – M. Fragueiro – De Escola hasta Avellaneda."
+  },
+  {
+    "linea": "A1",
+    "corredor": "Trolebús",
+    "empresa_actual": "Tamse",
+    "recorrido_texto": "El recorrido de la línea A1 comienza en barrio Fragueiro y termina en barrio Congreso. Ida: De Avellaneda y De los Santos – M. Fragueiro – Pje. Pacheco – J.J. de Urquiza – Del Campillo – Av. Roque Saenz Peña – Av. General Paz – Av. Vélez Sarsfield – Av. Armada Argentina – Lago Argentino – Fernando Casado – Vallejos – Hasta Parque Educativo Sur. Regreso: Días hábiles: De Parque Educativo Sur – Ralicó – Fernando Casado – Lago Argentino – Rotonda Viaducto – Defensa – Congreso – Av. de Mayo – Río Negro – Defensa – Río Quilpo – Arroyo de la Reducción – Río Negro – Defensa – Av. Armada Argentina – Av. Vélez Sarsfield – Plaza de las Américas – Richardson – Belgrano – M. T. De Alvear – Belgrano – Tucumán – La Tablada – Bv. Mitre – Lavalleja – Bedoya – J.J. de Urquiza – Pje. Pacheco – M. Fragueiro – De Escola hasta Avellaneda. Sábados, domingos y feriados: De Parque Educativo Sur – Ralicó – Fernando Casado – Lago Argentino – Rotonda Viaducto – Defensa – Congreso –Tilcara – Río Negro – Defensa – Viaducto – Av. Armada Argentina – Av. Vélez Sarsfield – Plaza de las Américas – Richardson – Belgrano – M. T. De Alvear – Belgrano – Tucumán – La Tablada – Bv. Mitre – Lavalleja – Bedoya – J.J. de Urquiza – Pje. Pacheco – M. Fragueiro – De Escola hasta Avellaneda.",
+    "barrio_inicio": "Fragueiro",
+    "barrio_fin": "Congreso",
+    "recorrido_ida": "De Avellaneda y De los Santos – M. Fragueiro – Pje. Pacheco – J.J. de Urquiza – Del Campillo – Av. Roque Saenz Peña – Av. General Paz – Av. Vélez Sarsfield – Av. Armada Argentina – Lago Argentino – Fernando Casado – Vallejos – Hasta Parque Educativo Sur.",
+    "recorrido_vuelta": "Días hábiles: De Parque Educativo Sur – Ralicó – Fernando Casado – Lago Argentino – Rotonda Viaducto – Defensa – Congreso – Av. de Mayo – Río Negro – Defensa – Río Quilpo – Arroyo de la Reducción – Río Negro – Defensa – Av. Armada Argentina – Av. Vélez Sarsfield – Plaza de las Américas – Richardson – Belgrano – M. T. De Alvear – Belgrano – Tucumán – La Tablada – Bv. Mitre – Lavalleja – Bedoya – J.J. de Urquiza – Pje. Pacheco – M. Fragueiro – De Escola hasta Avellaneda. Sábados, domingos y feriados: De Parque Educativo Sur – Ralicó – Fernando Casado – Lago Argentino – Rotonda Viaducto – Defensa – Congreso –Tilcara – Río Negro – Defensa – Viaducto – Av. Armada Argentina – Av. Vélez Sarsfield – Plaza de las Américas – Richardson – Belgrano – M. T. De Alvear – Belgrano – Tucumán – La Tablada – Bv. Mitre – Lavalleja – Bedoya – J.J. de Urquiza – Pje. Pacheco – M. Fragueiro – De Escola hasta Avellaneda."
+  },
+  {
+    "linea": "B",
+    "corredor": "Trolebús",
+    "empresa_actual": "Tamse",
+    "recorrido_texto": "El recorrido de la línea B comienza en barrio Alto Alberdi y termina en barrio Pueyrredón. Ida: De Bv. D. Zípoli y Av. Colón por ésta – Av. Emilio Olmos – Av. 24 de Setiembre – Av. Patria hasta Padre Luis Monti. Regreso: De Padre Luis Monti y Av. Patria por ésta – Sarmiento – Bv. Guzmán – Lima – Santa Rosa – Avellaneda – Av. Colón – Esperanto – Santa Rosa – Bv. D. Zípoli hasta Av. Colón.",
+    "barrio_inicio": "Alto Alberdi",
+    "barrio_fin": "Pueyrredón",
+    "recorrido_ida": "De Bv. D. Zípoli y Av. Colón por ésta – Av. Emilio Olmos – Av. 24 de Setiembre – Av. Patria hasta Padre Luis Monti.",
+    "recorrido_vuelta": "De Padre Luis Monti y Av. Patria por ésta – Sarmiento – Bv. Guzmán – Lima – Santa Rosa – Avellaneda – Av. Colón – Esperanto – Santa Rosa – Bv. D. Zípoli hasta Av. Colón."
+  },
+  {
+    "linea": "B1",
+    "corredor": "Trolebús",
+    "empresa_actual": "Tamse",
+    "recorrido_texto": "El recorrido de la línea B1 comienza en barrio Pueyrredón y termina en barrio Autódromo. Ida: De Padre Luis Monti y Av. Patria por ésta – Sarmiento – Bv. Guzmán – Lima – Santa Rosa – Avellaneda – Av. Colón – Esperanto – Santa Rosa – Bv. D. Zípoli – Av. Colón – Av. Sagrada Familia – Octavio Pinto – Av. Rafael Núñez – Av. Donato Álvarez – Germán Vagni – José Massetti – Manuel Cubillos – Ángel Meunier – Oscar Cabalén – Manuel Calviño – Julio Bejanele – David Cetra – Germán Vagni. Regreso: De U. Blas Pascal – Donato Álvarez – Av. Rafael Núñez – Luis de Tejeda – Av. Fernando Fader – Av. Sagrada Familia – Av. Colón – Av. Emilio Olmos – Av. 24 de Setiembre – Av. Patria hasta Padre Luis Monti.",
+    "barrio_inicio": "Pueyrredón",
+    "barrio_fin": "Autódromo",
+    "recorrido_ida": "De Padre Luis Monti y Av. Patria por ésta – Sarmiento – Bv. Guzmán – Lima – Santa Rosa – Avellaneda – Av. Colón – Esperanto – Santa Rosa – Bv. D. Zípoli – Av. Colón – Av. Sagrada Familia – Octavio Pinto – Av. Rafael Núñez – Av. Donato Álvarez – Germán Vagni – José Massetti – Manuel Cubillos – Ángel Meunier – Oscar Cabalén – Manuel Calviño – Julio Bejanele – David Cetra – Germán Vagni.",
+    "recorrido_vuelta": "De U. Blas Pascal – Donato Álvarez – Av. Rafael Núñez – Luis de Tejeda – Av. Fernando Fader – Av. Sagrada Familia – Av. Colón – Av. Emilio Olmos – Av. 24 de Setiembre – Av. Patria hasta Padre Luis Monti."
+  },
+  {
+    "linea": "C",
+    "corredor": "Trolebús",
+    "empresa_actual": "Tamse",
+    "recorrido_texto": "El recorrido de la línea C comienza en barrio Ameghino Norte y termina en barrio San Vicente Ida: De la Fuente y Zanni por ésta – Félix Paz – Av. Fuerza Aérea – Av. Julio A. Roca – Peredo – Belgrano – Av. Marcelo T. de Alvear – Belgrano – Tucumán –Av. Colón – Av. Emilio Olmos – Av. 24 de Setiembre – Viamonte – Larrea – Rep. Dominicana – Alejandro Carbó – Carlos Pellegrini – San Jerónimo – Obispo Castellanos – Entre Ríos – Solares – San Jerónimo – Plaza Lavalle. Regreso: De Plaza Lavalle – San Jerónimo – Bernardo de Irigoyen – Obispo Maldonado – Alejandro Carbó – Rep. Dominicana – Larrea – Roma – Sarmiento – Bv. Guzmán – Lima – Santa Rosa – Av. General Paz – Av. Vélez Sarsfield – Achával Rodriguez – Marcelo T. de Alvear – Av. Julio A. Roca – Av. Fuerza Aérea – De la Fuente hasta Zanni.",
+    "barrio_inicio": "Ameghino Norte",
+    "barrio_fin": "San Vicente Ida: De la Fuente y Zanni por ésta – Félix Paz – Av",
+    "recorrido_ida": "De la Fuente y Zanni por ésta – Félix Paz – Av. Fuerza Aérea – Av. Julio A. Roca – Peredo – Belgrano – Av. Marcelo T. de Alvear – Belgrano – Tucumán –Av. Colón – Av. Emilio Olmos – Av. 24 de Setiembre – Viamonte – Larrea – Rep. Dominicana – Alejandro Carbó – Carlos Pellegrini – San Jerónimo – Obispo Castellanos – Entre Ríos – Solares – San Jerónimo – Plaza Lavalle.",
+    "recorrido_vuelta": "De Plaza Lavalle – San Jerónimo – Bernardo de Irigoyen – Obispo Maldonado – Alejandro Carbó – Rep. Dominicana – Larrea – Roma – Sarmiento – Bv. Guzmán – Lima – Santa Rosa – Av. General Paz – Av. Vélez Sarsfield – Achával Rodriguez – Marcelo T. de Alvear – Av. Julio A. Roca – Av. Fuerza Aérea – De la Fuente hasta Zanni."
+  },
+  {
+    "linea": "C1",
+    "corredor": "Trolebús",
+    "empresa_actual": "Tamse",
+    "recorrido_texto": "El recorrido de la línea C1 comienza en barrio Ameghino Norte y termina en barrio Ituzaingó. Ida: De la Fuente y Zanni – Félix Paz – Av. Fuerza Aérea – Av. Julio A. Roca – Peredo – Av. Marcelo T. de Alvear – Belgrano – Tucumán – Av. Colón – Av. Emilio Olmos – Av. 24 de Septiembre – Viamonte – Larrea – Rep. Dominicana – Alejandro Carbó – Carlos Pellegrini – San Jerónimo – Obispo Castellanos – Entre Ríos – Solares – San Jerónimo – Diego de Torres – Agustín Garzón – Bancalari – Av. Sabattini – Vucetich hasta Schrodinger. Regreso: De Schrodinger y Vucetich por ésta – Av. Sabattini – Lisandro de la Torre – Solares – San Jerónimo – Bernardo de Irigoyen – Obispo Maldonado – Alejandro Carbó – Rep. Dominicana – Larrea – Roma – Sarmiento – Bv. Guzmán – Lima – Santa Rosa – Av. General Paz – Av. Vélez Sársfield – Achával Rodriguez – Av. Marcelo T. de Alvear – Av. Julio A. Roca – Av. Fuerza Aérea – De la Fuente hasta Zanni.",
+    "barrio_inicio": "Ameghino Norte",
+    "barrio_fin": "Ituzaingó",
+    "recorrido_ida": "De la Fuente y Zanni – Félix Paz – Av. Fuerza Aérea – Av. Julio A. Roca – Peredo – Av. Marcelo T. de Alvear – Belgrano – Tucumán – Av. Colón – Av. Emilio Olmos – Av. 24 de Septiembre – Viamonte – Larrea – Rep. Dominicana – Alejandro Carbó – Carlos Pellegrini – San Jerónimo – Obispo Castellanos – Entre Ríos – Solares – San Jerónimo – Diego de Torres – Agustín Garzón – Bancalari – Av. Sabattini – Vucetich hasta Schrodinger.",
+    "recorrido_vuelta": "De Schrodinger y Vucetich por ésta – Av. Sabattini – Lisandro de la Torre – Solares – San Jerónimo – Bernardo de Irigoyen – Obispo Maldonado – Alejandro Carbó – Rep. Dominicana – Larrea – Roma – Sarmiento – Bv. Guzmán – Lima – Santa Rosa – Av. General Paz – Av. Vélez Sársfield – Achával Rodriguez – Av. Marcelo T. de Alvear – Av. Julio A. Roca – Av. Fuerza Aérea – De la Fuente hasta Zanni."
+  },
+  {
+    "linea": "C2 (Interbarrial)",
+    "corredor": "Trolebús",
+    "empresa_actual": "Tamse",
+    "recorrido_texto": "El recorrido de la línea C2 comienza en barrio Quinta Capillita y termina en barrio Emanuel I. Ida: Calle Pública 1 – Camino Capilla de los Remedios – Erwin Schrodinger – Av. Juan Vucetich – Av. A. Sabattini – Cruce Av. de Circunvalación – Av. A. Sabattini – Carnerillo – Jáchal – Fiambalá – Calingasta – Cruce Av. de Circunvalación – Calingasta (Camino a Villa Posse) hasta Colectora de Autopista. Regreso: Colectora – Calingasta (Camino a Villa Posse) – Cruce Av. de Circunvalación – Fiambalá – Ramos Mejías – Tinogasta – Guandacol – El Fortín – Av. A. Sabattini – Cruce Av. de Circunvalación – Av. A. Sabattini – Av. Juan Vucetich – Erwin Schrodinger – Camino Capilla de los Remedios – Calle Pública 1 hasta Centro Vecinal.",
+    "barrio_inicio": "Quinta Capillita",
+    "barrio_fin": "Emanuel I",
+    "recorrido_ida": "Calle Pública 1 – Camino Capilla de los Remedios – Erwin Schrodinger – Av. Juan Vucetich – Av. A. Sabattini – Cruce Av. de Circunvalación – Av. A. Sabattini – Carnerillo – Jáchal – Fiambalá – Calingasta – Cruce Av. de Circunvalación – Calingasta (Camino a Villa Posse) hasta Colectora de Autopista.",
+    "recorrido_vuelta": "Colectora – Calingasta (Camino a Villa Posse) – Cruce Av. de Circunvalación – Fiambalá – Ramos Mejías – Tinogasta – Guandacol – El Fortín – Av. A. Sabattini – Cruce Av. de Circunvalación – Av. A. Sabattini – Av. Juan Vucetich – Erwin Schrodinger – Camino Capilla de los Remedios – Calle Pública 1 hasta Centro Vecinal."
+  }
+]
