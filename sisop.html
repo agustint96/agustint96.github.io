@@ -2540,12 +2540,63 @@ SELECT * FROM Info;</textarea
             el.classList.remove("poke");
         });
 
+        /* ═══════════════ AUDIOTECA — mini radioteatro ═══════════════
+           Los .m4a de bot/audio/ son un guión fijo (1..17); cada uno es
+           del BOT o mío ("yo"). Suenan EN ORDEN a medida que la charla
+           real avanza: en cada mensaje nuevo miramos de quién es el
+           próximo audio del guión. Si coincide con quién acaba de
+           hablar, suena y el puntero avanza; si no, se queda esperando.
+           Por eso mi primer mensaje es mudo (el próximo audio es del
+           bot) y el ruido recién vuelve cuando el bot habla otra vez. */
+        var AUDIO_GUION = [
+          ["bot", "1_Quien_te_conoce.m4a"],
+          ["bot", "2_y_vos_sos_un_boludo.m4a"],
+          ["yo", "3_yo_le_pregunto_usted_contesta_insolentemente.m4a"],
+          ["yo", "4_75_centavos_el_minimo.m4a"],
+          ["bot", "5_me_importa_un_carajo_tomatelas_te_dije.m4a"],
+          ["yo", "6_ah_si_porque_tomatela.m4a"],
+          ["bot", "7_no_te_doy_bola.m4a"],
+          ["bot", "8_Quien_te_conoce_papa.m4a"],
+          ["yo", "9_Yo_simplemente_vengo_a_hacer_una_pregunta.m4a"],
+          ["yo", "10_Asi_atiende_a_la_gente_por_ser_inspector.m4a"],
+          ["bot", "11_Atiendo_boludos.m4a"],
+          ["bot", "12_No_te_das_cuenta_que_atiendo_boludos.m4a"],
+          ["yo", "13_Me_parece_que_es_inspector_de_una_linea_de_colectivos.m4a"],
+          ["bot", "14_Tas_equivocado.m4a"],
+          ["yo", "15_Gente_como_usted_no_tiene_derecho.m4a"],
+          ["bot", "16_So_boludo_y_no_tenes_huevo.m4a"],
+          ["yo", "17_No_atienda_a_la_gente_asi_le_hace_mal.m4a"],
+        ];
+        var audioIdx = 0;
+        var audioActual = null;
+        function audioReset() {
+          audioIdx = 0;
+          if (audioActual) {
+            try {
+              audioActual.pause();
+            } catch (e) {}
+            audioActual = null;
+          }
+        }
+        function audioTurno(quien) {
+          if (audioIdx >= AUDIO_GUION.length) return;
+          var paso = AUDIO_GUION[audioIdx];
+          if (paso[0] !== quien) return; // todavía no le toca: mudo
+          audioIdx++;
+          try {
+            if (audioActual) audioActual.pause();
+            audioActual = new Audio("bot/audio/" + paso[1]);
+            audioActual.play().catch(function () {});
+          } catch (e) {}
+        }
+
         /* ═══════════════ CHAT ═══════════════ */
         /* El historial vive sólo en memoria: no se persiste y se borra al
            cerrar el atendedor. Nada sobrevive a un reload ni a un cierre. */
         function guardarChat() {}
         function olvidarChat() {
           historial = [];
+          audioReset();
           try {
             localStorage.removeItem(LS_CHAT);
           } catch (e) {}
@@ -2580,6 +2631,7 @@ SELECT * FROM Info;</textarea
              haya charlado antes. */
           decirUser("");
           decirBot(fraseRecibe());
+          audioTurno("bot"); // el saludo también es el bot hablando
           caraHabla(true);
           caraHabla(false);
 
@@ -2609,6 +2661,7 @@ SELECT * FROM Info;</textarea
           }
 
           historial.push({ role: "user", content: texto });
+          audioTurno("yo"); // yo acabo de escribir
           guardarChat();
 
           enviando = true;
@@ -2639,6 +2692,7 @@ SELECT * FROM Info;</textarea
                   : "No pude responder ahora. Probá en un rato.");
               if (res.ok) {
                 decirBot(reply);
+                audioTurno("bot"); // el bot me contestó
                 historial.push({ role: "assistant", content: reply });
                 guardarChat();
               } else {
@@ -2754,6 +2808,7 @@ SELECT * FROM Info;</textarea
         /* El chat nunca se restaura: el historial arranca vacío en cada carga
            y se descarta cualquier resto guardado por versiones anteriores. */
         historial = [];
+        audioReset();
         try {
           localStorage.removeItem(LS_CHAT);
         } catch (e) {}
