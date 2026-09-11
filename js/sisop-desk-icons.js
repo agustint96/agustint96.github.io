@@ -198,6 +198,9 @@
       ic.classList.remove("dragging");
       if (!moved) return;
       moved = false;
+      // Recién arrastraste el ícono: el "click" que el navegador dispara
+      // al soltar no debe además abrirlo (ver sisopTouch.bindActivate).
+      window.sisopTouch.suppressNextClick(ic);
       // Si al soltarlo cae sobre una carpeta propia (sisop-user-files.js lo
       // decide), ese archivo cambia de dueño: no lo reubicamos en la grilla.
       if (typeof ic.__deskDropCheck === "function") {

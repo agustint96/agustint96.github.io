@@ -549,10 +549,6 @@ nav.nav-compact {
   .starry-cohete {
     height: 90px;
   }
-  /* En celulares no existe el "sistema operativo": se oculta el botón de encender */
-  .power-btn {
-    display: none;
-  }
   .footer-text {
     flex-direction: column;
     gap: 20px;

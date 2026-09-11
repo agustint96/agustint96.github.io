@@ -186,10 +186,13 @@
       stars = stars.filter(function (s) {
         return s.alpha > 0.01;
       });
+      var color = document.documentElement.classList.contains("bg-negro")
+        ? "#ffffff"
+        : "#f19280";
       for (var i = 0; i < stars.length; i++) {
         var s = stars[i];
         ctx.globalAlpha = s.alpha;
-        ctx.fillStyle = "#f19280";
+        ctx.fillStyle = color;
         ctx.beginPath();
         ctx.arc(Math.round(s.x), Math.round(s.y), STAR_R, 0, Math.PI * 2);
         ctx.fill();
@@ -199,6 +202,17 @@
       ctx.globalAlpha = 1;
       requestAnimationFrame(draw);
     }
+
+    // Sincroniza el botón "cambiar fondo" con la clase que ya haya puesto
+    // sisop-boot.js (localStorage) al arrancar, antes de este script.
+    (function syncBgToggle() {
+      var btn = $("bgToggleBtn");
+      if (!btn) return;
+      var negro = document.documentElement.classList.contains("bg-negro");
+      btn.classList.toggle("on", negro);
+      btn.setAttribute("aria-pressed", negro ? "true" : "false");
+      btn.title = negro ? "Cambiar a fondo azul" : "Cambiar a fondo negro";
+    })();
 
     addStars(40, 0.5); // siembra inicial tenue
     // Al mover el mouse (hover sobre el fondo) brotan más estrellas
@@ -247,18 +261,23 @@
       current = null;
     }
 
-    document.addEventListener("mouseover", function (e) {
-      var el = e.target.closest("[data-tip]");
-      if (!el || el === current) return;
+    function mostrar(el, x, y) {
       var full = el.getAttribute("data-tip");
-      if (!full) return;
+      if (!full) return false;
       // Mostrar sólo si el contenido está recortado o es realmente largo
       var clipped = el.scrollWidth > el.clientWidth + 1;
-      if (!clipped && full.length < 45) return;
+      if (!clipped && full.length < 45) return false;
       current = el;
       tip.textContent = full;
       tip.hidden = false;
-      place(e.clientX, e.clientY);
+      place(x, y);
+      return true;
+    }
+
+    document.addEventListener("mouseover", function (e) {
+      var el = e.target.closest("[data-tip]");
+      if (!el || el === current) return;
+      mostrar(el, e.clientX, e.clientY);
     });
 
     document.addEventListener("mousemove", function (e) {
@@ -277,6 +296,24 @@
     document.addEventListener("mouseout", function (e) {
       if (current && !current.contains(e.relatedTarget)) hide();
     });
+
+    // En touch no hay hover: un tap sobre la celda muestra/oculta el
+    // infotip (mousemove no dispara, así que no sigue al dedo — se cierra
+    // solo con otro tap, con scroll o al perder el foco).
+    document.addEventListener("click", function (e) {
+      if (!window.sisopTouch.isMobileMode()) return;
+      var el = e.target.closest("[data-tip]");
+      if (!el) {
+        hide();
+        return;
+      }
+      if (el === current) {
+        hide();
+        return;
+      }
+      mostrar(el, e.clientX, e.clientY);
+    });
+
     window.addEventListener("scroll", hide, true);
     window.addEventListener("blur", hide);
   })();
@@ -771,6 +808,30 @@
           resetCounters();
         });
     },
+    restart: function () {
+      var htmlEl = document.documentElement;
+      if (htmlEl.dataset.apagando) return;
+      htmlEl.dataset.apagando = "1";
+
+      // Recarga forzando traer todo de nuevo del servidor (equivalente a
+      // un Ctrl+F5): la query de cache-busting evita que el navegador
+      // sirva el HTML desde su caché.
+      var recargar = function () {
+        window.location.replace(
+          window.location.pathname + "?_r=" + Date.now() + window.location.hash,
+        );
+      };
+
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        recargar();
+        return;
+      }
+
+      htmlEl.classList.add("crt-shutdown");
+      // Animación de apagado (~620ms) + una pausita a pantalla negra,
+      // como el POST de una BIOS antes de que el equipo vuelva a arrancar.
+      setTimeout(recargar, 620 + 850);
+    },
     home: function () {
       var htmlEl = document.documentElement;
       if (htmlEl.dataset.apagando) return;
@@ -813,6 +874,19 @@
         snd.play().catch(salirCorto);
       } catch (e) {
         salirCorto();
+      }
+    },
+    "toggle-bg": function () {
+      var htmlEl = document.documentElement;
+      var negro = htmlEl.classList.toggle("bg-negro");
+      try {
+        localStorage.setItem("sisop.bg.v1", negro ? "negro" : "azul");
+      } catch (e) {}
+      var btn = $("bgToggleBtn");
+      if (btn) {
+        btn.classList.toggle("on", negro);
+        btn.setAttribute("aria-pressed", negro ? "true" : "false");
+        btn.title = negro ? "Cambiar a fondo azul" : "Cambiar a fondo negro";
       }
     },
     about: function () {
@@ -910,7 +984,7 @@
   /* Icono de escritorio de Agus.db: doble clic abre.
      (La selección con un clic la maneja «desktop98», que
      centraliza el comportamiento de todos los iconos.) */
-  deskIcon.addEventListener("dblclick", openProgram);
+  window.sisopTouch.bindActivate(deskIcon, openProgram);
   deskIcon.addEventListener("keydown", function (e) {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -982,6 +1056,7 @@
     bar.addEventListener("pointerdown", function (e) {
       if (e.target.closest(".tb-btn")) return;
       if (win.classList.contains("maximized")) return;
+      if (window.sisopTouch.isMobileMode()) return;
       dragging = true;
       var r = win.getBoundingClientRect();
       ox = r.left;
@@ -1076,12 +1151,6 @@
         '<path d="M5 4h16l6 6v18H5z" fill="#f6e06a" stroke="#9a8419" stroke-width="1.2"/>' +
         '<path d="M21 4l6 6h-6z" fill="#d9c24e" stroke="#9a8419" stroke-width="1.2"/>' +
         '<path d="M9 14h11M9 18h11M9 22h7" stroke="#6f5d13" stroke-width="1.6" stroke-linecap="round"/></svg>',
-      mic:
-        '<svg viewBox="0 0 32 32" aria-hidden="true">' +
-        '<rect x="12" y="4" width="8" height="15" rx="4" fill="#7eb8c9" stroke="#2f4467" stroke-width="1.3"/>' +
-        '<path d="M8 15a8 8 0 0 0 16 0" fill="none" stroke="#2f4467" stroke-width="1.6" stroke-linecap="round"/>' +
-        '<path d="M16 23v4M12 27h8" stroke="#2f4467" stroke-width="1.6" stroke-linecap="round"/>' +
-        '<circle cx="16" cy="9" r="1.5" fill="#f19280"/></svg>',
       pdf:
         '<svg viewBox="0 0 32 32" aria-hidden="true">' +
         '<path d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#f0ece4" stroke="#9a3232" stroke-width="1.3"/>' +
@@ -1102,7 +1171,8 @@
       },
       grabadora: {
         title: "Grabadora",
-        icon: "mic",
+        iconHtml:
+          '<img src="ico/grabadora.png" alt="" style="width:100%;height:100%;object-fit:contain;display:block;">',
         type: "recorder",
         w: 340,
         h: 508,
@@ -1379,7 +1449,8 @@
         if (e.target.closest(".tb-btn, a")) return;
         if (
           w.classList.contains("w98max") ||
-          w.classList.contains("w98-game")
+          w.classList.contains("w98-game") ||
+          window.sisopTouch.isMobileMode()
         )
           return;
         drag = true;
@@ -1435,9 +1506,19 @@
       load.textContent = "Cargando…";
       f.addEventListener("load", function () {
         load.remove();
+        // Juegos como Casus Liber: que el teclado responda apenas carga,
+        // sin que el visitante tenga que clickear adentro primero.
+        if (cfg.game) focusIframe(f);
       });
       bd.appendChild(f);
       bd.appendChild(load);
+    }
+
+    function focusIframe(f) {
+      try {
+        f.focus();
+        if (f.contentWindow) f.contentWindow.focus();
+      } catch (_) {}
     }
 
     function buildFolder(cfg, bd) {
@@ -1463,7 +1544,7 @@
             });
           b.classList.add("selected");
         });
-        b.addEventListener("dblclick", function () {
+        window.sisopTouch.bindActivate(b, function () {
           openApp(itemId);
         });
         grid.appendChild(b);
@@ -1519,7 +1600,7 @@
             t.innerHTML = '<img loading="lazy" alt=""><span></span>';
             t.querySelector("img").src = src;
             t.querySelector("span").textContent = cap;
-            t.addEventListener("dblclick", function () {
+            window.sisopTouch.bindActivate(t, function () {
               openImage(src, cap);
             });
             wrap.appendChild(t);
@@ -1666,6 +1747,11 @@
         var hotzone = document.createElement("div");
         hotzone.className = "w98-game-hotzone";
         hotzone.setAttribute("aria-hidden", "true");
+        // En touch no hay ":hover": un tap en la franja también revela la
+        // barra de título (ver .w98win.w98-game.tb-open en sisop.html).
+        hotzone.addEventListener("click", function () {
+          w.classList.toggle("tb-open");
+        });
         w.insertBefore(hotzone, tb);
       }
 
@@ -1738,6 +1824,10 @@
         if (o.win.classList.contains("min")) {
           o.win.classList.remove("min");
           bringToFront(o.win);
+          if (cfg.game) {
+            var f = o.win.querySelector("iframe");
+            if (f) focusIframe(f);
+          }
         } else {
           o.win.classList.add("min");
         }
@@ -1761,6 +1851,10 @@
         open[id].win.classList.remove("min");
         bringToFront(open[id].win);
         updateTask(id);
+        if (cfg.game) {
+          var f = open[id].win.querySelector("iframe");
+          if (f) focusIframe(f);
+        }
         return;
       }
       var w = makeWin(id, cfg);
@@ -1800,7 +1894,7 @@
       .querySelectorAll(".desk-icon[data-open]")
       .forEach(function (ic) {
         var target = ic.getAttribute("data-open");
-        ic.addEventListener("dblclick", function () {
+        window.sisopTouch.bindActivate(ic, function () {
           clearDeskSel();
           openApp(target);
         });
@@ -2042,7 +2136,7 @@
           text.setSelectionRange(text.value.length, text.value.length);
         } catch (_) {}
       }
-      el.addEventListener("dblclick", function (e) {
+      window.sisopTouch.bindActivate(el, function (e) {
         if (e.target.closest(".pi-close")) return;
         if (e.target.closest(".pi-resize")) return;
         if (justDragged) return;

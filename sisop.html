@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SISOP - Agustin Tardella</title>
 
-    <script src="js/sisop-guard.js"></script>
-
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -62,17 +60,6 @@
 
       body {
         min-height: 100vh;
-        background-color: var(--navy);
-        background-image:
-          radial-gradient(
-            ellipse at 50% 0%,
-            rgba(126, 184, 201, 0.12),
-            transparent 60%
-          ),
-          url("parallax/fondo-estrellado.png");
-        background-size: cover, cover;
-        background-attachment: fixed;
-        background-position: center;
         font-family: "DM Mono", monospace;
         color: var(--white);
         display: flex;
@@ -84,9 +71,40 @@
         overflow-x: hidden;
       }
 
+      /* Fondo del escritorio: capa propia y fija detrás de todo (en vez de
+         background-* en el body) para poder recolorearla con un filter sin
+         afectar el resto del contenido — necesario porque la textura
+         "fondo-estrellado.png" es una imagen opaca (no tiene zonas
+         transparentes), así que cambiar sólo un color por debajo no se
+         nota: hay que filtrar la imagen misma. */
+      .desk-bg-layer {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-color: var(--navy);
+        background-image:
+          radial-gradient(
+            ellipse at 50% 0%,
+            rgba(126, 184, 201, 0.12),
+            transparent 60%
+          ),
+          url("parallax/fondo-estrellado.png");
+        background-size: cover, cover;
+        background-attachment: fixed;
+        background-position: center;
+        transition: filter 0.25s ease;
+      }
+
+      /* Fondo negro: misma textura, pero desaturada y oscurecida hasta
+         quedar casi negra (las "estrellas" que se ven son las que dibuja
+         el canvas #stars encima, ver sisop-sqlconsole.js). */
+      html.bg-negro .desk-bg-layer {
+        filter: grayscale(1) brightness(0.22) contrast(1.3);
+      }
+
       /* iOS: background-attachment: fixed provoca saltos */
       @supports (-webkit-touch-callout: none) {
-        body {
+        .desk-bg-layer {
           background-attachment: scroll;
         }
       }
@@ -185,16 +203,22 @@
         height: 32px;
         object-fit: contain;
         image-rendering: pixelated;
+        /* si no, el navegador deja arrastrar la imagen suelta por su
+           cuenta (drag nativo), en vez del ícono entero (se lleva puesto
+           nuestro drag propio de sisop-desk-icons.js). El atributo
+           draggable="false" en cada <img> cubre Firefox, que ignora esta
+           propiedad. */
+        -webkit-user-drag: none;
       }
       .desk-icon svg,
-      #deskAtendedor img {
+      #deskAtendedor img,
+      #deskGrabadora img {
         image-rendering: auto;
       }
       #deskAtendedor img {
         border-radius: 50%;
         object-fit: cover;
         object-position: 50% 30%;
-        background: var(--white);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
       }
 
@@ -1262,19 +1286,27 @@
         color: #1b1b18;
       }
 
-      /* Botón de apagado (esquina inferior izquierda) */
-      .taskbar .power98 {
+      /* Grupo de botones de sistema (esquina inferior izquierda):
+         Reiniciar / Apagar / Cambiar fondo, en ese orden. */
+      .taskbar .power-group {
         flex-shrink: 0;
         align-self: center;
+        display: flex;
+        gap: 3px;
+        /* Centrado con la columna de iconos del escritorio:
+           borde izq. de la barra (3px) + margen = centro de la columna
+           − mitad del ancho del grupo (3 botones de 34px + 2 gaps de 3px) */
+        margin-left: calc(var(--desk-left) + var(--desk-col) / 2 - 3px - 55px);
+      }
+
+      .taskbar .power98 {
+        flex-shrink: 0;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         width: 34px;
         height: 22px;
         padding: 0;
-        /* Centrado con la columna de iconos del escritorio:
-           borde izq. de la barra (3px) + margen = centro de la columna − 17px */
-        margin-left: calc(var(--desk-left) + var(--desk-col) / 2 - 3px - 17px);
         font: inherit;
         color: #1b1b18;
         background: var(--w98-face);
@@ -1295,18 +1327,25 @@
         transition: color 0.15s;
       }
 
-      /* Hover: el símbolo de encendido toma el rosa de los comentarios SQL */
+      /* Hover: el símbolo toma el rosa de los comentarios SQL */
       .taskbar .power98:hover svg,
       .taskbar .power98:focus-visible svg {
         color: var(--accent);
       }
 
-      .taskbar .power98:active {
+      .taskbar .power98:active,
+      .taskbar .power98.on {
         box-shadow:
           inset 1px 1px 0 0 var(--w98-dkshadow),
           inset -1px -1px 0 0 var(--w98-hilite),
           inset 2px 2px 0 0 var(--w98-shadow),
           inset -2px -2px 0 0 var(--w98-face-lite);
+      }
+
+      /* Fondo negro activo: el botón que lo prendió queda "apretado"
+         y su glifo toma el color del acento celeste. */
+      .taskbar .power98.on svg {
+        color: var(--accent2);
       }
 
       .taskbar .power98:focus-visible {
@@ -2666,11 +2705,143 @@
         height: 32px;
         display: block;
       }
+
+      /* ========================================================================
+         Modo mobile (viewport angosto): cada app ocupa toda la pantalla, con
+         controles agrandados para el dedo en vez del mouse. Mismo breakpoint
+         que usa js/sisop-touch.js (sisopTouch.isMobileMode()) para desactivar
+         el arrastre libre y reemplazar el doble-clic por un tap.
+         ======================================================================== */
+      @media (max-width: 720px) {
+        :root {
+          --taskbar-h: 44px;
+        }
+
+        /* Ventanas de apps y la consola SQL: siempre a pantalla completa, sin
+           arrastre ni resize. Se pisa con !important porque makeWin() y el
+           arrastre ponen left/top/width/height inline — mismo truco que ya
+           usa .w98-game para lo mismo. */
+        .w98win:not(.w98-game),
+        .window#win {
+          position: fixed !important;
+          inset: 0 !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          width: 100vw !important;
+          width: 100dvw !important;
+          height: calc(100vh - var(--taskbar-h)) !important;
+          height: calc(100dvh - var(--taskbar-h)) !important;
+          min-width: 0;
+          min-height: 0;
+          max-width: none;
+          max-height: none;
+          margin: 0 !important;
+        }
+
+        /* Barra de título y sus botones: más altos y con más superficie táctil. */
+        .title-bar {
+          height: 40px;
+          padding: 0 4px 0 8px;
+        }
+        .title-bar .tb-glyph {
+          width: 20px;
+          height: 20px;
+        }
+        .title-bar .tb-glyph svg {
+          width: 18px;
+          height: 18px;
+        }
+        .tb-btn {
+          width: 38px;
+          height: 30px;
+          font-size: 13px;
+        }
+        /* "Maximizar" no tiene sentido: la ventana ya ocupa toda la pantalla. */
+        .tb-btn[data-w="max"],
+        .tb-btn[data-win="max"] {
+          display: none;
+        }
+
+        /* Barra de tareas: botones de sistema y de tareas más grandes.
+           (Con el prefijo ".taskbar" para empatar/ganarle en especificidad
+           a la regla ".taskbar .power98" de base — si no, ésta gana igual
+           aunque la nuestra esté después, porque tiene más clases.) */
+        .taskbar .power98 {
+          width: 40px;
+          height: 34px;
+        }
+        .taskbar .power98 svg {
+          width: 17px;
+          height: 17px;
+        }
+        .task-btn {
+          height: 34px;
+          font-size: 12px;
+        }
+        .task-btn .tb-icon {
+          width: 16px;
+          height: 16px;
+        }
+
+        /* Menús, barra de herramientas y grilla de carpetas: más legibles/tocables. */
+        .menu-bar {
+          font-size: 13px;
+          padding: 4px 3px;
+        }
+        .menu-bar > button {
+          padding: 6px 10px;
+        }
+        .dropdown {
+          font-size: 13px;
+          min-width: 230px;
+        }
+        .dropdown button {
+          padding: 10px 20px 10px 22px;
+        }
+        .btn {
+          padding: 8px 14px;
+          font-size: 12px;
+        }
+        .folder-icon {
+          width: 96px;
+          padding: 9px 4px;
+          font-size: 12px;
+        }
+
+        /* El botón ✕ del Atendedor no puede depender de :hover en touch. */
+        .assistant-close {
+          opacity: 0.85;
+          width: 26px;
+          height: 26px;
+        }
+
+        /* Evita que el navegador muestre su propio menú (copiar/compartir/
+           guardar imagen…) en un long-press, compitiendo con el .ctxmenu
+           propio (ver sisop-user-files.js, que ya clampea posición y hace
+           preventDefault() sobre el contextmenu que el long-press dispara). */
+        .desk-icon,
+        .folder-icon,
+        #desk {
+          -webkit-touch-callout: none;
+        }
+
+        /* Casus Liber (modo juego): la franja superior también se puede
+           tocar para revelar la barra de título, no sólo pasarle el mouse
+           por encima (ver el listener de "click" en makeWin(), sisop-sqlconsole.js). */
+        .w98win.w98-game.tb-open > .title-bar {
+          transform: translateY(0);
+        }
+      }
     </style>
   </head>
 
   <body>
     <script src="js/sisop-boot.js"></script>
+    <script src="js/sisop-touch.js"></script>
+
+    <div class="desk-bg-layer" aria-hidden="true"></div>
 
     <canvas id="stars"></canvas>
 
@@ -2893,7 +3064,7 @@
         title="Doble clic para abrir"
         aria-label="Agus.db — Consola SQL (doble clic para abrir)"
       >
-        <img src="parallax/iconosql.png" alt="" />
+        <img src="parallax/iconosql.png" alt="" draggable="false" />
         <span>Agus.db</span>
       </button>
 
@@ -2904,7 +3075,7 @@
         title="Doble clic para abrir"
         aria-label="Atendedor.ia (doble clic para abrir)"
       >
-        <img src="bot/atendedor1.png" alt="" />
+        <img src="bot/atendedor1.png" alt="" draggable="false" />
         <span>Atendedor.ia</span>
       </button>
 
@@ -2942,37 +3113,13 @@
 
       <button
         class="desk-icon"
+        id="deskGrabadora"
         type="button"
         data-open="grabadora"
         title="Doble clic para abrir"
         aria-label="Grabadora — dejale un mensaje de voz a Agus (doble clic para abrir)"
       >
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <rect
-            x="12"
-            y="4"
-            width="8"
-            height="15"
-            rx="4"
-            fill="#7eb8c9"
-            stroke="#2f4467"
-            stroke-width="1.3"
-          />
-          <path
-            d="M8 15a8 8 0 0 0 16 0"
-            fill="none"
-            stroke="#2f4467"
-            stroke-width="1.6"
-            stroke-linecap="round"
-          />
-          <path
-            d="M16 23v4M12 27h8"
-            stroke="#2f4467"
-            stroke-width="1.6"
-            stroke-linecap="round"
-          />
-          <circle cx="16" cy="9" r="1.5" fill="#f19280" />
-        </svg>
+        <img src="ico/grabadora.png" alt="" draggable="false" />
         <span>Grabadora</span>
       </button>
     </div>
@@ -3170,28 +3317,60 @@ SELECT * FROM Info;</textarea
     <script src="js/sisop-desk-icons.js"></script>
 
     <div class="taskbar" id="taskbar">
-      <button
-        class="power98"
-        type="button"
-        data-act="home"
-        title="Apagar SISOP"
-        aria-label="Apagar y volver al inicio"
-      >
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M12 3.4v8.2"
-            stroke="currentColor"
-            stroke-width="2.4"
-            stroke-linecap="round"
-          />
-          <path
-            d="M6.7 7.3a8 8 0 1 0 10.6 0"
-            stroke="currentColor"
-            stroke-width="2.4"
-            stroke-linecap="round"
-          />
-        </svg>
-      </button>
+      <div class="power-group">
+        <button
+          class="power98"
+          type="button"
+          data-act="restart"
+          title="Reiniciar SISOP"
+          aria-label="Reiniciar SISOP"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
+            />
+          </svg>
+        </button>
+        <button
+          class="power98"
+          type="button"
+          data-act="home"
+          title="Apagar SISOP"
+          aria-label="Apagar y volver al inicio"
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M12 3.4v8.2"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+            />
+            <path
+              d="M6.7 7.3a8 8 0 1 0 10.6 0"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <button
+          class="power98"
+          type="button"
+          id="bgToggleBtn"
+          data-act="toggle-bg"
+          title="Cambiar a fondo negro"
+          aria-label="Cambiar entre fondo azul y fondo negro"
+          aria-pressed="false"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M20.35 15.35A9 9 0 0 1 8.65 3.65 9 9 0 1 0 20.35 15.35z"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
+      </div>
       <span class="tb-sep"></span>
       <div class="tasks" id="tasks">
         <button

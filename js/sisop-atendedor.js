@@ -478,7 +478,7 @@
     });
 
     /* ---------- icono de escritorio ---------- */
-    icon.addEventListener("dblclick", activarDesdeIcono);
+    window.sisopTouch.bindActivate(icon, activarDesdeIcono);
     icon.addEventListener("keydown", function (e) {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();

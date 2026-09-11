@@ -401,6 +401,9 @@
       } catch (_) {}
       if (!moved) return;
       moved = false;
+      // Recién arrastraste el ítem: el "click" que el navegador dispara al
+      // soltar no debe además abrirlo (ver sisopTouch.bindActivate).
+      window.sisopTouch.suppressNextClick(el);
       el.classList.remove("dragging");
       el.style.pointerEvents = "none";
       var elAt = document.elementFromPoint(e.clientX, e.clientY);
@@ -693,7 +696,7 @@
         });
       el.classList.toggle("selected");
     });
-    el.addEventListener("dblclick", function () {
+    window.sisopTouch.bindActivate(el, function () {
       openItem(item);
     });
     el.addEventListener("keydown", function (e) {

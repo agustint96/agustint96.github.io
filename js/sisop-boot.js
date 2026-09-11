@@ -1,5 +1,27 @@
 /* Monitor CRT encendiéndose: pantalla negra + línea que se abre con parpadeo */
 (function () {
+  /* Fondo negro (ver botón "cambiar fondo" en la barra de tareas): se
+     aplica lo antes posible para que no haya un parpadeo azul→negro al
+     cargar la página con la preferencia ya guardada. */
+  try {
+    if (localStorage.getItem("sisop.bg.v1") === "negro") {
+      document.documentElement.classList.add("bg-negro");
+    }
+  } catch (e) {}
+
+  /* El botón "Reiniciar" fuerza el reload agregando "?_r=..." para que el
+     navegador no sirva el HTML desde caché (equivalente a un Ctrl+F5). Ya
+     cumplido su propósito, se saca de la barra de direcciones. */
+  try {
+    if (/[?&]_r=\d+/.test(window.location.search)) {
+      var limpia =
+        window.location.pathname +
+        window.location.search.replace(/[?&]_r=\d+/, "").replace(/^&/, "?") +
+        window.location.hash;
+      window.history.replaceState(null, "", limpia);
+    }
+  } catch (e) {}
+
   var reduce = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
   ).matches;
