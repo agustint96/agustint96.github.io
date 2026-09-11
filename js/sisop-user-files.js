@@ -88,6 +88,7 @@
   }
 
   var itemsById = {};
+  var openFolderRefreshers = {}; // folderId -> función que redibuja su grilla
   function allItems() {
     return Object.keys(itemsById).map(function (k) {
       return itemsById[k];
@@ -240,6 +241,159 @@
   }
 
   // ---------------------------------------------------------------------
+  // Arrastrar y soltar sobre una carpeta (propia): mover el ítem adentro.
+  // ---------------------------------------------------------------------
+  function refreshOpenFolder(folderId) {
+    if (folderId === "root") return; // el escritorio se actualiza aparte
+    var fn = openFolderRefreshers[folderId];
+    if (fn && window.sisopWin && window.sisopWin.isOpen("uf:" + folderId)) fn();
+  }
+
+  // ¿Qué carpeta propia hay debajo de (elAt)? null si no hay ninguna válida
+  // (carpeta curada del portfolio, otro tipo de ítem, o nada).
+  function folderIdFromElement(elAt, exceptId) {
+    if (!elAt) return null;
+    // Encima de un ícono puntual: si es una carpeta propia, esa gana.
+    var iconEl = elAt.closest(
+      ".desk-icon[data-user-item], .folder-icon[data-user-item]",
+    );
+    if (iconEl) {
+      var id = iconEl.getAttribute("data-user-item");
+      if (id !== exceptId) {
+        var it = itemsById[id];
+        if (it && it.type === "folder") return it.id;
+      }
+      // No es una carpeta (ej. cayó sobre un archivo hermano): seguimos
+      // probando si al menos estamos adentro de una ventana-carpeta.
+    }
+    var winEl = elAt.closest('.w98win[data-app^="uf:"]');
+    if (winEl) {
+      var fid = winEl.getAttribute("data-app").slice(3);
+      if (fid !== exceptId) {
+        var it2 = itemsById[fid];
+        if (it2 && it2.type === "folder") return it2.id;
+      }
+    }
+    return null;
+  }
+  // Evita meter una carpeta adentro de sí misma o de su propia descendencia.
+  function isSelfOrDescendant(candidateId, id) {
+    if (candidateId === id) return true;
+    var it = itemsById[candidateId];
+    var guard = 0;
+    while (it && it.parent && it.parent !== "root" && guard++ < 999) {
+      if (it.parent === id) return true;
+      it = itemsById[it.parent];
+    }
+    return false;
+  }
+  function moveItemTo(item, newParentId) {
+    var oldParentId = item.parent;
+    if (oldParentId === newParentId) return;
+    item.parent = newParentId;
+    dbPut(item).then(function () {
+      refreshOpenFolder(oldParentId);
+      refreshOpenFolder(newParentId);
+      if (newParentId === "root") addDeskIconFor(item);
+    });
+  }
+  // Se soltó un ícono del escritorio en (x,y): si cae sobre una carpeta
+  // propia, lo archiva adentro y devuelve true (para que sisop-desk-icons.js
+  // no lo reubique en su grilla). Si no, devuelve false (reubicación normal).
+  function tryDropOnFolder(item, x, y, el) {
+    el.style.pointerEvents = "none";
+    var elAt = document.elementFromPoint(x, y);
+    el.style.pointerEvents = "";
+    var targetFolderId = folderIdFromElement(elAt, item.id);
+    if (!targetFolderId) return false;
+    if (isSelfOrDescendant(targetFolderId, item.id)) return false;
+    if (targetFolderId === item.parent) return false;
+    moveItemTo(item, targetFolderId);
+    if (window.deskIcons) window.deskIcons.remove(el);
+    el.remove();
+    return true;
+  }
+  // Arrastre de un ítem DENTRO de una carpeta abierta: no tiene grilla
+  // propia (la carpeta es un flujo simple, como Juegos/Pags Web), así que
+  // sólo sirve para soltarlo sobre otra carpeta (mover) o sobre el
+  // escritorio (sacarlo de la carpeta). Si no cae en ningún destino válido,
+  // vuelve a su lugar en el flujo.
+  function bindFolderChildDrag(el, item) {
+    var dragging = false,
+      moved = false,
+      sx = 0,
+      sy = 0,
+      startLeft = 0,
+      startTop = 0;
+    el.addEventListener("pointerdown", function (e) {
+      if (e.button != null && e.button !== 0) return;
+      dragging = true;
+      moved = false;
+      sx = e.clientX;
+      sy = e.clientY;
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    });
+    el.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - sx;
+      var dy = e.clientY - sy;
+      if (!moved && Math.abs(dx) + Math.abs(dy) > 3) {
+        moved = true;
+        var r = el.getBoundingClientRect();
+        startLeft = r.left;
+        startTop = r.top;
+        el.style.width = r.width + "px";
+        el.style.position = "fixed";
+        el.style.left = startLeft + "px";
+        el.style.top = startTop + "px";
+        el.style.zIndex = "9998";
+        el.classList.add("dragging");
+      }
+      if (!moved) return;
+      el.style.left = startLeft + dx + "px";
+      el.style.top = startTop + dy + "px";
+    });
+    el.addEventListener("pointerup", function (e) {
+      if (!dragging) return;
+      dragging = false;
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      if (!moved) return;
+      moved = false;
+      el.classList.remove("dragging");
+      el.style.pointerEvents = "none";
+      var elAt = document.elementFromPoint(e.clientX, e.clientY);
+      el.style.pointerEvents = "";
+
+      var targetFolderId = folderIdFromElement(elAt, item.id);
+      if (
+        targetFolderId &&
+        !isSelfOrDescendant(targetFolderId, item.id) &&
+        targetFolderId !== item.parent
+      ) {
+        moveItemTo(item, targetFolderId);
+        el.remove();
+        return;
+      }
+      var onDesk = elAt && elAt.closest && elAt.closest("#desk");
+      if (onDesk && item.parent !== "root") {
+        moveItemTo(item, "root");
+        el.remove();
+        return;
+      }
+      // No hubo destino válido: lo devolvemos al flujo normal de la carpeta.
+      el.style.position = "";
+      el.style.left = "";
+      el.style.top = "";
+      el.style.width = "";
+      el.style.zIndex = "";
+    });
+  }
+
+  // ---------------------------------------------------------------------
   // Crear / renombrar / eliminar
   // ---------------------------------------------------------------------
   function createFolder(parentId, onChange) {
@@ -367,7 +521,7 @@
   // Íconos: uno para el escritorio (.desk-icon) y otro para adentro de una
   // carpeta (.folder-icon, mismo look que Juegos/Pags Web/etc).
   // ---------------------------------------------------------------------
-  function wireItemIcon(el, item, refreshParent) {
+  function wireItemIcon(el, item, refreshParent, draggableInFolder) {
     el.addEventListener("click", function (e) {
       e.stopPropagation();
       document
@@ -395,6 +549,9 @@
         if (refreshParent) refreshParent();
       });
     });
+    // Arrastre: en el escritorio ya lo maneja sisop-desk-icons.js (ver
+    // addDeskIconFor); adentro de una carpeta lo maneja este mismo archivo.
+    if (draggableInFolder) bindFolderChildDrag(el, item);
   }
   function buildDeskIcon(item) {
     var b = document.createElement("button");
@@ -405,7 +562,7 @@
     b.setAttribute("aria-label", item.name + " (doble clic para abrir)");
     b.innerHTML = glyphFor(item) + "<span></span>";
     b.querySelector("span").textContent = item.name;
-    wireItemIcon(b, item, null);
+    wireItemIcon(b, item, null, false);
     if (isImageItem(item)) setThumbnail(b, item);
     return b;
   }
@@ -413,21 +570,27 @@
     var b = document.createElement("button");
     b.type = "button";
     b.className = "folder-icon";
+    b.setAttribute("data-user-item", item.id);
     b.innerHTML =
       '<span class="fi-glyph">' +
       glyphFor(item) +
       '</span><span class="fi-label"></span>';
     b.querySelector(".fi-label").textContent = item.name;
-    wireItemIcon(b, item, refreshParent);
+    wireItemIcon(b, item, refreshParent, true);
     if (isImageItem(item)) setThumbnail(b, item);
     return b;
   }
   function addDeskIconFor(item) {
     var desk = document.getElementById("desk");
     if (!desk) return;
+    if (desk.querySelector('.desk-icon[data-user-item="' + item.id + '"]'))
+      return; // ya tiene ícono (ej. moveItemTo llamado dos veces)
     var el = buildDeskIcon(item);
     desk.appendChild(el);
-    if (window.deskIcons) window.deskIcons.add(el);
+    if (window.deskIcons)
+      window.deskIcons.add(el, undefined, function (x, y) {
+        return tryDropOnFolder(item, x, y, el);
+      });
   }
 
   // ---------------------------------------------------------------------
@@ -460,6 +623,7 @@
         grid.appendChild(buildFolderIcon(it, refresh));
       });
     }
+    openFolderRefreshers[folderId] = refresh;
     refresh();
 
     grid.addEventListener("contextmenu", function (e) {

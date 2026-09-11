@@ -194,6 +194,15 @@
       ic.classList.remove("dragging");
       if (!moved) return;
       moved = false;
+      // Si al soltarlo cae sobre una carpeta propia (sisop-user-files.js lo
+      // decide), ese archivo cambia de dueño: no lo reubicamos en la grilla.
+      if (typeof ic.__deskDropCheck === "function") {
+        var handled = false;
+        try {
+          handled = ic.__deskDropCheck(e.clientX, e.clientY);
+        } catch (_) {}
+        if (handled) return;
+      }
       var cell = cellSize();
       var grid = gridSize(cell);
       var col = Math.round((parseFloat(ic.style.left) || 0) / cell.w);
@@ -209,9 +218,13 @@
 
   /* API para otros scripts (ej. sisop-user-files.js): sumar/sacar iconos
      del escritorio después de la carga inicial (carpetas/notas/archivos que
-     crea el usuario), reusando la misma cuadrícula y el mismo arrastre. */
-  function addIcon(ic, pos) {
+     crea el usuario), reusando la misma cuadrícula y el mismo arrastre.
+     `onDrop(x, y)` es opcional: se consulta ANTES de reubicar en la grilla
+     al soltar; si devuelve true (ej. se soltó sobre una carpeta propia y ya
+     se movió para adentro), no se lo posiciona acá. */
+  function addIcon(ic, pos, onDrop) {
     if (icons.indexOf(ic) !== -1) return;
+    if (typeof onDrop === "function") ic.__deskDropCheck = onDrop;
     icons.push(ic);
     ic.style.position = "absolute";
     var id = iconId(ic);

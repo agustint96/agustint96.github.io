@@ -137,7 +137,9 @@
       }
 
       .desk-icon.dragging {
-        z-index: 2;
+        /* Por encima de cualquier ventana (incluida una carpeta abierta):
+           si lo arrastrás sobre ella tiene que seguir viéndose. */
+        z-index: 9997;
         cursor: grabbing;
         opacity: 0.85;
       }
@@ -491,6 +493,18 @@
         color: var(--w98-seltext);
         outline: 1px dotted var(--w98-seltext);
         outline-offset: -1px;
+      }
+
+      /* Ítems propios (creados por el usuario) adentro de una carpeta: se
+         pueden arrastrar a otra carpeta o de vuelta al escritorio. */
+      .folder-icon[data-user-item] {
+        cursor: grab;
+        touch-action: none;
+      }
+      .folder-icon.dragging {
+        z-index: 9998;
+        opacity: 0.85;
+        cursor: grabbing;
       }
 
       /* Archivo propio: audio (reproductor) y genérico (nombre + descarga) */
