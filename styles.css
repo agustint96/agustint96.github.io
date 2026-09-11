@@ -128,12 +128,6 @@ nav.nav-compact {
 .nav-links li:nth-child(3) a {
   animation-delay: 0.6s;
 }
-.nav-links li:nth-child(4) a {
-  animation-delay: 0.9s;
-}
-.nav-links li:nth-child(5) a {
-  animation-delay: 1.2s;
-}
 @keyframes navFloat {
   0%,
   100% {
