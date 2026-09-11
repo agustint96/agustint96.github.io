@@ -11,12 +11,6 @@ corren en la infra de Cloudflare, **sin API key externa**).
   La cuota resetea a medianoche UTC (21 h de Córdoba).
 - La info de la que se nutre está en `../bot/atendedor-kb.md`. Editás ese archivo,
   `git push`, y el Worker lo toma solo (lo cachea ~1 hora).
-- Los recorridos de colectivos de Córdoba salen de
-  `../bot/data/cordoba_transporte_completo.json`. En cada pregunta el Worker
-  busca la(s) línea(s) que aplican (por número, corredor, calle o barrio) y le
-  inyecta SÓLO esos recorridos al modelo, para que no invente calles. Para
-  actualizar recorridos, editás ese JSON y `git push`. Ver
-  `../bot/data/README_cordoba_lineas.md`.
 
 Archivos:
 - `worker.js` — el código del Worker (lo que importa).
@@ -138,9 +132,6 @@ Editás lo que quieras, `git push`, y a los ~5 minutos el bot ya responde distin
 | `KB_URL` | De dónde lee la ficha. |
 | `MAX_TOKENS` | Largo máximo de cada respuesta. |
 | `MAX_TURNS` | Cuántos mensajes de la charla se mandan como contexto. |
-| `DATA_URL` | Dataset de colectivos de Córdoba. |
-| `COLECTIVOS_MAX_LINEAS` | Cuántas líneas como mucho se le pasan al modelo por pregunta (default 5). Más = respuestas más completas pero menos respuestas/día. |
-| `COLECTIVOS_MAX_CHARS_RECORRIDO` | Cuánto se recorta cada tramo de recorrido (default 700). |
 
 Sólo si tocás `worker.js`: volver a pegarlo en el editor del dashboard y **Deploy**
 (o `wrangler deploy`). El tono NO se toca acá — se toca en la ficha.
