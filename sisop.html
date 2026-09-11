@@ -204,6 +204,9 @@
         object-fit: cover;
         border-radius: 2px;
         image-rendering: auto;
+        /* si no, el navegador deja arrastrar la imagen suelta por su cuenta,
+           en vez del ícono entero (se lleva puesto nuestro drag propio) */
+        -webkit-user-drag: none;
       }
       .folder-icon .fi-glyph img.ufi-thumb {
         width: 30px;

@@ -154,6 +154,7 @@
       var img = document.createElement("img");
       img.className = "ufi-thumb";
       img.alt = "";
+      img.draggable = false; // si no, el navegador arrastra la imagen sola
       img.src = url;
       var old = el.querySelector("svg");
       if (old) old.replaceWith(img);
