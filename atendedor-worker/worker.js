@@ -355,7 +355,7 @@ const STOP = new Set(
     "cuales cuáles se su sus mi mis tu tus me te lo le les al del es esta está estan están hay pasa " +
     "llega llego voy ir hasta desde hacia cerca queda quiero necesito sirve tomar tomo bajo subo " +
     "colectivo colectivos bondi linea línea lineas líneas calle av avenida bv boulevard barrio " +
-    "recorrido trole trolebus trolebús corredor")
+    "recorrido trole trolebus trolebús corredor cordoba córdoba capital")
     .split(/\s+/),
 );
 
