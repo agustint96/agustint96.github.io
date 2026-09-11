@@ -236,12 +236,12 @@
       },
     ]);
   }
-  function showItemMenu(x, y, item, onChange) {
+  function showItemMenu(x, y, item, el, onChange) {
     showMenu(x, y, [
       {
         label: "Renombrar",
         onClick: function () {
-          renameItem(item, onChange);
+          renameItem(item, el, onChange);
         },
       },
       {
@@ -451,6 +451,13 @@
     dbPut(item).then(function () {
       if (parentId === "root") addDeskIconFor(item);
       if (onChange) onChange();
+      // Como en el explorador de Windows: la carpeta recién creada arranca
+      // directo en modo edición de nombre, sin que haga falta abrir
+      // "Renombrar" aparte.
+      requestAnimationFrame(function () {
+        var el = document.querySelector('[data-user-item="' + item.id + '"]');
+        if (el) startInlineRename(el, item);
+      });
     });
   }
   function deriveNoteName(text) {
@@ -520,17 +527,65 @@
     });
     input.click();
   }
-  function renameItem(item, onDone) {
-    var name = prompt("Nuevo nombre:", item.name);
-    if (name === null) return;
-    name = name.trim();
-    if (!name) return;
-    item.name = name;
-    dbPut(item).then(function () {
+  // Edición inline del nombre: reemplaza la etiqueta del ícono por un
+  // <input>, en su mismo lugar (como el explorador de Windows), en vez de
+  // abrir un prompt() aparte. Enter o perder el foco confirma; Escape
+  // cancela y vuelve al nombre anterior.
+  function startInlineRename(el, item, onDone) {
+    var label = el.querySelector(".fi-label, span:last-child");
+    if (!label || el.querySelector(".rename-input")) return;
+    var original = item.name;
+    var input = document.createElement("input");
+    input.type = "text";
+    input.className = "rename-input";
+    input.value = original;
+    input.setAttribute("aria-label", "Nuevo nombre");
+    label.replaceWith(input);
+    input.focus();
+    input.select();
+
+    var settled = false;
+    function finish(newName) {
+      if (settled) return;
+      settled = true;
+      input.replaceWith(label);
+      if (newName && newName !== original) {
+        item.name = newName;
+        label.textContent = newName;
+        dbPut(item).then(function () {
+          if (onDone) onDone();
+        });
+      } else {
+        label.textContent = item.name;
+        if (onDone) onDone();
+      }
+    }
+    input.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        e.preventDefault();
+        finish(input.value.trim());
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        finish(null);
+      }
+    });
+    input.addEventListener("blur", function () {
+      finish(input.value.trim());
+    });
+    ["click", "pointerdown", "dblclick"].forEach(function (evt) {
+      input.addEventListener(evt, function (e) {
+        e.stopPropagation();
+      });
+    });
+  }
+  function renameItem(item, el, onDone) {
+    if (!el) return;
+    startInlineRename(el, item, function () {
       var winEl = document.querySelector(
         '.w98win[data-app="uf:' + item.id + '"] .tb-text',
       );
-      if (winEl) winEl.textContent = name;
+      if (winEl) winEl.textContent = item.name;
       if (onDone) onDone();
     });
   }
@@ -607,12 +662,21 @@
         : 'Eliminar definitivamente "' +
           item.name +
           '"? Esta acción no se puede deshacer.';
-    if (!confirm(msg)) return;
-    hardDeleteCascade(item).then(function () {
-      refreshTrashView();
-      updateTrashIcon();
-      if (onDone) onDone();
-    });
+    window.sisopDialog
+      .confirm({
+        title: "Eliminar definitivamente",
+        message: msg,
+        okLabel: "Eliminar",
+        danger: true,
+      })
+      .then(function (ok) {
+        if (!ok) return;
+        hardDeleteCascade(item).then(function () {
+          refreshTrashView();
+          updateTrashIcon();
+          if (onDone) onDone();
+        });
+      });
   }
 
   // ---------------------------------------------------------------------
@@ -641,12 +705,13 @@
     el.addEventListener("contextmenu", function (e) {
       e.preventDefault();
       e.stopPropagation();
-      var showFn = kind === "trash" ? showTrashItemMenu : showItemMenu;
-      showFn(e.clientX, e.clientY, item, function () {
+      var onChangeCb = function () {
         var label = el.querySelector(".fi-label, span:last-child");
         if (label) label.textContent = item.name;
         if (refreshParent) refreshParent();
-      });
+      };
+      if (kind === "trash") showTrashItemMenu(e.clientX, e.clientY, item, onChangeCb);
+      else showItemMenu(e.clientX, e.clientY, item, el, onChangeCb);
     });
     // Arrastre: en el escritorio ya lo maneja sisop-desk-icons.js (ver
     // addDeskIconFor); adentro de una carpeta lo maneja este mismo archivo.
@@ -918,18 +983,23 @@
     emptyBtn.addEventListener("click", function () {
       var items = trashed();
       if (!items.length) return;
-      if (
-        !confirm(
-          "Eliminar definitivamente " +
+      window.sisopDialog
+        .confirm({
+          title: "Vaciar papelera",
+          message:
+            "Eliminar definitivamente " +
             items.length +
             " elemento(s) de la papelera? Esta acción no se puede deshacer.",
-        )
-      )
-        return;
-      Promise.all(items.map(hardDeleteCascade)).then(function () {
-        refreshTrashView();
-        updateTrashIcon();
-      });
+          okLabel: "Vaciar",
+          danger: true,
+        })
+        .then(function (ok) {
+          if (!ok) return;
+          Promise.all(items.map(hardDeleteCascade)).then(function () {
+            refreshTrashView();
+            updateTrashIcon();
+          });
+        });
     });
     trashRefreshFn = refresh;
     refresh();
@@ -959,18 +1029,23 @@
         {
           label: "Vaciar papelera",
           onClick: function () {
-            if (
-              !confirm(
-                "Eliminar definitivamente " +
+            window.sisopDialog
+              .confirm({
+                title: "Vaciar papelera",
+                message:
+                  "Eliminar definitivamente " +
                   items.length +
                   " elemento(s) de la papelera? Esta acción no se puede deshacer.",
-              )
-            )
-              return;
-            Promise.all(items.map(hardDeleteCascade)).then(function () {
-              refreshTrashView();
-              updateTrashIcon();
-            });
+                okLabel: "Vaciar",
+                danger: true,
+              })
+              .then(function (ok) {
+                if (!ok) return;
+                Promise.all(items.map(hardDeleteCascade)).then(function () {
+                  refreshTrashView();
+                  updateTrashIcon();
+                });
+              });
           },
         },
       ]);

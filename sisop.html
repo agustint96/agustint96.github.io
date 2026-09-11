@@ -498,6 +498,28 @@
         outline-offset: -1px;
       }
 
+      /* Edición inline del nombre (al crear una carpeta o elegir
+         "Renombrar"): un input reemplaza la etiqueta en el mismo lugar, sin
+         abrir ningún cartel aparte — como en el explorador de Windows. */
+      .rename-input {
+        display: block;
+        width: 100%;
+        font: inherit;
+        font-size: 11px;
+        text-align: center;
+        color: #1b1b18;
+        background: var(--w98-field);
+        border: 0;
+        padding: 1px 2px;
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite);
+      }
+      .rename-input:focus {
+        outline: 1px dotted var(--w98-selbg);
+        outline-offset: 1px;
+      }
+
       /* Ítems propios (creados por el usuario) adentro de una carpeta: se
          pueden arrastrar a otra carpeta o de vuelta al escritorio. */
       .folder-icon[data-user-item] {
@@ -1809,7 +1831,21 @@
       .dialog .foot {
         display: flex;
         justify-content: center;
+        gap: 10px;
         padding: 0 14px 14px;
+      }
+
+      /* Diálogos dinámicos (confirmar borrar, vaciar papelera, etc.) que
+         reemplazan a los confirm() nativos del navegador — sisop-dialog.js */
+      .sisop-dialog-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 49;
+        background: rgba(0, 0, 0, 0.35);
+      }
+
+      .sisop-dialog .body p {
+        white-space: pre-wrap;
       }
 
       /* Infotip estilo Windows 98 (texto completo de un campo al hacer hover) */
@@ -3200,6 +3236,7 @@ SELECT * FROM Info;</textarea
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+    <script src="js/sisop-dialog.js"></script>
     <script src="js/sisop-grabadora.js"></script>
     <script src="js/sisop-sqlconsole.js"></script>
     <script src="js/sisop-user-files.js"></script>

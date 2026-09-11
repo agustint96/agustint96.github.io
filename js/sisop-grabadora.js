@@ -458,22 +458,31 @@
         row
           .querySelector(".rec-item-del")
           .addEventListener("click", function () {
-            if (!confirm("¿Borrar este mensaje?")) return;
-            fetch(
-              GRABADORA_API +
-                "/borrar?id=" +
-                encodeURIComponent(m.id) +
-                "&key=" +
-                encodeURIComponent(pin),
-              { method: "POST" },
-            )
-              .then(function () {
-                row.remove();
-                if (!listEl.children.length)
-                  listEl.innerHTML =
-                    '<div class="rec-empty">Todavía no hay mensajes.</div>';
+            window.sisopDialog
+              .confirm({
+                title: "Borrar mensaje",
+                message: "¿Borrar este mensaje?",
+                okLabel: "Borrar",
+                danger: true,
               })
-              .catch(function () {});
+              .then(function (ok) {
+                if (!ok) return;
+                fetch(
+                  GRABADORA_API +
+                    "/borrar?id=" +
+                    encodeURIComponent(m.id) +
+                    "&key=" +
+                    encodeURIComponent(pin),
+                  { method: "POST" },
+                )
+                  .then(function () {
+                    row.remove();
+                    if (!listEl.children.length)
+                      listEl.innerHTML =
+                        '<div class="rec-empty">Todavía no hay mensajes.</div>';
+                  })
+                  .catch(function () {});
+              });
           });
         listEl.appendChild(row);
       });

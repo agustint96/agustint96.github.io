@@ -735,32 +735,41 @@
         );
         return;
       }
-      if (
-        !window.confirm(
-          "¿Restaurar la base «Agus»? Se reemplaza todo por el esquema original.",
-        )
-      )
-        return;
-      freshDb();
-      applySeed();
-      saveDb();
-      saveSeedVersion();
-      refreshSchema();
-      renderMessage("Base «Agus» restaurada desde el esquema.", "ok");
-      resetCounters();
+      window.sisopDialog
+        .confirm({
+          title: "Restaurar base Agus",
+          message:
+            "¿Restaurar la base «Agus»? Se reemplaza todo por el esquema original.",
+          okLabel: "Restaurar",
+          danger: true,
+        })
+        .then(function (ok) {
+          if (!ok) return;
+          freshDb();
+          applySeed();
+          saveDb();
+          saveSeedVersion();
+          refreshSchema();
+          renderMessage("Base «Agus» restaurada desde el esquema.", "ok");
+          resetCounters();
+        });
     },
     "reset-db": function () {
-      if (
-        !window.confirm(
-          "¿Vaciar la base? Se borran todas las tablas y filas.",
-        )
-      )
-        return;
-      freshDb();
-      saveSeedVersion();
-      refreshSchema();
-      renderMessage("Base vacía. Lienzo en blanco.", "ok");
-      resetCounters();
+      window.sisopDialog
+        .confirm({
+          title: "Vaciar base",
+          message: "¿Vaciar la base? Se borran todas las tablas y filas.",
+          okLabel: "Vaciar",
+          danger: true,
+        })
+        .then(function (ok) {
+          if (!ok) return;
+          freshDb();
+          saveSeedVersion();
+          refreshSchema();
+          renderMessage("Base vacía. Lienzo en blanco.", "ok");
+          resetCounters();
+        });
     },
     home: function () {
       var htmlEl = document.documentElement;
