@@ -95,6 +95,26 @@ curl -X POST https://atendedor-ia.TU-SUBDOMINIO.workers.dev \
 
 Debería devolver `{"reply":"..."}`.
 
+### ¿Se agotó la cuota del día? — `GET /status`
+
+```bash
+curl https://atendedor-ia.TU-SUBDOMINIO.workers.dev/status
+```
+
+Hace una inferencia mínima (1 token, gasto ~nulo) y devuelve:
+
+```json
+{ "ts": "2026-09-11T00:30:00.000Z", "ok": true,  "cuota": "disponible" }
+{ "ts": "2026-09-11T00:06:00.000Z", "ok": false, "cuota": "agotada", "detail": "4006: ..." }
+```
+
+(La raíz `/` no toca la IA, sólo `GET /status` hace la sonda.)
+
+Sirve para chequear "¿ya volvió?" sin gastar una conversación real. La cuota
+gratis resetea a las 00:00 UTC (21 h Córdoba), pero la contabilidad de Cloudflare
+tarda un rato en reflejarlo: si a las 21:05 sigue `agotada`, probá de nuevo en
+15–45 min.
+
 ---
 
 ## Editar qué sabe y CÓMO habla el bot

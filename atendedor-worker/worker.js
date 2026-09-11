@@ -76,6 +76,22 @@ export default {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors });
     }
+
+    // GET /status: sonda de cuota. Hace una inferencia mínima (1 token, gasto
+    // ~nulo) y responde si Workers AI está disponible o si se agotó la cuota
+    // gratis del día. Sirve para chequear "¿ya volvió?" sin gastar una
+    // conversación real, o para que la página lo pinguee y reviva el atendedor
+    // sola cuando la cuota se resetea (00:00 UTC = 21 h Córdoba, con lag).
+    // GET / sólo describe el servicio (no toca la IA: la raíz la golpean bots).
+    if (request.method === "GET") {
+      const path = new URL(request.url).pathname;
+      if (path === "/status") return sondaCuota(env, cors);
+      if (path === "/") {
+        return json({ service: "atendedor-ia", status_endpoint: "/status" }, 200, cors);
+      }
+      return json({ error: "not_found" }, 404, cors);
+    }
+
     if (request.method !== "POST") {
       return json({ error: "method_not_allowed" }, 405, cors);
     }
@@ -162,7 +178,7 @@ export default {
         lastDetail = String((err && (err.message || err.name)) || err || "error desconocido");
         console.error("AI.run falló:", model, "|", lastDetail, "| system_chars:", system.length);
         // Cuota diaria agotada: probar otro modelo no ayuda (la cuota es de la cuenta).
-        if (/\b4006\b|daily free allocation|out of neurons|neurons/i.test(lastDetail)) {
+        if (esErrorDeCuota(lastDetail)) {
           sinCuota = true;
           break;
         }
@@ -209,11 +225,38 @@ function corsHeaders(origin) {
   const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };
+}
+
+// ¿El error de Workers AI es por haber agotado la cuota gratis del día (4006)?
+// Si es eso, probar otro modelo no sirve: la cuota (10.000 neuronas/día) es de
+// la cuenta, no del modelo.
+function esErrorDeCuota(detail) {
+  return /\b4006\b|daily free allocation|out of neurons|neurons/i.test(String(detail || ""));
+}
+
+// Sonda de cuota para GET /status. Una inferencia de 1 token (gasto ~nulo) sólo
+// para saber si Workers AI responde o si se agotó la cuota gratis del día.
+async function sondaCuota(env, cors) {
+  const base = { ts: new Date().toISOString() };
+  if (!env.AI || typeof env.AI.run !== "function") {
+    return json({ ...base, ok: false, cuota: "desconocida", detail: "ai_binding_missing" }, 200, cors);
+  }
+  try {
+    await env.AI.run(MODELS[0], { messages: [{ role: "user", content: "ping" }], max_tokens: 1 });
+    return json({ ...base, ok: true, cuota: "disponible" }, 200, cors);
+  } catch (err) {
+    const detail = String((err && (err.message || err.name)) || err || "error desconocido");
+    if (esErrorDeCuota(detail)) {
+      return json({ ...base, ok: false, cuota: "agotada", detail }, 200, cors);
+    }
+    // Falló por otra cosa (modelo saturado/caído): la cuota puede estar OK.
+    return json({ ...base, ok: false, cuota: "disponible", detail }, 200, cors);
+  }
 }
 
 function json(obj, status, cors) {
@@ -351,7 +394,14 @@ function buscarColectivos(consultaRaw, data) {
   const hayReferenciaDeLinea = refs.size > 0;
   const hayMatchFuerte = tieneKw && topScore >= 1;
   const hayMatchMuyFuerte = topScore >= 2;
-  if (!hayReferenciaDeLinea && !hayMatchFuerte && !hayMatchMuyFuerte) return "";
+  if (!hayReferenciaDeLinea && !hayMatchFuerte && !hayMatchMuyFuerte) {
+    // Pregunta claramente de transporte ("qué colectivos hay", "contame de
+    // las líneas") pero sin línea ni calle puntual para matchear: en vez de
+    // devolver nada (y que el bot niegue tener cualquier dato), mandamos un
+    // listado liviano de nombres de línea —sin recorridos— para que pueda
+    // orientar y pedir que precisen una línea.
+    return tieneKw ? listadoLineas(data) : "";
+  }
 
   // Si nombraron líneas puntuales, devolvemos SÓLO esas (predecible). Si no,
   // devolvemos el top del ranking por calles/barrios.
@@ -385,6 +435,27 @@ function buscarColectivos(consultaRaw, data) {
     "IMPORTANTE: esto es lo único que sabés de recorridos. Si te preguntan por otra línea, decí que no la tenés y mandá a la app TuBondi o a la Municipalidad de Córdoba. Datos aproximados (snapshot de Wikipedia), las empresas y recorridos cambian seguido.",
   );
   return partes.join("\n\n");
+}
+
+// Listado liviano (sólo nombres, sin recorridos) para preguntas genéricas de
+// transporte que no matchean ninguna línea/calle puntual.
+function listadoLineas(data) {
+  const urbanas = data.lineas.filter((r) => r._tipo === "colectivo").map((r) => r.linea);
+  const troles = data.lineas.filter((r) => r._tipo === "trolebús").map((r) => r.linea);
+  const interu = data.interurbano.map((r) => r.empresa).filter(Boolean);
+
+  const partes = [];
+  if (urbanas.length) partes.push("Líneas urbanas (diésel): " + urbanas.join(", "));
+  if (troles.length) partes.push("Trolebuses: " + troles.join(", "));
+  if (interu.length) partes.push("Interurbano (Gran Córdoba), empresas: " + interu.join(", "));
+  if (!partes.length) return "";
+
+  partes.push(
+    "Esto es SÓLO el listado de líneas que tenés cargadas, no los recorridos. Si preguntan " +
+      "cuáles hay, listalas así, cortante. Si preguntan por una línea puntual, ahí no inventes " +
+      "calles: decí que para el recorrido exacto que te pregunten la línea por su número.",
+  );
+  return partes.join("\n");
 }
 
 // Detecta menciones a un número/código de línea ("la 21", "línea 60", "B26", "trole A").
