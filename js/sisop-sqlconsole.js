@@ -1092,9 +1092,8 @@
       cv: {
         title: "CV_Agustin_Tardella.pdf",
         icon: "pdf",
-        type: "pdf",
+        type: "iframe",
         url: "CV_Agustin_Tardella.pdf",
-        linkUrl: "CV_Agustin_Tardella.pdf",
         w: SITE_W,
         h: SITE_H,
       },
@@ -1513,34 +1512,6 @@
         });
     }
 
-    function buildPdf(cfg, bd) {
-      var wrap = document.createElement("div");
-      wrap.className = "w98-pdf";
-      var bar = document.createElement("div");
-      bar.className = "w98-pdf-bar";
-      var dl = document.createElement("a");
-      dl.className = "btn primary";
-      dl.href = cfg.url;
-      dl.download = cfg.title || "";
-      dl.textContent = "Descargar CV";
-      bar.appendChild(dl);
-      wrap.appendChild(bar);
-
-      var f = document.createElement("iframe");
-      f.src = cfg.url;
-      f.title = cfg.title;
-      var load = document.createElement("div");
-      load.className = "w98-loading";
-      load.textContent = "Cargando…";
-      f.addEventListener("load", function () {
-        load.remove();
-      });
-      wrap.appendChild(f);
-      wrap.appendChild(load);
-
-      bd.appendChild(wrap);
-    }
-
     function buildImage(cfg, bd) {
       var v = document.createElement("div");
       v.className = "w98-imgview";
@@ -1625,8 +1596,7 @@
 
       var linkHref = cfg.linkUrl || cfg.url;
       var linkable =
-        !!linkHref &&
-        (cfg.type === "iframe" || cfg.type === "image" || cfg.type === "pdf");
+        !!linkHref && (cfg.type === "iframe" || cfg.type === "image");
       var tb = document.createElement("div");
       tb.className = "title-bar";
       tb.innerHTML =
@@ -1669,7 +1639,6 @@
       else if (cfg.type === "folder") buildFolder(cfg, bd);
       else if (cfg.type === "photos") buildPhotos(bd);
       else if (cfg.type === "image") buildImage(cfg, bd);
-      else if (cfg.type === "pdf") buildPdf(cfg, bd);
       else if (cfg.type === "notes") buildNotes(cfg, bd);
       else if (cfg.type === "recorder" && window.buildGrabadora)
         window.buildGrabadora(cfg, bd);
