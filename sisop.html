@@ -100,24 +100,26 @@
         z-index: 0;
       }
 
-      /* ---------- Iconos de escritorio ---------- */
+      /* ---------- Iconos de escritorio ----------
+         Cada .desk-icon se posiciona con position:absolute (left/top en
+         píxeles, calculados por js/sisop-desk-icons.js) sobre una cuadrícula
+         de celdas fijas. El contenedor .desk sólo define el área disponible
+         (entre el borde superior y la barra de tareas): al achicar la
+         ventana esa área cambia y los iconos que quedan afuera se
+         reacomodan a la celda libre más cercana. */
       .desk {
         position: fixed;
         top: 44px;
         left: var(--desk-left);
-        /* Alto acotado entre el borde superior y la barra de tareas: al
-           achicar la ventana los iconos se reacomodan en columnas nuevas. */
+        right: var(--desk-left);
         bottom: calc(var(--taskbar-h) + 8px);
-        max-width: calc(100vw - 2 * var(--desk-left));
         z-index: 1;
-        display: flex;
-        flex-direction: column;
-        flex-wrap: wrap;
-        align-content: flex-start;
-        gap: 10px 6px;
       }
 
       .desk-icon {
+        position: absolute;
+        left: 0;
+        top: 0;
         width: var(--desk-col);
         display: flex;
         flex-direction: column;
@@ -126,11 +128,18 @@
         padding: 6px 4px;
         background: transparent;
         border: 0;
-        cursor: pointer;
+        cursor: grab;
+        touch-action: none;
         font-family: "DM Mono", monospace;
         color: var(--white);
         -webkit-user-select: none;
         user-select: none;
+      }
+
+      .desk-icon.dragging {
+        z-index: 2;
+        cursor: grabbing;
+        opacity: 0.85;
       }
 
       .desk-icon img,
@@ -2954,6 +2963,7 @@ SELECT * FROM Info;</textarea
     </div>
 
     <script src="js/sisop-atendedor.js"></script>
+    <script src="js/sisop-desk-icons.js"></script>
 
     <div class="taskbar" id="taskbar">
       <button
