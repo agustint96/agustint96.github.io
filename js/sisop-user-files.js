@@ -89,6 +89,7 @@
 
   var itemsById = {};
   var openFolderRefreshers = {}; // folderId -> función que redibuja su grilla
+  var trashRefreshFn = null; // refresca la grilla de la Papelera si está abierta
   function allItems() {
     return Object.keys(itemsById).map(function (k) {
       return itemsById[k];
@@ -134,6 +135,17 @@
       '<rect x="3" y="6" width="26" height="20" rx="1.5" fill="#f0ece4" stroke="#2f4467" stroke-width="1.3"/>' +
       '<circle cx="11" cy="13" r="2.6" fill="#f19280"/>' +
       '<path d="M5 24l7-8 5 5 4-3 6 6z" fill="#7eb8c9"/></svg>',
+    trashEmpty:
+      '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+      '<path d="M9 10h14l-1.3 15.6a1.6 1.6 0 0 1-1.6 1.4H11.9a1.6 1.6 0 0 1-1.6-1.4z" fill="#e3e6ea" stroke="#454f59" stroke-width="1.2"/>' +
+      '<path d="M13.4 13.5v10M16 13.5v10M18.6 13.5v10" stroke="#454f59" stroke-width="1.1" stroke-linecap="round" opacity="0.55"/>' +
+      '<path d="M12.5 5.5h7l.9 2.5H23v2H9v-2h4.6z" fill="#c9ced4" stroke="#454f59" stroke-width="1.2"/></svg>',
+    trashFull:
+      '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+      '<path d="M9 10h14l-1.3 15.6a1.6 1.6 0 0 1-1.6 1.4H11.9a1.6 1.6 0 0 1-1.6-1.4z" fill="#e3e6ea" stroke="#454f59" stroke-width="1.2"/>' +
+      '<path d="M13.4 13.5v10M16 13.5v10M18.6 13.5v10" stroke="#454f59" stroke-width="1.1" stroke-linecap="round" opacity="0.55"/>' +
+      '<path d="M11.5 6.8l1.6 3.6 2-3 1.6 3.4 2.2-3 1.4 3.4 2-2.8" fill="none" stroke="#f19280" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M12.5 5.5h7l.9 2.5H23v2H9v-2h4.6z" fill="#c9ced4" stroke="#454f59" stroke-width="1.2"/></svg>',
   };
   function glyphFor(item) {
     if (item.type === "folder") return SVG.folder;
@@ -235,7 +247,23 @@
       {
         label: "Eliminar",
         onClick: function () {
-          deleteItem(item, onChange);
+          trashItem(item, onChange);
+        },
+      },
+    ]);
+  }
+  function showTrashItemMenu(x, y, item, onChange) {
+    showMenu(x, y, [
+      {
+        label: "Restaurar",
+        onClick: function () {
+          restoreItem(item, onChange);
+        },
+      },
+      {
+        label: "Eliminar definitivamente",
+        onClick: function () {
+          permanentDelete(item, onChange);
         },
       },
     ]);
@@ -248,6 +276,11 @@
     if (folderId === "root") return; // el escritorio se actualiza aparte
     var fn = openFolderRefreshers[folderId];
     if (fn && window.sisopWin && window.sisopWin.isOpen("uf:" + folderId)) fn();
+  }
+
+  // ¿Se soltó encima de la Papelera de reciclaje?
+  function isTrashDropTarget(elAt) {
+    return !!(elAt && elAt.closest && elAt.closest("[data-trash-drop]"));
   }
 
   // ¿Qué carpeta propia hay debajo de (elAt)? null si no hay ninguna válida
@@ -305,6 +338,10 @@
     el.style.pointerEvents = "none";
     var elAt = document.elementFromPoint(x, y);
     el.style.pointerEvents = "";
+    if (isTrashDropTarget(elAt)) {
+      trashItem(item);
+      return true;
+    }
     var targetFolderId = folderIdFromElement(elAt, item.id);
     if (!targetFolderId) return false;
     if (isSelfOrDescendant(targetFolderId, item.id)) return false;
@@ -369,6 +406,11 @@
       var elAt = document.elementFromPoint(e.clientX, e.clientY);
       el.style.pointerEvents = "";
 
+      if (isTrashDropTarget(elAt)) {
+        trashItem(item);
+        el.remove();
+        return;
+      }
       var targetFolderId = folderIdFromElement(elAt, item.id);
       if (
         targetFolderId &&
@@ -499,21 +541,50 @@
     });
     return result;
   }
-  function deleteItem(item, onDone) {
-    var msg =
-      item.type === "folder"
-        ? 'Eliminar "' + item.name + '" y todo lo que tiene adentro?'
-        : 'Eliminar "' + item.name + '"?';
-    if (!confirm(msg)) return;
+  // "Eliminar" ya no borra directo: manda a la Papelera (se puede
+  // restaurar). El borrado real queda para "Eliminar definitivamente"
+  // desde adentro de la Papelera, o "Vaciar papelera".
+  function trashItem(item, onDone) {
+    item.trashed = true;
+    dbPut(item).then(function () {
+      if (item.parent === "root") {
+        var el = document.querySelector(
+          '.desk-icon[data-user-item="' + item.id + '"]',
+        );
+        if (el) {
+          if (window.deskIcons) window.deskIcons.remove(el);
+          el.remove();
+        }
+      }
+      refreshOpenFolder(item.parent);
+      closeNotePostitIfOpen(item);
+      refreshTrashView();
+      updateTrashIcon();
+      if (onDone) onDone();
+    });
+  }
+  function restoreItem(item, onDone) {
+    item.trashed = false;
+    dbPut(item).then(function () {
+      if (item.parent === "root") addDeskIconFor(item);
+      refreshOpenFolder(item.parent);
+      refreshTrashView();
+      updateTrashIcon();
+      if (onDone) onDone();
+    });
+  }
+  function hardDeleteCascade(item) {
     var ids = collectWithDescendants(item.id);
-    Promise.all(
+    return Promise.all(
       ids.map(function (id) {
         return dbDelete(id);
       }),
     ).then(function () {
       ids.forEach(function (id) {
+        var it = itemsById[id];
         if (window.sisopWin && window.sisopWin.isOpen("uf:" + id))
           window.sisopWin.close("uf:" + id);
+        closeNotePostitIfOpen(it);
         delete itemsById[id];
       });
       if (item.parent === "root") {
@@ -525,6 +596,21 @@
           el.remove();
         }
       }
+    });
+  }
+  function permanentDelete(item, onDone) {
+    var msg =
+      item.type === "folder"
+        ? 'Eliminar definitivamente "' +
+          item.name +
+          '" y todo lo que tiene adentro? Esta acción no se puede deshacer.'
+        : 'Eliminar definitivamente "' +
+          item.name +
+          '"? Esta acción no se puede deshacer.';
+    if (!confirm(msg)) return;
+    hardDeleteCascade(item).then(function () {
+      refreshTrashView();
+      updateTrashIcon();
       if (onDone) onDone();
     });
   }
@@ -533,7 +619,7 @@
   // Íconos: uno para el escritorio (.desk-icon) y otro para adentro de una
   // carpeta (.folder-icon, mismo look que Juegos/Pags Web/etc).
   // ---------------------------------------------------------------------
-  function wireItemIcon(el, item, refreshParent, draggableInFolder) {
+  function wireItemIcon(el, item, refreshParent, draggableInFolder, kind) {
     el.addEventListener("click", function (e) {
       e.stopPropagation();
       document
@@ -555,7 +641,8 @@
     el.addEventListener("contextmenu", function (e) {
       e.preventDefault();
       e.stopPropagation();
-      showItemMenu(e.clientX, e.clientY, item, function () {
+      var showFn = kind === "trash" ? showTrashItemMenu : showItemMenu;
+      showFn(e.clientX, e.clientY, item, function () {
         var label = el.querySelector(".fi-label, span:last-child");
         if (label) label.textContent = item.name;
         if (refreshParent) refreshParent();
@@ -563,6 +650,8 @@
     });
     // Arrastre: en el escritorio ya lo maneja sisop-desk-icons.js (ver
     // addDeskIconFor); adentro de una carpeta lo maneja este mismo archivo.
+    // (No aplica adentro de la Papelera: ahí se restaura o se borra desde
+    // el menú, no se arrastra.)
     if (draggableInFolder) bindFolderChildDrag(el, item);
   }
   function buildDeskIcon(item) {
@@ -578,7 +667,7 @@
     if (isImageItem(item)) setThumbnail(b, item);
     return b;
   }
-  function buildFolderIcon(item, refreshParent) {
+  function buildFolderIcon(item, refreshParent, kind) {
     var b = document.createElement("button");
     b.type = "button";
     b.className = "folder-icon";
@@ -588,7 +677,7 @@
       glyphFor(item) +
       '</span><span class="fi-label"></span>';
     b.querySelector(".fi-label").textContent = item.name;
-    wireItemIcon(b, item, refreshParent, true);
+    wireItemIcon(b, item, refreshParent, kind !== "trash", kind);
     if (isImageItem(item)) setThumbnail(b, item);
     return b;
   }
@@ -622,7 +711,7 @@
     function refresh() {
       grid.innerHTML = "";
       var children = allItems().filter(function (it) {
-        return it.parent === folderId;
+        return it.parent === folderId && !it.trashed;
       });
       if (!children.length) {
         var empty = document.createElement("div");
@@ -659,39 +748,51 @@
     });
     window.sisopWin.open(appId);
   }
+  // Una nota guardada abre exactamente el mismo papelito post-it que uno
+  // descartable (misma estética, mismo arrastre/tiro/resize) vía
+  // window.sisopPostit — ver sisop-sqlconsole.js. La única diferencia es
+  // que tiene un ícono propio: cerrarlo (✕) no lo borra, sólo lo saca de
+  // la vista; el ícono deja volver a abrirlo. Si lo vaciás de texto y le
+  // sacás el foco sí se descarta (igual que uno descartable).
   function openNote(item) {
-    var appId = "uf:" + item.id;
-    window.sisopWin.registerApp(appId, {
-      title: item.name,
-      iconHtml: SVG.note,
-      type: "custom",
-      w: 280,
-      h: 260,
-      transient: true,
-      render: function (bd) {
-        var wrap = document.createElement("div");
-        wrap.className = "notes-app";
-        var ta = document.createElement("textarea");
-        ta.spellcheck = false;
-        ta.setAttribute("autocomplete", "off");
-        ta.placeholder = "Escribí algo…";
-        ta.value = item.text || "";
-        wrap.appendChild(ta);
-        bd.appendChild(wrap);
-        var saveTimer = null;
-        ta.addEventListener("input", function () {
-          clearTimeout(saveTimer);
-          saveTimer = setTimeout(function () {
-            item.text = ta.value;
-            dbPut(item);
-          }, 400);
+    if (!window.sisopPostit) return;
+    window.sisopPostit.open(item.id, {
+      text: item.text || "",
+      x: typeof item.x === "number" ? item.x : undefined,
+      y: typeof item.y === "number" ? item.y : undefined,
+      rot: typeof item.rot === "number" ? item.rot : undefined,
+      w: typeof item.w === "number" ? item.w : undefined,
+      h: typeof item.h === "number" ? item.h : undefined,
+      onUpdate: function (snap) {
+        item.text = snap.text;
+        item.x = snap.x;
+        item.y = snap.y;
+        item.rot = snap.rot;
+        item.w = snap.w;
+        item.h = snap.h;
+        dbPut(item);
+      },
+      onClose: function (emptied) {
+        if (!emptied) return;
+        hardDeleteCascade(item).then(function () {
+          refreshTrashView();
+          updateTrashIcon();
         });
-        setTimeout(function () {
-          ta.focus();
-        }, 30);
       },
     });
-    window.sisopWin.open(appId);
+  }
+  // Si el ítem (o alguno de sus descendientes, al borrar una carpeta) es
+  // una nota abierta como papelito, hay que cerrarlo: no puede quedar
+  // flotando en pantalla un post-it de datos que ya no existen.
+  function closeNotePostitIfOpen(item) {
+    if (
+      item &&
+      item.type === "note" &&
+      window.sisopPostit &&
+      window.sisopPostit.isOpen(item.id)
+    ) {
+      window.sisopPostit.close(item.id);
+    }
   }
   function openFile(item) {
     var appId = "uf:" + item.id;
@@ -750,6 +851,132 @@
     window.sisopWin.open(appId);
   }
 
+  // ---------------------------------------------------------------------
+  // Papelera de reciclaje: lista todo lo marcado trashed=true (sin
+  // importar en qué carpeta esté), con "Restaurar" / "Eliminar
+  // definitivamente" por ítem y "Vaciar papelera" para todo junto. Abrir
+  // una carpeta eliminada desde acá sigue funcionando (openItem no mira
+  // trashed): sirve para ver qué tenía adentro antes de decidir.
+  // ---------------------------------------------------------------------
+  function refreshTrashView() {
+    if (trashRefreshFn && window.sisopWin && window.sisopWin.isOpen("papelera"))
+      trashRefreshFn();
+  }
+  function updateTrashIcon() {
+    var btn = document.getElementById("deskPapelera");
+    if (!btn) return;
+    var hasTrash = allItems().some(function (it) {
+      return it.trashed;
+    });
+    var svgEl = btn.querySelector("svg");
+    if (svgEl) svgEl.outerHTML = hasTrash ? SVG.trashFull : SVG.trashEmpty;
+    btn.setAttribute(
+      "aria-label",
+      hasTrash
+        ? "Papelera de reciclaje, con elementos (doble clic para abrir)"
+        : "Papelera de reciclaje, vacía (doble clic para abrir)",
+    );
+  }
+  function renderTrashBody(bd) {
+    var wrap = document.createElement("div");
+    wrap.className = "uf-trash";
+    bd.appendChild(wrap);
+
+    var toolbar = document.createElement("div");
+    toolbar.className = "toolbar";
+    var emptyBtn = document.createElement("button");
+    emptyBtn.type = "button";
+    emptyBtn.className = "btn";
+    emptyBtn.textContent = "Vaciar papelera";
+    toolbar.appendChild(emptyBtn);
+    wrap.appendChild(toolbar);
+
+    var grid = document.createElement("div");
+    grid.className = "w98-folder";
+    wrap.appendChild(grid);
+
+    function trashed() {
+      return allItems().filter(function (it) {
+        return it.trashed;
+      });
+    }
+    function refresh() {
+      var items = trashed();
+      emptyBtn.disabled = !items.length;
+      grid.innerHTML = "";
+      if (!items.length) {
+        var empty = document.createElement("div");
+        empty.className = "w98-empty";
+        empty.textContent = "La papelera está vacía.";
+        grid.appendChild(empty);
+        return;
+      }
+      items.forEach(function (it) {
+        grid.appendChild(buildFolderIcon(it, refresh, "trash"));
+      });
+    }
+    emptyBtn.addEventListener("click", function () {
+      var items = trashed();
+      if (!items.length) return;
+      if (
+        !confirm(
+          "Eliminar definitivamente " +
+            items.length +
+            " elemento(s) de la papelera? Esta acción no se puede deshacer.",
+        )
+      )
+        return;
+      Promise.all(items.map(hardDeleteCascade)).then(function () {
+        refreshTrashView();
+        updateTrashIcon();
+      });
+    });
+    trashRefreshFn = refresh;
+    refresh();
+  }
+  function registerTrashApp() {
+    if (!window.sisopWin) return;
+    window.sisopWin.registerApp("papelera", {
+      title: "Papelera de reciclaje",
+      iconHtml: SVG.trashEmpty,
+      type: "custom",
+      w: 460,
+      h: 340,
+      render: renderTrashBody,
+    });
+  }
+  function wireTrashDeskIcon() {
+    var btn = document.getElementById("deskPapelera");
+    if (!btn) return;
+    btn.addEventListener("contextmenu", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var items = allItems().filter(function (it) {
+        return it.trashed;
+      });
+      if (!items.length) return;
+      showMenu(e.clientX, e.clientY, [
+        {
+          label: "Vaciar papelera",
+          onClick: function () {
+            if (
+              !confirm(
+                "Eliminar definitivamente " +
+                  items.length +
+                  " elemento(s) de la papelera? Esta acción no se puede deshacer.",
+              )
+            )
+              return;
+            Promise.all(items.map(hardDeleteCascade)).then(function () {
+              refreshTrashView();
+              updateTrashIcon();
+            });
+          },
+        },
+      ]);
+    });
+  }
+
   /* API para otros scripts (ej. la app «Notas» clásica, en
      sisop-sqlconsole.js): guardar una nota archivada —con ícono propio,
      reabrible— desde afuera de este archivo. Siempre al escritorio (esa
@@ -772,6 +999,8 @@
         showCreateMenu(e.clientX, e.clientY, "root", null);
       });
     }
+    registerTrashApp();
+    wireTrashDeskIcon();
     dbGetAll()
       .then(function (items) {
         items.forEach(function (it) {
@@ -779,9 +1008,10 @@
         });
         items
           .filter(function (it) {
-            return it.parent === "root";
+            return it.parent === "root" && !it.trashed;
           })
           .forEach(addDeskIconFor);
+        updateTrashIcon();
       })
       .catch(function () {
         /* IndexedDB no disponible: el menú de crear sigue funcionando en la

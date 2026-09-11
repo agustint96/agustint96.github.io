@@ -539,6 +539,20 @@
         width: 100%;
       }
 
+      /* Ventana de la Papelera: barra de "Vaciar papelera" arriba, grilla
+         de ítems eliminados abajo (el w98-body de las ventanas custom es
+         flex en fila por defecto; esto lo pasa a columna). */
+      .uf-trash {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
+      .uf-trash .w98-folder {
+        flex: 1;
+        min-height: 0;
+      }
+
       /* Visor de fotos */
       .w98-photos {
         flex: 1;
@@ -2627,38 +2641,86 @@
     <div class="desk" id="desk">
       <button
         class="desk-icon"
-        id="deskIcon"
+        id="deskPapelera"
         type="button"
+        data-open="papelera"
+        data-trash-drop="1"
         title="Doble clic para abrir"
-        aria-label="Agus.db — Consola SQL (doble clic para abrir)"
+        aria-label="Papelera de reciclaje, vacía (doble clic para abrir)"
       >
-        <img src="parallax/iconosql.png" alt="" />
-        <span>Agus.db</span>
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path
+            d="M9 10h14l-1.3 15.6a1.6 1.6 0 0 1-1.6 1.4H11.9a1.6 1.6 0 0 1-1.6-1.4z"
+            fill="#e3e6ea"
+            stroke="#454f59"
+            stroke-width="1.2"
+          />
+          <path
+            d="M13.4 13.5v10M16 13.5v10M18.6 13.5v10"
+            stroke="#454f59"
+            stroke-width="1.1"
+            stroke-linecap="round"
+            opacity="0.55"
+          />
+          <path
+            d="M12.5 5.5h7l.9 2.5H23v2H9v-2h4.6z"
+            fill="#c9ced4"
+            stroke="#454f59"
+            stroke-width="1.2"
+          />
+        </svg>
+        <span>Papelera</span>
       </button>
 
       <button
         class="desk-icon"
         type="button"
-        data-open="cv"
+        data-open="pagsweb"
         title="Doble clic para abrir"
-        aria-label="CV de Agus — ver o descargar (doble clic para abrir)"
+        aria-label="Carpeta Pags Web (doble clic para abrir)"
       >
         <svg viewBox="0 0 32 32" aria-hidden="true">
           <path
-            d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"
-            fill="#f0ece4"
-            stroke="#9a3232"
-            stroke-width="1.3"
+            d="M2.5 7.5h9l2.5 3H29a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 29 26.5H4A1.5 1.5 0 0 1 2.5 25z"
+            fill="#e0a53c"
+            stroke="#6f5016"
+            stroke-width="1.2"
           />
-          <path d="M19 3v5h5" fill="none" stroke="#9a3232" stroke-width="1.3" />
           <path
-            d="M11 15h10M11 18.5h10M11 22h6"
-            stroke="#9a3232"
-            stroke-width="1.6"
+            d="M2.5 12.5h27a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 29.5 26.5H4A1.5 1.5 0 0 1 2.5 25z"
+            fill="#f6cf6e"
+            stroke="#6f5016"
+            stroke-width="1.2"
+          />
+          <path
+            d="M9.5 24.4c3.4-3.2 9.6-3.2 13 0"
+            fill="none"
+            stroke="#7eb8c9"
+            stroke-width="1.7"
             stroke-linecap="round"
           />
+          <path
+            d="M10.3 23.6c3-2.2 8.4-2.2 11.4 0"
+            fill="none"
+            stroke="#f19280"
+            stroke-width="1.1"
+            stroke-linecap="round"
+          />
+          <rect
+            x="9.5"
+            y="14"
+            width="13"
+            height="8.5"
+            rx="1"
+            fill="#f0ece4"
+            stroke="#6f5016"
+            stroke-width="1.1"
+          />
+          <path d="M9.5 16.6h13" stroke="#6f5016" stroke-width="1" />
+          <circle cx="11.2" cy="15.3" r="0.65" fill="#f19280" />
+          <circle cx="13" cy="15.3" r="0.65" fill="#7eb8c9" />
         </svg>
-        <span>CV</span>
+        <span>Pags Web</span>
       </button>
 
       <button
@@ -2701,30 +2763,6 @@
           <circle cx="21.6" cy="21" r="1.4" fill="#7eb8c9" />
         </svg>
         <span>Juegos</span>
-      </button>
-
-      <button
-        class="desk-icon"
-        type="button"
-        data-open="pagsweb"
-        title="Doble clic para abrir"
-        aria-label="Carpeta Pags Web (doble clic para abrir)"
-      >
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <path
-            d="M2.5 7.5h9l2.5 3H29a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 29 26.5H4A1.5 1.5 0 0 1 2.5 25z"
-            fill="#e0a53c"
-            stroke="#6f5016"
-            stroke-width="1.2"
-          />
-          <path
-            d="M2.5 12.5h27a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 29.5 26.5H4A1.5 1.5 0 0 1 2.5 25z"
-            fill="#f6cf6e"
-            stroke="#6f5016"
-            stroke-width="1.2"
-          />
-        </svg>
-        <span>Pags Web</span>
       </button>
 
       <button
@@ -2785,6 +2823,53 @@
           <circle cx="19.2" cy="22.4" r="2.1" fill="#f19280" />
         </svg>
         <span>Música</span>
+      </button>
+
+      <button
+        class="desk-icon"
+        type="button"
+        data-open="cv"
+        title="Doble clic para abrir"
+        aria-label="CV de Agus — ver o descargar (doble clic para abrir)"
+      >
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path
+            d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"
+            fill="#f0ece4"
+            stroke="#9a3232"
+            stroke-width="1.3"
+          />
+          <path d="M19 3v5h5" fill="none" stroke="#9a3232" stroke-width="1.3" />
+          <path
+            d="M11 15h10M11 18.5h10M11 22h6"
+            stroke="#9a3232"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
+        </svg>
+        <span>CV</span>
+      </button>
+
+      <button
+        class="desk-icon"
+        id="deskIcon"
+        type="button"
+        title="Doble clic para abrir"
+        aria-label="Agus.db — Consola SQL (doble clic para abrir)"
+      >
+        <img src="parallax/iconosql.png" alt="" />
+        <span>Agus.db</span>
+      </button>
+
+      <button
+        class="desk-icon"
+        id="deskAtendedor"
+        type="button"
+        title="Doble clic para abrir"
+        aria-label="Atendedor.ia (doble clic para abrir)"
+      >
+        <img src="bot/atendedor1.png" alt="" />
+        <span>Atendedor.ia</span>
       </button>
 
       <button
@@ -2853,17 +2938,6 @@
           <circle cx="16" cy="9" r="1.5" fill="#f19280" />
         </svg>
         <span>Grabadora</span>
-      </button>
-
-      <button
-        class="desk-icon"
-        id="deskAtendedor"
-        type="button"
-        title="Doble clic para abrir"
-        aria-label="Atendedor.ia (doble clic para abrir)"
-      >
-        <img src="bot/atendedor1.png" alt="" />
-        <span>Atendedor.ia</span>
       </button>
     </div>
 

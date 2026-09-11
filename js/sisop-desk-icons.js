@@ -124,7 +124,11 @@
       var id = iconId(ic);
       var p = layout[id];
       if (!p) {
-        p = defaultPosition(i, grid);
+        // Puede coincidir con la posición ya asignada/guardada de otro
+        // ícono (ej. uno nuevo que no tenía celda guardada todavía): si
+        // está ocupada, buscamos la libre más cercana en vez de superponer.
+        var def = defaultPosition(i, grid);
+        p = nearestFreeCell(def.col, def.row, grid, id);
         changed = true;
       } else if (p.col >= grid.cols || p.row >= grid.rows) {
         // La ventana se achicó y esta posición ya no entra: la reacomodamos.

@@ -1027,6 +1027,15 @@
         '<svg viewBox="0 0 32 32" aria-hidden="true">' +
         '<path d="M2.5 7.5h9l2.5 3H29a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 29 26.5H4A1.5 1.5 0 0 1 2.5 25z" fill="#e0a53c" stroke="#6f5016" stroke-width="1.2"/>' +
         '<path d="M2.5 12.5h27a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 29.5 26.5H4A1.5 1.5 0 0 1 2.5 25z" fill="#f6cf6e" stroke="#6f5016" stroke-width="1.2"/></svg>',
+      pagsweb:
+        '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+        '<path d="M2.5 7.5h9l2.5 3H29a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 29 26.5H4A1.5 1.5 0 0 1 2.5 25z" fill="#e0a53c" stroke="#6f5016" stroke-width="1.2"/>' +
+        '<path d="M2.5 12.5h27a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 29.5 26.5H4A1.5 1.5 0 0 1 2.5 25z" fill="#f6cf6e" stroke="#6f5016" stroke-width="1.2"/>' +
+        '<path d="M9.5 24.4c3.4-3.2 9.6-3.2 13 0" fill="none" stroke="#7eb8c9" stroke-width="1.7" stroke-linecap="round"/>' +
+        '<path d="M10.3 23.6c3-2.2 8.4-2.2 11.4 0" fill="none" stroke="#f19280" stroke-width="1.1" stroke-linecap="round"/>' +
+        '<rect x="9.5" y="14" width="13" height="8.5" rx="1" fill="#f0ece4" stroke="#6f5016" stroke-width="1.1"/>' +
+        '<path d="M9.5 16.6h13" stroke="#6f5016" stroke-width="1"/>' +
+        '<circle cx="11.2" cy="15.3" r="0.65" fill="#f19280"/><circle cx="13" cy="15.3" r="0.65" fill="#7eb8c9"/></svg>',
       web:
         '<svg viewBox="0 0 32 32" aria-hidden="true">' +
         '<circle cx="16" cy="16" r="12" fill="#7eb8c9" stroke="#2f4467" stroke-width="1.3"/>' +
@@ -1116,7 +1125,7 @@
       },
       pagsweb: {
         title: "Pags Web",
-        icon: "folder",
+        icon: "pagsweb",
         type: "folder",
         w: 470,
         h: 340,
@@ -1853,6 +1862,12 @@
       "(prefers-reduced-motion: reduce)",
     ).matches;
     var notas = [];
+    // Postits "archivados" (notas guardadas, con ícono propio en el
+    // escritorio): no viven en `notas` ni en LS -su dueño es
+    // sisop-user-files.js-, pero comparten el mismo papelito y la misma
+    // física de arrastre/tiro. Se indexan por key (el id del ítem) para
+    // no abrir dos veces el mismo y para poder cerrarlos desde afuera.
+    var archivedByKey = {};
     /* Rango 2-4: sólo por encima del escritorio (iconos = 1) y siempre
        por debajo de cualquier ventana (>= 20). */
     var zc = 2;
@@ -1911,6 +1926,7 @@
     function quitar(n) {
       var i = notas.indexOf(n);
       if (i >= 0) notas.splice(i, 1);
+      if (n.key) delete archivedByKey[n.key];
       n.el.classList.add("pi-gone");
       setTimeout(function () {
         if (n.el.parentNode) n.el.parentNode.removeChild(n.el);
@@ -1921,6 +1937,11 @@
     function crear(data) {
       if (typeof data === "string") data = { text: data };
       data = data || {};
+      // Postit "archivado" (nota guardada, ver window.sisopPostit más
+      // abajo): mismo papelito, pero no se guarda en el balde de LS de acá
+      // -eso lo maneja quien lo pidió, vía data.onUpdate- y cerrarlo no lo
+      // borra -eso lo decide data.onClose-.
+      var archived = !!data.archived;
 
       var el = document.createElement("div");
       el.className = "postit";
@@ -1941,13 +1962,18 @@
         el: el,
         text: text,
         rot: rot,
+        key: data.key || null,
         id:
           data.id ||
           "n" +
             Date.now().toString(36) +
             Math.random().toString(36).slice(2, 6),
       };
-      notas.push(n);
+      if (archived) {
+        if (data.key) archivedByKey[data.key] = n;
+      } else {
+        notas.push(n);
+      }
 
       function autogrow() {
         if (el.classList.contains("pi-sized")) return;
@@ -1976,6 +2002,29 @@
       el.style.left = clamp(x, b.minX, b.maxX) + "px";
       el.style.top = clamp(y, b.minY, b.maxY) + "px";
 
+      /* Dónde persiste cada cambio (texto, posición, tamaño): un papelito
+         normal se guarda en el balde de LS de acá (persist()); uno
+         archivado se lo avisa a quien lo abrió (data.onUpdate), que es
+         quien realmente lo tiene guardado. */
+      function snapshot() {
+        var sized = el.classList.contains("pi-sized");
+        return {
+          text: text.value,
+          x: parseFloat(el.style.left) || 0,
+          y: parseFloat(el.style.top) || 0,
+          rot: n.rot,
+          w: sized ? el.offsetWidth : null,
+          h: sized ? el.offsetHeight : null,
+        };
+      }
+      function saveState() {
+        if (archived) {
+          if (data.onUpdate) data.onUpdate(snapshot());
+        } else {
+          persist();
+        }
+      }
+
       /* ---- editar en el lugar ---- */
       function editar() {
         el.classList.add("editing");
@@ -1993,8 +2042,15 @@
       text.addEventListener("input", autogrow);
       text.addEventListener("blur", function () {
         el.classList.remove("editing");
-        if (!text.value.trim()) quitar(n);
-        else persist();
+        if (!text.value.trim()) {
+          // Vacío al perder foco: se descarta, igual que un papelito común
+          // (si es uno archivado, quien lo abrió se entera para borrar
+          // también el ícono del escritorio).
+          if (archived && data.onClose) data.onClose(true);
+          quitar(n);
+        } else {
+          saveState();
+        }
       });
       text.addEventListener("keydown", function (e) {
         if (e.key === "Escape") {
@@ -2007,6 +2063,9 @@
         "click",
         function (e) {
           e.stopPropagation();
+          // Uno archivado no se borra al cerrarlo: sólo se saca de la
+          // vista -el ícono del escritorio lo deja reabrirlo después.
+          if (archived && data.onClose) data.onClose(false);
           quitar(n);
         },
       );
@@ -2102,7 +2161,7 @@
         el.style.top =
           clamp(parseFloat(el.style.top) || 0, b.minY, b.maxY) + "px";
         el.style.transform = "rotate(" + n.rot + "deg)";
-        persist();
+        saveState();
       }
 
       function tirar(vx, vy) {
@@ -2139,7 +2198,7 @@
             raf = 0;
             el.classList.remove("live");
             el.style.transform = "rotate(" + n.rot + "deg)";
-            persist();
+            saveState();
           }
         }
         raf = requestAnimationFrame(paso);
@@ -2203,12 +2262,12 @@
           clamp(parseFloat(el.style.left) || 0, b.minX, b.maxX) + "px";
         el.style.top =
           clamp(parseFloat(el.style.top) || 0, b.minY, b.maxY) + "px";
-        persist();
+        saveState();
       }
       grip.addEventListener("pointerup", endResize);
       grip.addEventListener("pointercancel", endResize);
 
-      persist();
+      saveState();
       return n;
     }
 
@@ -2217,6 +2276,34 @@
       var n = crear({ text: texto });
       raise(n.el);
       return n;
+    };
+
+    /* API para otros scripts (sisop-user-files.js): abrir una nota
+       guardada como el mismo papelito post-it -misma estética y misma
+       física de arrastre/tiro/resize que uno descartable-, con la única
+       diferencia de que cerrarlo no lo borra (avisa por onClose en vez de
+       desaparecer solo). `key` identifica la nota (el id del ítem guardado)
+       para no abrirla dos veces: si ya está abierta, la trae al frente. */
+    window.sisopPostit = {
+      open: function (key, opts) {
+        if (archivedByKey[key]) {
+          raise(archivedByKey[key].el);
+          return archivedByKey[key];
+        }
+        opts = opts || {};
+        opts.archived = true;
+        opts.key = key;
+        var n = crear(opts);
+        raise(n.el);
+        return n;
+      },
+      isOpen: function (key) {
+        return !!archivedByKey[key];
+      },
+      close: function (key) {
+        var n = archivedByKey[key];
+        if (n) quitar(n);
+      },
     };
 
     /* La primera vez que se abre «Notas» en este equipo: nota de bienvenida
