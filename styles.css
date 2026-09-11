@@ -116,8 +116,14 @@ nav.nav-compact {
   color: var(--muted);
   text-decoration: none;
   transition: color 0.2s;
-  display: inline-block;
+  display: inline-flex;
   animation: navFloat 3.6s ease-in-out infinite;
+}
+.nav-links a svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  pointer-events: none;
 }
 .nav-links li:nth-child(1) a {
   animation-delay: 0s;
@@ -137,8 +143,10 @@ nav.nav-compact {
     transform: translateY(-3px);
   }
 }
-.nav-links a:hover {
+.nav-links a:hover,
+.nav-links a:focus-visible {
   color: var(--accent);
+  outline: none;
 }
 /* Botón de encendido -> Consola SQL (sisop.html). Va adentro del nav (antes
    de los links), como un ícono aparte a la cabeza del grupo: se distingue
