@@ -117,31 +117,12 @@ nav.nav-compact {
   text-decoration: none;
   transition: color 0.2s;
   display: inline-flex;
-  animation: navFloat 3.6s ease-in-out infinite;
 }
 .nav-links a svg {
   width: 20px;
   height: 20px;
   display: block;
   pointer-events: none;
-}
-.nav-links li:nth-child(1) a {
-  animation-delay: 0s;
-}
-.nav-links li:nth-child(2) a {
-  animation-delay: 0.3s;
-}
-.nav-links li:nth-child(3) a {
-  animation-delay: 0.6s;
-}
-@keyframes navFloat {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
 }
 .nav-links a:hover,
 .nav-links a:focus-visible {
