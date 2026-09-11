@@ -1529,7 +1529,7 @@
         '<textarea placeholder="Escribí una nota…" spellcheck="false" autocomplete="off"></textarea>' +
         '<div class="notes-foot">' +
         '<button class="btn" type="button" data-notes="guardar">Guardar nota</button>' +
-        '<button class="btn primary" type="button" data-notes="pin">Pegar en el escritorio</button>' +
+        '<button class="btn" type="button" data-notes="pin">Pegar en el escritorio</button>' +
         "</div>";
       var ta = wrap.querySelector("textarea");
       function pin() {
