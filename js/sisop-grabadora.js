@@ -84,10 +84,16 @@
       '        <span class="rec-mic-glyph"></span>',
       '        <span class="rec-mic-label">REC</span>',
       "      </button>",
+      '      <div class="rec-playback" hidden>',
+      '        <button type="button" class="rec-tbtn" data-rec="rew" aria-label="Rebobinar" title="Rebobinar">⏪</button>',
+      '        <button type="button" class="rec-tbtn rec-tbtn-play" data-rec="playpause" aria-label="Reproducir" title="Reproducir">▶</button>',
+      '        <button type="button" class="rec-tbtn" data-rec="fwd" aria-label="Adelantar" title="Adelantar">⏩</button>',
+      '        <button type="button" class="rec-tbtn" data-rec="redo" aria-label="Regrabar" title="Regrabar">⟲</button>',
+      "      </div>",
       "    </div>",
       '    <div class="rec-grille" aria-hidden="true"></div>',
       "  </div>",
-      '  <audio class="rec-player" controls hidden></audio>',
+      '  <audio class="rec-player" hidden></audio>',
       '  <input class="rec-name" type="text" maxlength="40" autocomplete="off" placeholder="Tu nombre (opcional)" />',
       '  <div class="rec-actions" hidden>',
       '    <button type="button" class="btn" data-rec="redo">Regrabar</button>',
@@ -129,6 +135,8 @@
     var cassette = wrap.querySelector(".rec-cassette");
     var timeEl = wrap.querySelector(".rec-time");
     var player = wrap.querySelector(".rec-player");
+    var playback = wrap.querySelector(".rec-playback");
+    var playBtn = wrap.querySelector('[data-rec="playpause"]');
     var nameEl = wrap.querySelector(".rec-name");
     var actions = wrap.querySelector(".rec-actions");
     var msgDejar = vDejar.querySelector(".rec-msg");
@@ -165,6 +173,13 @@
       deck.classList.toggle("recording", grabando);
     }
 
+    function setPlayBtnState(playing) {
+      if (!playBtn) return;
+      playBtn.textContent = playing ? "⏸" : "▶";
+      playBtn.setAttribute("aria-label", playing ? "Pausar" : "Reproducir");
+      playBtn.title = playing ? "Pausar" : "Reproducir";
+    }
+
     function setMicUI(state) {
       // state: idle | rec | done | sent
       micBtn.dataset.state = state;
@@ -177,12 +192,13 @@
       } else {
         micBtn.setAttribute("aria-label", "Grabar");
         micBtn.title = "Grabar";
-        if (micLabel)
-          micLabel.textContent = state === "done" ? "REGRABAR" : "REC";
+        if (micLabel) micLabel.textContent = "REC";
       }
       var hasClip = state === "done";
-      player.hidden = !hasClip;
+      micBtn.hidden = hasClip;
+      playback.hidden = !hasClip;
       actions.hidden = !hasClip;
+      if (!hasClip) setPlayBtnState(false);
       if (state !== "rec") setSpin(false);
       if (state === "idle" || state === "sent") timeEl.textContent = "0:00";
     }
@@ -264,6 +280,9 @@
     }
 
     function redo() {
+      try {
+        player.pause();
+      } catch (e) {}
       blob = null;
       if (url) {
         URL.revokeObjectURL(url);
@@ -272,6 +291,25 @@
       player.removeAttribute("src");
       setMicUI("idle");
       setMsg(msgDejar, "");
+    }
+
+    function togglePlay() {
+      if (!blob) return;
+      if (player.paused) player.play().catch(function () {});
+      else player.pause();
+    }
+
+    function seek(deltaSec) {
+      if (!blob) return;
+      var max = isFinite(player.duration) && player.duration > 0
+        ? player.duration
+        : dur;
+      var t = (player.currentTime || 0) + deltaSec;
+      if (t < 0) t = 0;
+      if (max && t > max) t = max;
+      try {
+        player.currentTime = t;
+      } catch (e) {}
     }
 
     async function send() {
@@ -312,8 +350,6 @@
         } catch (e) {}
         if (r.ok && d.ok) {
           setMicUI("sent");
-          player.hidden = true;
-          actions.hidden = true;
           nameEl.value = "";
           setMsg(
             msgDejar,
@@ -500,6 +536,9 @@
       var a = act.getAttribute("data-rec");
       if (a === "redo") redo();
       else if (a === "send") send();
+      else if (a === "playpause") togglePlay();
+      else if (a === "rew") seek(-5);
+      else if (a === "fwd") seek(5);
       else if (a === "owner") abrirBandeja();
       else if (a === "back") {
         show(vDejar);
@@ -521,12 +560,15 @@
     // Los carretes también giran mientras se escucha la toma recién grabada.
     player.addEventListener("play", function () {
       if (!grabando) cassette.classList.add("spin");
+      setPlayBtnState(true);
     });
     player.addEventListener("pause", function () {
       if (!grabando) cassette.classList.remove("spin");
+      setPlayBtnState(false);
     });
     player.addEventListener("ended", function () {
       if (!grabando) cassette.classList.remove("spin");
+      setPlayBtnState(false);
     });
 
     setMicUI("idle");

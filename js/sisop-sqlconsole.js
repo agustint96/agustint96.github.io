@@ -1816,8 +1816,11 @@
       b.innerHTML =
         '<span class="tb-icon tb-glyph">' +
         (cfg.iconHtml || ICONS[cfg.icon] || "") +
-        "</span><span></span>";
-      b.querySelector("span:last-child").textContent = cfg.title;
+        '</span><span class="tb-label"></span><span class="tb-label-short"></span>';
+      b.querySelector(".tb-label").textContent = cfg.title;
+      b.querySelector(".tb-label-short").textContent = (cfg.title || "")
+        .trim()
+        .slice(0, 3);
       b.addEventListener("click", function () {
         var o = open[id];
         if (!o) return;
