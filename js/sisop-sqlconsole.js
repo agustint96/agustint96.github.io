@@ -1601,7 +1601,7 @@
       tb.className = "title-bar";
       tb.innerHTML =
         '<span class="tb-icon tb-glyph">' +
-        (ICONS[cfg.icon] || "") +
+        (cfg.iconHtml || ICONS[cfg.icon] || "") +
         "</span>" +
         (linkable
           ? '<a class="tb-text tb-link" target="_blank" rel="noopener noreferrer"></a>'
@@ -1642,6 +1642,8 @@
       else if (cfg.type === "notes") buildNotes(cfg, bd);
       else if (cfg.type === "recorder" && window.buildGrabadora)
         window.buildGrabadora(cfg, bd);
+      else if (cfg.type === "custom" && typeof cfg.render === "function")
+        cfg.render(bd, w);
 
       document.body.appendChild(w);
       makeDraggable(w, tb);
@@ -1689,7 +1691,7 @@
       b.title = cfg.title;
       b.innerHTML =
         '<span class="tb-icon tb-glyph">' +
-        (ICONS[cfg.icon] || "") +
+        (cfg.iconHtml || ICONS[cfg.icon] || "") +
         "</span><span></span>";
       b.querySelector("span:last-child").textContent = cfg.title;
       b.addEventListener("click", function () {
@@ -1800,6 +1802,25 @@
           Math.min(parseFloat(w.style.top) || 0, maxTop) + "px";
       });
     });
+
+    /* API para otros scripts (ej. sisop-user-files.js): registrar una app
+       "custom" (cfg.type = "custom", cfg.render(bd, win) arma el contenido a
+       mano) y abrirla/cerrarla reusando toda la mecánica de ventanas ya
+       hecha (arrastre, minimizar, maximizar, taskbar, z-order). */
+    window.sisopWin = {
+      registerApp: function (id, cfg) {
+        APPS[id] = cfg;
+      },
+      unregisterApp: function (id) {
+        closeApp(id);
+        delete APPS[id];
+      },
+      open: openApp,
+      close: closeApp,
+      isOpen: function (id) {
+        return !!open[id];
+      },
+    };
   })();
 
   /* ============================================================

@@ -14,7 +14,11 @@
   var STORAGE_KEY = "sisop.desk.layout.v1";
 
   function iconId(el) {
-    return el.getAttribute("data-open") || el.id;
+    return (
+      el.getAttribute("data-open") ||
+      el.getAttribute("data-user-item") ||
+      el.id
+    );
   }
 
   function loadLayout() {
@@ -154,7 +158,7 @@
     ox = 0,
     oy = 0;
 
-  icons.forEach(function (ic) {
+  function bindDrag(ic) {
     ic.addEventListener("pointerdown", function (e) {
       if (e.button != null && e.button !== 0) return;
       dragEl = ic;
@@ -199,5 +203,48 @@
       place(ic, p, cell);
       saveLayout();
     });
-  });
+  }
+
+  icons.forEach(bindDrag);
+
+  /* API para otros scripts (ej. sisop-user-files.js): sumar/sacar iconos
+     del escritorio después de la carga inicial (carpetas/notas/archivos que
+     crea el usuario), reusando la misma cuadrícula y el mismo arrastre. */
+  function addIcon(ic, pos) {
+    if (icons.indexOf(ic) !== -1) return;
+    icons.push(ic);
+    ic.style.position = "absolute";
+    var id = iconId(ic);
+    var cell = cellSize();
+    var grid = gridSize(cell);
+    var p = layout[id];
+    if (!p) {
+      p =
+        pos && typeof pos.col === "number" && typeof pos.row === "number"
+          ? nearestFreeCell(pos.col, pos.row, grid, id)
+          : nearestFreeCell(0, 0, grid, id);
+      layout[id] = p;
+      saveLayout();
+    } else if (p.col >= grid.cols || p.row >= grid.rows) {
+      p = nearestFreeCell(
+        Math.min(p.col, grid.cols - 1),
+        Math.min(p.row, grid.rows - 1),
+        grid,
+        id,
+      );
+      layout[id] = p;
+      saveLayout();
+    }
+    place(ic, p, cell);
+    bindDrag(ic);
+  }
+
+  function removeIcon(ic) {
+    var i = icons.indexOf(ic);
+    if (i !== -1) icons.splice(i, 1);
+    delete layout[iconId(ic)];
+    saveLayout();
+  }
+
+  window.deskIcons = { add: addIcon, remove: removeIcon };
 })();

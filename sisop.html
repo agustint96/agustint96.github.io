@@ -142,6 +142,41 @@
         opacity: 0.85;
       }
 
+      /* ---------- Menú contextual (clic derecho: escritorio y carpetas) --------- */
+      .ctxmenu {
+        position: fixed;
+        z-index: 9999;
+        min-width: 168px;
+        background: var(--w98-face);
+        padding: 2px;
+        font-family: "DM Mono", monospace;
+        font-size: 12px;
+        color: #1b1b18;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite),
+          2px 2px 0 rgba(0, 0, 0, 0.28);
+      }
+      .ctxmenu-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 6px 12px;
+        background: transparent;
+        border: 0;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+      .ctxmenu-item:hover,
+      .ctxmenu-item:focus-visible {
+        background: var(--w98-selbg);
+        color: var(--w98-seltext);
+        outline: 0;
+      }
+
       .desk-icon img,
       .desk-icon svg {
         width: 32px;
@@ -159,6 +194,18 @@
         object-position: 50% 30%;
         background: var(--white);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+      }
+
+      /* Miniatura de una foto propia (carpetas/escritorio del usuario) */
+      .desk-icon img.ufi-thumb,
+      .folder-icon .fi-glyph img.ufi-thumb {
+        object-fit: cover;
+        border-radius: 2px;
+        image-rendering: auto;
+      }
+      .folder-icon .fi-glyph img.ufi-thumb {
+        width: 30px;
+        height: 30px;
       }
 
       .desk-icon span {
@@ -444,6 +491,35 @@
         color: var(--w98-seltext);
         outline: 1px dotted var(--w98-seltext);
         outline-offset: -1px;
+      }
+
+      /* Archivo propio: audio (reproductor) y genérico (nombre + descarga) */
+      .uf-audio,
+      .uf-generic {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
+        padding: 16px;
+      }
+      .uf-generic {
+        align-items: flex-start;
+      }
+      .uf-audio-name,
+      .uf-generic-name {
+        font-weight: 700;
+        word-break: break-word;
+      }
+      .uf-generic-meta {
+        font-size: 11px;
+        color: var(--w98-dkshadow);
+      }
+      .uf-generic a.btn {
+        text-decoration: none;
+      }
+      .uf-audio audio {
+        width: 100%;
       }
 
       /* Visor de fotos */
@@ -3034,5 +3110,6 @@ SELECT * FROM Info;</textarea
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
     <script src="js/sisop-grabadora.js"></script>
     <script src="js/sisop-sqlconsole.js"></script>
+    <script src="js/sisop-user-files.js"></script>
   </body>
 </html>
