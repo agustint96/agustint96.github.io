@@ -1064,6 +1064,11 @@
         '<path d="M8 15a8 8 0 0 0 16 0" fill="none" stroke="#2f4467" stroke-width="1.6" stroke-linecap="round"/>' +
         '<path d="M16 23v4M12 27h8" stroke="#2f4467" stroke-width="1.6" stroke-linecap="round"/>' +
         '<circle cx="16" cy="9" r="1.5" fill="#f19280"/></svg>',
+      pdf:
+        '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+        '<path d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#f0ece4" stroke="#9a3232" stroke-width="1.3"/>' +
+        '<path d="M19 3v5h5" fill="none" stroke="#9a3232" stroke-width="1.3"/>' +
+        '<path d="M11 15h10M11 18.5h10M11 22h6" stroke="#9a3232" stroke-width="1.6" stroke-linecap="round"/></svg>',
     };
 
     var SITE_W = 1000;
@@ -1083,6 +1088,15 @@
         type: "recorder",
         w: 340,
         h: 508,
+      },
+      cv: {
+        title: "CV_Agustin_Tardella.pdf",
+        icon: "pdf",
+        type: "pdf",
+        url: "CV_Agustin_Tardella.pdf",
+        linkUrl: "CV_Agustin_Tardella.pdf",
+        w: SITE_W,
+        h: SITE_H,
       },
       casus: {
         title: "Casus Liber",
@@ -1499,6 +1513,34 @@
         });
     }
 
+    function buildPdf(cfg, bd) {
+      var wrap = document.createElement("div");
+      wrap.className = "w98-pdf";
+      var bar = document.createElement("div");
+      bar.className = "w98-pdf-bar";
+      var dl = document.createElement("a");
+      dl.className = "btn primary";
+      dl.href = cfg.url;
+      dl.download = cfg.title || "";
+      dl.textContent = "Descargar CV";
+      bar.appendChild(dl);
+      wrap.appendChild(bar);
+
+      var f = document.createElement("iframe");
+      f.src = cfg.url;
+      f.title = cfg.title;
+      var load = document.createElement("div");
+      load.className = "w98-loading";
+      load.textContent = "Cargando…";
+      f.addEventListener("load", function () {
+        load.remove();
+      });
+      wrap.appendChild(f);
+      wrap.appendChild(load);
+
+      bd.appendChild(wrap);
+    }
+
     function buildImage(cfg, bd) {
       var v = document.createElement("div");
       v.className = "w98-imgview";
@@ -1583,7 +1625,8 @@
 
       var linkHref = cfg.linkUrl || cfg.url;
       var linkable =
-        !!linkHref && (cfg.type === "iframe" || cfg.type === "image");
+        !!linkHref &&
+        (cfg.type === "iframe" || cfg.type === "image" || cfg.type === "pdf");
       var tb = document.createElement("div");
       tb.className = "title-bar";
       tb.innerHTML =
@@ -1626,6 +1669,7 @@
       else if (cfg.type === "folder") buildFolder(cfg, bd);
       else if (cfg.type === "photos") buildPhotos(bd);
       else if (cfg.type === "image") buildImage(cfg, bd);
+      else if (cfg.type === "pdf") buildPdf(cfg, bd);
       else if (cfg.type === "notes") buildNotes(cfg, bd);
       else if (cfg.type === "recorder" && window.buildGrabadora)
         window.buildGrabadora(cfg, bd);

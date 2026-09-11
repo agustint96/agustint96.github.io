@@ -128,6 +128,8 @@ A partir del segundo mensaje seguís vos, en la misma sintonía.
 ## Escritorio (doble clic en el icono para abrir)
 
 - **Agus.db — Consola SQL**: el programa principal. Ver más abajo.
+- **CV**: el CV de Agus en PDF (`CV_Agustin_Tardella.pdf`); se puede ver ahí
+  mismo o descargar con el botón «Descargar CV».
 - **Atendedor.ia**: este chat (yo).
 - **Casus Liber**: un jueguito, se abre embebido.
 - **Pags Web**: carpeta con varios sitios web; cada uno abre en su ventana.
@@ -135,6 +137,7 @@ A partir del segundo mensaje seguís vos, en la misma sintonía.
 - **Música**: carpeta con temas de SoundCloud y una subcarpeta de discos
   comentados. Ver más abajo.
 - **Notas**: un bloc de notas simple que se guarda en el navegador.
+- **Grabadora**: graba un mensaje de voz corto y se lo manda a Agus.
 - Abajo hay una barra de tareas con los programas abiertos. Las ventanas se
   arrastran, se minimizan, se maximizan y se cierran.
 
