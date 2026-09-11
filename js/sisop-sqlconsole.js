@@ -1528,6 +1528,7 @@
       wrap.innerHTML =
         '<textarea placeholder="Escribí una nota…" spellcheck="false" autocomplete="off"></textarea>' +
         '<div class="notes-foot">' +
+        '<button class="btn" type="button" data-notes="guardar">Guardar nota</button>' +
         '<button class="btn primary" type="button" data-notes="pin">Pegar en el escritorio</button>' +
         "</div>";
       var ta = wrap.querySelector("textarea");
@@ -1541,9 +1542,28 @@
         ta.value = "";
         ta.focus();
       }
+      // «Guardar nota»: a diferencia del papelito de arriba (que no tiene
+      // ícono en ningún lado: si lo cerrás, se borró), esto la deja archivada
+      // con su propio ícono en el escritorio — se puede volver a abrir
+      // después de cerrarla con sólo hacerle doble clic.
+      function guardar() {
+        var text = ta.value.replace(/\s+$/, "");
+        if (!text.trim()) {
+          ta.focus();
+          return;
+        }
+        if (window.sisopUserFiles && typeof window.sisopUserFiles.saveNote === "function") {
+          window.sisopUserFiles.saveNote(text);
+        }
+        ta.value = "";
+        ta.focus();
+      }
       wrap
         .querySelector('[data-notes="pin"]')
         .addEventListener("click", pin);
+      wrap
+        .querySelector('[data-notes="guardar"]')
+        .addEventListener("click", guardar);
       ta.addEventListener("keydown", function (e) {
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
           e.preventDefault();

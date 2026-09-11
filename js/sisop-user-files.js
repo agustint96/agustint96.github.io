@@ -410,13 +410,20 @@
       if (onChange) onChange();
     });
   }
-  function createNote(parentId, onChange) {
+  function deriveNoteName(text) {
+    var firstLine = String(text || "")
+      .split("\n")[0]
+      .trim();
+    if (!firstLine) return "Nota";
+    return firstLine.length > 24 ? firstLine.slice(0, 24) + "…" : firstLine;
+  }
+  function createNoteWithText(parentId, text, onChange) {
     var item = {
       id: newId(),
       parent: parentId,
       type: "note",
-      name: "Nota",
-      text: "",
+      name: deriveNoteName(text),
+      text: text || "",
       createdAt: Date.now(),
     };
     itemsById[item.id] = item;
@@ -424,6 +431,10 @@
       if (parentId === "root") addDeskIconFor(item);
       if (onChange) onChange();
     });
+    return item;
+  }
+  function createNote(parentId, onChange) {
+    return createNoteWithText(parentId, "", onChange);
   }
   function pickFiles(parentId, onChange) {
     var input = document.createElement("input");
@@ -737,6 +748,16 @@
     });
     window.sisopWin.open(appId);
   }
+
+  /* API para otros scripts (ej. la app «Notas» clásica, en
+     sisop-sqlconsole.js): guardar una nota archivada —con ícono propio,
+     reabrible— desde afuera de este archivo. Siempre al escritorio (esa
+     app no sabe de carpetas). */
+  window.sisopUserFiles = {
+    saveNote: function (text) {
+      return createNoteWithText("root", text, null);
+    },
+  };
 
   // ---------------------------------------------------------------------
   // Arranque: cargar lo guardado y colgar el menú contextual del escritorio
