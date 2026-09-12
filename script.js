@@ -1,5 +1,146 @@
 const nav = document.getElementById("main-nav");
 const navLinks = nav ? nav.querySelectorAll("a") : [];
+
+// Zonas del parallax que la nave puede "tocar": cada una sabe cómo calcular
+// su rectángulo actual y cómo reproducir su sonido (reusado por click de mouse
+// y por el botón A/X del joystick cuando la nave está encima).
+const parallaxZones = [];
+// Prende/apaga la luz de la nave; se asigna más abajo y la reusa el botón Y del joystick.
+let toggleShipLight = null;
+
+// Posición actual del centro de la nave, expuesta para que otros módulos
+// (ej. el "planeta" que huye en parallax 7) sepan si se les está acercando,
+// sin acoplarse al closure del movimiento de la nave.
+let shipCenterX = null;
+let shipCenterY = null;
+
+// Test de "pixel opaco": muchas imágenes del parallax tienen mucho margen
+// transparente dentro de su bounding box (ej. parallax 3, la guitarra, solo
+// tiene contenido visible en ~23% de su caja). En vez de disparar el sonido
+// con solo tocar el rectángulo, esto chequea el canal alfa real del PNG en
+// el punto exacto (click de mouse o centro de la nave).
+function createAlphaHitTester(imgEl, alphaThreshold = 20) {
+  let canvas = null;
+  let ctx = null;
+  let ready = false;
+
+  function prepare() {
+    if (ready || !imgEl.naturalWidth) return;
+    canvas = document.createElement("canvas");
+    canvas.width = imgEl.naturalWidth;
+    canvas.height = imgEl.naturalHeight;
+    ctx = canvas.getContext("2d");
+    ctx.drawImage(imgEl, 0, 0);
+    ready = true;
+  }
+
+  if (imgEl.complete) prepare();
+  else imgEl.addEventListener("load", prepare, { once: true });
+
+  return function isOpaqueAt(clientX, clientY) {
+    const rect = imgEl.getBoundingClientRect();
+    if (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    ) {
+      return false;
+    }
+    if (!ready) return true; // sin datos todavía: no bloquear la interacción
+    const px = Math.min(
+      canvas.width - 1,
+      Math.max(
+        0,
+        Math.floor(((clientX - rect.left) / rect.width) * canvas.width),
+      ),
+    );
+    const py = Math.min(
+      canvas.height - 1,
+      Math.max(
+        0,
+        Math.floor(((clientY - rect.top) / rect.height) * canvas.height),
+      ),
+    );
+    try {
+      return ctx.getImageData(px, py, 1, 1).data[3] > alphaThreshold;
+    } catch (err) {
+      return true; // canvas "tainted" (ej. abierto con file://): no bloquear
+    }
+  };
+}
+
+// Calcula (una sola vez) el recuadro que realmente contiene el dibujo dentro
+// del PNG, ignorando el margen transparente, y lo devuelve en coordenadas de
+// pantalla agrandado por un margen. Sirve para detectar "se está acercando"
+// en vez de "recién ahora me tocó" (ej. el planeta de parallax 7, que tiene
+// que escaparse ANTES de que lo alcancen).
+function createOpaqueBoundsTracker(imgEl, alphaThreshold = 20) {
+  let bounds = null; // fracciones 0..1 relativas al tamaño natural de la imagen
+
+  function prepare() {
+    if (bounds || !imgEl.naturalWidth) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = imgEl.naturalWidth;
+    canvas.height = imgEl.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(imgEl, 0, 0);
+    let data;
+    try {
+      data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    } catch (err) {
+      return; // canvas "tainted": nos quedamos sin datos, ver fallback abajo
+    }
+    let minX = canvas.width,
+      minY = canvas.height,
+      maxX = -1,
+      maxY = -1;
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        if (data[(y * canvas.width + x) * 4 + 3] > alphaThreshold) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX >= minX && maxY >= minY) {
+      bounds = {
+        l: minX / canvas.width,
+        t: minY / canvas.height,
+        r: (maxX + 1) / canvas.width,
+        b: (maxY + 1) / canvas.height,
+      };
+    }
+  }
+
+  if (imgEl.complete) prepare();
+  else imgEl.addEventListener("load", prepare, { once: true });
+
+  return function getDangerRect(margin = 0) {
+    const rect = imgEl.getBoundingClientRect();
+    const box = bounds
+      ? {
+          left: rect.left + bounds.l * rect.width,
+          right: rect.left + bounds.r * rect.width,
+          top: rect.top + bounds.t * rect.height,
+          bottom: rect.top + bounds.b * rect.height,
+        }
+      : rect; // todavía no calculado: usar la caja completa como fallback
+    return {
+      left: box.left - margin,
+      right: box.right + margin,
+      top: box.top - margin,
+      bottom: box.bottom + margin,
+    };
+  };
+}
+
+function pointInRect(x, y, rect) {
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
 const beepPath = "audio/beep.mp3";
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 let beepBuffer = null;
@@ -160,20 +301,87 @@ if (p3el) {
   const guitarraAudio = new Audio("audio/Guitarra.mp3");
   guitarraAudio.preload = "auto";
   guitarraAudio.volume = 0.12;
-  p3el.addEventListener("click", () => {
+  const playGuitarra = () => {
     guitarraAudio.currentTime = 0;
     guitarraAudio.play().catch(() => {});
+  };
+  const guitarraImg = p3el.querySelector("img");
+  const hitGuitarra = guitarraImg
+    ? createAlphaHitTester(guitarraImg)
+    : () => true;
+  p3el.addEventListener("click", (ev) => {
+    if (!hitGuitarra(ev.clientX, ev.clientY)) return;
+    playGuitarra();
+  });
+  parallaxZones.push({
+    hitTest: hitGuitarra,
+    trigger: playGuitarra,
   });
 }
 
+// El "planeta" de parallax 7 le tiene miedo SOLO a la nave (no al mouse/touch
+// en sí, solo cuando mueve a la nave): apenas se acerca a su dibujo real (no
+// al margen transparente), sale corriendo hacia la izquierda mientras se
+// achica hasta desaparecer. Mientras la nave siga cerca se queda escondido;
+// recién cuando la nave está lejos de su posición de origen empieza a volver
+// de a poco, y si la nave vuelve a acercarse mientras está volviendo, se
+// vuelve a esconder.
+const p7Img = p7el ? p7el.querySelector("img") : null;
+const getP7DangerRect = p7Img ? createOpaqueBoundsTracker(p7Img) : null;
+const P7_DANGER_MARGIN = 70; // px de colchón: si la nave entra acá, huye
+const P7_SAFE_MARGIN = 550; // px: recién si la nave sale de acá, puede volver
+const P7_FLEE_SPEED = 18; // px por frame que se corre hacia la izquierda al huir
+const P7_SHRINK_RATE = 0.018; // cuánto se achica por frame al huir
+const P7_RETURN_SPEED = 3; // px por frame que recupera al volver (de a poco)
+const P7_RETURN_GROW_RATE = 0.003; // cuánto crece por frame al volver
+let p7Fleeing = false;
+let p7FleeOffsetX = 0;
+let p7FleeScale = 1;
+
+function updateP7Flee() {
+  if (!getP7DangerRect) return;
+
+  const dangerRect = getP7DangerRect(P7_DANGER_MARGIN);
+  const shipNear =
+    shipCenterX !== null && pointInRect(shipCenterX, shipCenterY, dangerRect);
+
+  if (shipNear) p7Fleeing = true;
+
+  if (p7Fleeing) {
+    p7FleeOffsetX -= P7_FLEE_SPEED;
+    p7FleeScale = Math.max(0, p7FleeScale - P7_SHRINK_RATE);
+    if (p7FleeScale <= 0) p7Fleeing = false; // ya está escondido, ahora espera
+    return;
+  }
+
+  if (p7FleeOffsetX >= 0) return; // ya está en su posición, nada que hacer
+
+  // Sigue escondido/a mitad de camino: solo vuelve si la nave está lejos de
+  // donde reaparecería (posición de origen), para no reaparecer en su cara.
+  const safeRect = getP7DangerRect(P7_SAFE_MARGIN);
+  const homeSafeRect = {
+    left: safeRect.left - p7FleeOffsetX,
+    right: safeRect.right - p7FleeOffsetX,
+    top: safeRect.top,
+    bottom: safeRect.bottom,
+  };
+  const shipFar =
+    shipCenterX === null || !pointInRect(shipCenterX, shipCenterY, homeSafeRect);
+  if (shipFar) {
+    p7FleeOffsetX = Math.min(0, p7FleeOffsetX + P7_RETURN_SPEED);
+    p7FleeScale = Math.min(1, p7FleeScale + P7_RETURN_GROW_RATE);
+  }
+}
+
 function tick() {
-  ((currentX = lerp(currentX, targetX, 0.04)),
+  (updateP7Flee(),
+    (currentX = lerp(currentX, targetX, 0.04)),
     group256 &&
       (group256.style.transform = `translateX(${MAX_PX * currentX * DEPTH_256 * 100}px)`),
     p3el &&
       (p3el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P3 * 100}px)`),
     p7el &&
-      (p7el.style.transform = `translateX(${MAX_PX * currentX * DEPTH_P7 * 100}px)`),
+      (p7el.style.transform = `translateX(${MAX_PX * currentX * DEPTH_P7 * 100 + p7FleeOffsetX}px) scale(${p7FleeScale})`),
     p8el &&
       (p8el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P8 * 100}px)`),
     requestAnimationFrame(tick));
@@ -245,15 +453,41 @@ function drawStars() {
   (function () {
     const t = document.getElementById("starry-cohete-pair");
     if (!t) return;
-    let e = -150,
+    const FLIGHT_MARGIN = 100; // cuánto puede salirse la nave del viewport, en px
+    const FLIGHT_MARGIN_TOP = 160; // arriba necesita más margen: al rotar, la nave (130px) sobresale de su caja
+    let e = -FLIGHT_MARGIN,
       a = 180,
       n = 0,
       r = 0,
       s = 90,
       i = null,
       o = null,
-      l = !1;
+      l = !1,
+      gamepadActive = false,
+      wasGamepadActive = false;
     const isMobileTouch = () => window.innerWidth <= 600;
+    const GAMEPAD_DEADZONE = 0.2;
+    const GAMEPAD_THRUST_BASE = 0.3; // velocidad normal del stick/flechitas
+    const GAMEPAD_THRUST_BOOST = 0.6; // velocidad con RB apretado
+    const GAMEPAD_DAMPING = 0.9;
+    // Mapeo estándar del Gamepad API
+    const BTN_RB = 5;
+    const BTN_DPAD_UP = 12;
+    const BTN_DPAD_DOWN = 13;
+    const BTN_DPAD_LEFT = 14;
+    const BTN_DPAD_RIGHT = 15;
+    const isPressed = (gp, idx) => !!(gp.buttons[idx] && gp.buttons[idx].pressed);
+    function getFirstGamepad() {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (let k = 0; k < pads.length; k++) if (pads[k]) return pads[k];
+      return null;
+    }
+    function applyDeadzone(v) {
+      if (Math.abs(v) < GAMEPAD_DEADZONE) return 0;
+      const sign = v < 0 ? -1 : 1;
+      return sign * ((Math.abs(v) - GAMEPAD_DEADZONE) / (1 - GAMEPAD_DEADZONE));
+    }
+
     (document.addEventListener("mousemove", (t) => {
       ((i = t.clientX), (o = t.clientY), (l = !0));
     }),
@@ -293,26 +527,89 @@ function drawStars() {
         l = !1;
       }),
       requestAnimationFrame(function d() {
+        const gp = getFirstGamepad();
+        let gx = 0,
+          gy = 0,
+          boosting = false;
+        gamepadActive = false;
+        if (gp) {
+          gx = applyDeadzone(gp.axes[0] || 0);
+          gy = applyDeadzone(gp.axes[1] || 0);
+
+          if (isPressed(gp, BTN_DPAD_LEFT)) gx = -1;
+          else if (isPressed(gp, BTN_DPAD_RIGHT)) gx = 1;
+          if (isPressed(gp, BTN_DPAD_UP)) gy = -1;
+          else if (isPressed(gp, BTN_DPAD_DOWN)) gy = 1;
+
+          boosting = isPressed(gp, BTN_RB);
+
+          if (gx !== 0 || gy !== 0) {
+            gamepadActive = true;
+            i = e + gx * 1000;
+            o = a + gy * 1000;
+            l = true;
+          }
+        }
+
         let c, u;
         l && null !== i ? ((c = i), (u = o)) : ((c = e), (u = a));
         const m = c - e,
           h = u - a,
           v = Math.sqrt(m * m + h * h);
-        const followThreshold = l ? (isMobileTouch() ? 120 : 220) : 0;
-        if (v > followThreshold + 1) {
-          const t = l ? (v - followThreshold) / v : 1;
-          ((n += m * t * 0.022), (r += h * t * 0.022));
+
+        if (gamepadActive) {
+          const thrust = boosting ? GAMEPAD_THRUST_BOOST : GAMEPAD_THRUST_BASE;
+          n += gx * thrust;
+          r += gy * thrust;
+        } else {
+          const followThreshold = l ? (isMobileTouch() ? 120 : 220) : 0;
+          if (v > followThreshold + 1) {
+            const t = l ? (v - followThreshold) / v : 1;
+            ((n += m * t * 0.022), (r += h * t * 0.022));
+          }
         }
-        const p = l ? 0.15 : 0.995;
-        if (((n *= p), (r *= p), (e += n), (a += r), l && null !== i)) {
-          const t = i - e,
-            n = o - a;
-          let r = Math.atan2(n, t) * (180 / Math.PI) + 90 - s;
-          for (; r > 180; ) r -= 360;
-          for (; r < -180; ) r += 360;
-          s += 0.25 * r;
+
+        const p = gamepadActive ? GAMEPAD_DAMPING : l ? 0.15 : 0.995;
+        n *= p;
+        r *= p;
+        e += n;
+        a += r;
+
+        const minX = -FLIGHT_MARGIN,
+          maxX = window.innerWidth + FLIGHT_MARGIN,
+          minY = -FLIGHT_MARGIN_TOP,
+          maxY = window.innerHeight + FLIGHT_MARGIN;
+        if (e < minX) {
+          e = minX;
+          n = 0;
+        } else if (e > maxX) {
+          e = maxX;
+          n = 0;
         }
-        const f = Math.max(0, Math.min(1, (e + 150) / 80));
+        if (a < minY) {
+          a = minY;
+          r = 0;
+        } else if (a > maxY) {
+          a = maxY;
+          r = 0;
+        }
+
+        if (l && null !== i) {
+          const toX = i - e,
+            toY = o - a;
+          let angle = Math.atan2(toY, toX) * (180 / Math.PI) + 90 - s;
+          for (; angle > 180; ) angle -= 360;
+          for (; angle < -180; ) angle += 360;
+          s += 0.25 * angle;
+        }
+
+        if (!gamepadActive && wasGamepadActive) l = false;
+        wasGamepadActive = gamepadActive;
+
+        shipCenterX = e + 65;
+        shipCenterY = a + 65;
+
+        const f = Math.max(0, Math.min(1, (e + FLIGHT_MARGIN) / 80));
         ((t.style.opacity = f),
           (t.style.transform = `translate(${e}px, ${a}px) rotate(${s}deg)`),
           requestAnimationFrame(d));
@@ -320,51 +617,71 @@ function drawStars() {
     const d = t.querySelector(".starry-cohete-fondo");
     const cohetteTop = t.querySelector(".starry-cohete-top");
     if (d) {
-      ((d.style.transition =
-        "transform 0.18s cubic-bezier(0.4,0,0.2,1), filter 0.18s ease"),
-        (t.style.pointerEvents = "auto"));
-      let e = !1;
-      t.addEventListener("click", () => {
-        ((e = !e),
-          e
-            ? ((d.style.transform = "translate(1px, 0px)"),
-              (d.style.filter =
-                "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))"),
-              cohetteTop && (cohetteTop.src = "parallax/cohete_on.png"),
-              (() => {
-                const snd = new Audio("audio/light_on.mp3");
-                snd.volume = 1;
-                snd.play().catch(() => {});
-              })())
-            : ((d.style.transform = "translate(0, 0)"),
-              (d.style.filter = "none"),
-              cohetteTop && (cohetteTop.src = "parallax/cohete.png"),
-              (() => {
-                const snd = new Audio("audio/light_off.mp3");
-                snd.volume = 1;
-                snd.play().catch(() => {});
-              })()));
-      });
+      d.style.transition =
+        "transform 0.18s cubic-bezier(0.4,0,0.2,1), filter 0.18s ease";
+      let lightOn = false;
+      const toggleLight = () => {
+        lightOn = !lightOn;
+        if (lightOn) {
+          d.style.transform = "translate(1px, 0px)";
+          d.style.filter = "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))";
+          if (cohetteTop) cohetteTop.src = "parallax/cohete_on.png";
+          const snd = new Audio("audio/light_on.mp3");
+          snd.volume = 1;
+          snd.play().catch(() => {});
+        } else {
+          d.style.transform = "translate(0, 0)";
+          d.style.filter = "none";
+          if (cohetteTop) cohetteTop.src = "parallax/cohete.png";
+          const snd = new Audio("audio/light_off.mp3");
+          snd.volume = 1;
+          snd.play().catch(() => {});
+        }
+      };
+      toggleShipLight = toggleLight;
+      // La caja de la nave (130x130) es casi toda transparente y sigue al
+      // mouse: si aceptara clicks en todo su rectángulo (pointer-events:auto
+      // en CSS), terminaba tapando los clicks a la guitarra/bajo/satélite de
+      // abajo apenas se paraba encima. Por eso la caja tiene pointer-events:
+      // none y acá se chequea a mano, contra el sprite real, si el click cae
+      // sobre un pixel opaco de la nave.
+      if (cohetteTop) {
+        const hitCohete = createAlphaHitTester(cohetteTop);
+        document.addEventListener(
+          "click",
+          (ev) => {
+            if (hitCohete(ev.clientX, ev.clientY)) toggleLight();
+          },
+          true,
+        );
+      }
     }
     (function () {
       const t = document.querySelector(".starry-p9");
       if (!t) return;
       const e = new Audio("audio/satelite.mp3");
-      ((e.preload = "auto"),
-        (e.volume = 0.25),
-        t.addEventListener("click", () => {
-          window.innerWidth <= 600 ||
-            (t.classList.remove("spinning"),
-            t.offsetWidth,
-            t.classList.add("spinning"),
-            t.addEventListener(
-              "animationend",
-              () => t.classList.remove("spinning"),
-              { once: !0 },
-            ),
-            (e.currentTime = 0),
-            e.play().catch(() => {}));
-        }));
+      e.preload = "auto";
+      e.volume = 0.25;
+      const triggerSatelite = () => {
+        if (window.innerWidth <= 600) return;
+        t.classList.remove("spinning");
+        t.offsetWidth;
+        t.classList.add("spinning");
+        t.addEventListener("animationend", () => t.classList.remove("spinning"), {
+          once: !0,
+        });
+        e.currentTime = 0;
+        e.play().catch(() => {});
+      };
+      const hitSatelite = createAlphaHitTester(t);
+      t.addEventListener("click", (ev) => {
+        if (!hitSatelite(ev.clientX, ev.clientY)) return;
+        triggerSatelite();
+      });
+      parallaxZones.push({
+        hitTest: hitSatelite,
+        trigger: triggerSatelite,
+      });
     })();
   })());
 
@@ -448,23 +765,26 @@ function drawStars() {
     }
   }
 
+  const triggerBass = (x, y) => {
+    bassAudio.currentTime = 0;
+    bassAudio.play().catch(() => {});
+    spawnNotes(x, y);
+  };
+  const hitBass = createAlphaHitTester(bassTarget);
+
   document.addEventListener(
     "click",
     function (ev) {
-      const r = bassTarget.getBoundingClientRect();
-      if (
-        ev.clientX >= r.left &&
-        ev.clientX <= r.right &&
-        ev.clientY >= r.top &&
-        ev.clientY <= r.bottom
-      ) {
-        bassAudio.currentTime = 0;
-        bassAudio.play().catch(() => {});
-        spawnNotes(ev.clientX, ev.clientY);
-      }
+      if (!hitBass(ev.clientX, ev.clientY)) return;
+      triggerBass(ev.clientX, ev.clientY);
     },
     true,
   );
+
+  parallaxZones.push({
+    hitTest: hitBass,
+    trigger: triggerBass,
+  });
 })();
 
 // Typed.js for year animation
@@ -477,3 +797,47 @@ document.addEventListener("DOMContentLoaded", function () {
     showCursor: false,
   });
 });
+
+// Joystick: A (Xbox) / X (PlayStation) — botón 0 — reproduce el sonido de la
+// zona del parallax que la nave esté tocando, igual que un click de mouse.
+// Y (Xbox) / Triángulo (PlayStation) — botón 3 — prende/apaga la luz de la nave.
+(function () {
+  const cohetePair = document.getElementById("starry-cohete-pair");
+  if (!cohetePair || !navigator.getGamepads) return;
+
+  const BTN_ACTION = 0;
+  const BTN_LIGHT = 3;
+  const prevActionPressed = [];
+  const prevLightPressed = [];
+
+  function pollButtons() {
+    const pads = navigator.getGamepads();
+    for (let idx = 0; idx < pads.length; idx++) {
+      const gp = pads[idx];
+      if (!gp) continue;
+
+      const actionButton = gp.buttons[BTN_ACTION];
+      const actionPressed = !!(actionButton && actionButton.pressed);
+      if (actionPressed && !prevActionPressed[idx]) {
+        const shipRect = cohetePair.getBoundingClientRect();
+        const cx = shipRect.left + shipRect.width / 2;
+        const cy = shipRect.top + shipRect.height / 2;
+        for (const zone of parallaxZones) {
+          if (zone.hitTest(cx, cy)) {
+            zone.trigger(cx, cy);
+          }
+        }
+      }
+      prevActionPressed[idx] = actionPressed;
+
+      const lightButton = gp.buttons[BTN_LIGHT];
+      const lightPressed = !!(lightButton && lightButton.pressed);
+      if (lightPressed && !prevLightPressed[idx] && toggleShipLight) {
+        toggleShipLight();
+      }
+      prevLightPressed[idx] = lightPressed;
+    }
+    requestAnimationFrame(pollButtons);
+  }
+  requestAnimationFrame(pollButtons);
+})();
