@@ -16,14 +16,17 @@ const ALLOWED_ORIGINS = [
 // Modelos de Workers AI, en orden de preferencia. Se prueba el primero; si falla
 // por algo que NO sea la cuota diaria (modelo saturado, caído), se prueba el
 // siguiente.
-//   - 8B: barato, ~10x más respuestas/día en el plan gratis. El de todos los días.
-//   - 70B: más "vivo", pero quema la cuota gratis rapidísimo. Queda de respaldo.
+//   - 70B: mejor calidad y sigue mejor las instrucciones de la ficha, pero
+//     gasta mucha más cuota gratis por respuesta (~100 respuestas/día). El
+//     de todos los días para un sitio de tráfico bajo como este.
+//   - 8B: barato, ~10x más respuestas/día en el plan gratis. Queda de respaldo
+//     por si el 70B está saturado/caído.
 // OJO: la cuota gratis (10.000 neuronas/día) es de la CUENTA, no por modelo:
 // cuando se acaba, se acaba para todos. El respaldo cubre caídas del modelo,
 // NO sirve para estirar la cuota.
 const MODELS = [
-  "@cf/meta/llama-3.1-8b-instruct-fp8",
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+  "@cf/meta/llama-3.1-8b-instruct-fp8",
 ];
 
 // De dónde saca la ficha (tono + qué sabe del SISOP y de Agus).

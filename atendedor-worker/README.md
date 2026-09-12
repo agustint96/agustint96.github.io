@@ -5,8 +5,8 @@ llamar a un modelo de IA directamente sin exponer credenciales, así que le pega
 a este Worker, que corre en Cloudflare y usa **Workers AI** (modelos Llama que
 corren en la infra de Cloudflare, **sin API key externa**).
 
-- **Costo:** gratis hasta 10.000 "neuronas"/día (con el modelo 8B por defecto,
-  ~1000+ respuestas/día; con el 70B de respaldo, ~100). Más que eso: US$ 0,011
+- **Costo:** gratis hasta 10.000 "neuronas"/día (con el modelo 70B por defecto,
+  ~100 respuestas/día; con el 8B de respaldo, ~1000+). Más que eso: US$ 0,011
   cada 1.000 neuronas, o el plan Workers Paid (US$ 5/mes). No pide tarjeta.
   La cuota resetea a medianoche UTC (21 h de Córdoba).
 - La info de la que se nutre está en `../bot/atendedor-kb.md`. Editás ese archivo,
@@ -127,7 +127,7 @@ Editás lo que quieras, `git push`, y a los ~5 minutos el bot ya responde distin
 
 | Constante | Qué hace |
 |---|---|
-| `MODELS` | Lista de modelos de Workers AI, en orden. Se usa el primero; si falla por algo que no sea la cuota diaria, cae al siguiente. Default: `llama-3.1-8b` (barato, ~1000+ respuestas/día gratis) con `llama-3.3-70b` de respaldo. La cuota gratis (10.000 neuronas/día) es de la cuenta, no por modelo: cuando se agota, el bot avisa que vuelvan más tarde (resetea a medianoche UTC = 21 h Córdoba). |
+| `MODELS` | Lista de modelos de Workers AI, en orden. Se usa el primero; si falla por algo que no sea la cuota diaria, cae al siguiente. Default: `llama-3.3-70b` (mejor calidad, ~100 respuestas/día gratis) con `llama-3.1-8b` de respaldo. La cuota gratis (10.000 neuronas/día) es de la cuenta, no por modelo: cuando se agota, el bot avisa que vuelvan más tarde (resetea a medianoche UTC = 21 h Córdoba). |
 | `ALLOWED_ORIGINS` | Desde qué dominios se puede llamar. Tocá si movés el sitio. |
 | `KB_URL` | De dónde lee la ficha. |
 | `MAX_TOKENS` | Largo máximo de cada respuesta. |
