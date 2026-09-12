@@ -32,7 +32,7 @@ const KB_URL = "https://agustint96.github.io/bot/atendedor-kb.md";
 
 const MAX_CHARS_PER_MSG = 800; // recorta mensajes larguísimos
 const MAX_TURNS = 8; // sólo los últimos N mensajes de la charla
-const MAX_TOKENS = 360; // largo máximo de la respuesta
+const MAX_TOKENS = 480; // largo máximo de la respuesta
 
 /* Instrucción base fija. TODO lo editable —qué sabe y CÓMO habla— vive en
    bot/atendedor-kb.md. Este texto sólo le dice al modelo que obedezca ese
