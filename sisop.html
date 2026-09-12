@@ -132,6 +132,34 @@
         right: var(--desk-left);
         bottom: calc(var(--taskbar-h) + 8px);
         z-index: 1;
+        -webkit-user-select: none;
+        user-select: none;
+        touch-action: none;
+      }
+
+      /* Lazo de selección múltiple (forma libre, no un cuadrado): ver
+         "Selección múltiple por lazo" en sisop-desk-icons.js. */
+      .desk-lasso {
+        position: absolute;
+        inset: 0;
+        overflow: visible;
+        pointer-events: none;
+        z-index: 5;
+        display: none;
+      }
+      .desk-lasso.active {
+        display: block;
+      }
+      .desk-lasso path {
+        fill: none;
+        /* difference invierte el trazo contra lo que tenga debajo (ícono
+           claro, fondo oscuro, lo que sea), así nunca se pierde de vista;
+           es la misma idea que las "hormigas marchantes" de verdad. */
+        stroke: #fff;
+        mix-blend-mode: difference;
+        stroke-width: 1.2;
+        stroke-linejoin: round;
+        stroke-dasharray: 4 3;
       }
 
       .desk-icon {
@@ -160,6 +188,14 @@
         z-index: 9997;
         cursor: grabbing;
         opacity: 0.85;
+      }
+
+      /* "Actualizar" del menú contextual: parpadeo breve de los íconos,
+         como el redibujado del escritorio de Windows. */
+      .desk-icon.uf-refresh-flash,
+      .folder-icon.uf-refresh-flash {
+        transition: opacity 0.12s;
+        opacity: 0.25;
       }
 
       /* ---------- Menú contextual (clic derecho: escritorio y carpetas) --------- */
@@ -367,9 +403,15 @@
 
       /* ---------- Modo juego: app ejecutable a pantalla completa ----------
          Ej.: Casus Liber. Doble clic en el icono y la ventana cubre toda la
-         pantalla (por encima de la barra de tareas). La barra de título queda
-         escondida hacia arriba y sólo baja cuando el mouse se acerca al borde
-         superior. Botones minimalistas: glifo negro sobre blanco, sin relieve. */
+         pantalla (por encima de la barra de tareas), sin borde. La barra de
+         título ocupa su propio lugar arriba (el flex-column de .w98win de
+         base ya la pone encima de .w98-body) en vez de flotar superpuesta
+         sobre la pantalla del juego, así nunca tapa nada de lo que dibuja el
+         juego. Todo negro liso (probamos transparencia+blur y no quedó
+         bien: además, al maximizar de verdad con la Fullscreen API no hay
+         nada detrás para blurear, así que se veía negro igual, pero
+         inconsistente con el modo ventana). Botones minimalistas: glifo
+         blanco, sin relieve. */
       .w98win.w98-game {
         position: fixed !important;
         inset: 0 !important;
@@ -397,81 +439,47 @@
         background: #000;
       }
 
-      /* Franja sensible pegada al borde superior que revela la barra. */
-      .w98-game-hotzone {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 14px;
-        z-index: 11;
-      }
-
-      /* Barra de título flotante: escondida arriba por defecto. */
       .w98win.w98-game > .title-bar {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 12;
+        flex-shrink: 0;
         height: 26px;
-        padding: 0 0 0 9px;
-        background: #fff;
-        color: #111;
+        padding: 0;
+        background: var(--w98-face);
         cursor: default;
-        transform: translateY(-100%);
-        transition: transform 0.16s ease;
-        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
-      }
-      .w98-game-hotzone:hover + .title-bar,
-      .w98win.w98-game > .title-bar:hover,
-      .w98win.w98-game > .title-bar:focus-within {
-        transform: translateY(0);
+        box-shadow: none;
       }
 
-      .w98win.w98-game > .title-bar .tb-glyph {
-        display: none;
-      }
+      .w98win.w98-game > .title-bar .tb-glyph,
       .w98win.w98-game > .title-bar .tb-text {
-        color: #111;
-        font-weight: 400;
-        opacity: 0.65;
-      }
-      .w98win.w98-game > .title-bar a.tb-text:hover {
-        opacity: 1;
+        display: none;
       }
 
       .w98win.w98-game > .title-bar .tb-btns {
         gap: 0;
         height: 100%;
+        margin-left: auto;
       }
       .w98win.w98-game > .title-bar .tb-btn {
         width: 30px;
         height: 100%;
-        color: #111;
-        background: #fff;
+        color: #1b1b18;
+        background: transparent;
         border: 0;
         box-shadow: none;
         font-size: 12px;
         font-weight: 400;
       }
       .w98win.w98-game > .title-bar .tb-btn:hover {
-        background: #e8e8e8;
+        background: var(--accent);
         box-shadow: none;
       }
       .w98win.w98-game > .title-bar .tb-btn:active {
-        background: #d2d2d2;
+        background: var(--accent);
+        filter: brightness(0.9);
         box-shadow: none;
       }
       .w98win.w98-game > .title-bar .tb-btn[data-w="close"]:hover {
         background: #e81123;
         color: #fff;
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .w98win.w98-game > .title-bar {
-          transition: none;
-        }
       }
 
       /* Carpeta: grilla de iconos */
@@ -2923,13 +2931,6 @@
           -webkit-touch-callout: none;
         }
 
-        /* Casus Liber (modo juego): la franja superior también se puede
-           tocar para revelar la barra de título, no sólo pasarle el mouse
-           por encima (ver el listener de "click" en makeWin(), sisop-sqlconsole.js). */
-        .w98win.w98-game.tb-open > .title-bar {
-          transform: translateY(0);
-        }
-
         /* Grabadora: "Regrabar" ya vive en el deck (controles de
            reproducción); acá abajo sólo queda "Enviar mensaje", centrado. */
         .rec-actions {
@@ -2941,6 +2942,284 @@
         .rec-actions .btn {
           flex: none;
           min-width: 200px;
+        }
+      }
+
+      /* ---------- App «Paint» ---------- */
+      .paint-root {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        min-width: 0;
+        outline: none;
+      }
+      .paint-work {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+      .paint-toolbox {
+        width: 68px;
+        flex-shrink: 0;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1px;
+        padding: 3px;
+        align-content: start;
+        border-right: 1px solid var(--w98-shadow);
+        background: var(--w98-face);
+        overflow-y: auto;
+      }
+      .paint-tool {
+        width: 30px;
+        height: 27px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        color: #1b1b18;
+        background: var(--w98-face);
+        border: 0;
+        cursor: pointer;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite);
+      }
+      .paint-tool svg {
+        width: 17px;
+        height: 17px;
+        display: block;
+      }
+      .paint-tool.active,
+      .paint-tool:active {
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite),
+          inset 2px 2px 0 0 var(--w98-shadow),
+          inset -2px -2px 0 0 var(--w98-face-lite);
+      }
+      .paint-options {
+        grid-column: 1 / -1;
+        min-height: 34px;
+        margin-top: 3px;
+        padding-top: 4px;
+        border-top: 1px solid var(--w98-shadow);
+        display: flex;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        justify-content: center;
+        gap: 3px;
+      }
+      .paint-width-btn {
+        width: 28px;
+        height: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        color: #1b1b18;
+        background: var(--w98-face);
+        border: 0;
+        cursor: pointer;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite);
+      }
+      .paint-zoom-btn {
+        width: auto;
+        padding: 0 4px;
+      }
+      .paint-width-btn span {
+        display: block;
+        background: #1b1b18;
+        border-radius: 1px;
+      }
+      .paint-width-btn.active {
+        background: var(--w98-selbg);
+      }
+      .paint-fill-btn {
+        width: 28px;
+        height: 18px;
+        font-size: 11px;
+        color: #1b1b18;
+        background: var(--w98-face);
+        border: 0;
+        cursor: pointer;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite);
+      }
+      .paint-fill-btn.active {
+        background: var(--w98-selbg);
+      }
+      .paint-canvas-wrap {
+        flex: 1;
+        min-width: 0;
+        overflow: auto;
+        background: #7a7a72;
+        padding: 8px;
+      }
+      .paint-canvas-stage {
+        position: relative;
+        display: inline-block;
+        background: #fff;
+        box-shadow: 0 0 0 1px var(--w98-dkshadow);
+      }
+      .paint-canvas-stage canvas {
+        display: block;
+        touch-action: none;
+      }
+      .paint-canvas-stage canvas.paint-zoomed {
+        image-rendering: pixelated;
+      }
+      .paint-canvas-stage canvas.paint-overlay {
+        position: absolute;
+        left: 0;
+        top: 0;
+        pointer-events: none;
+      }
+      .paint-resize-ghost {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border: 1px dashed #000;
+        pointer-events: none;
+        display: none;
+        z-index: 4;
+      }
+      .paint-resize-handle {
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        background: #fff;
+        border: 1px solid #000;
+        box-sizing: border-box;
+        z-index: 5;
+        touch-action: none;
+      }
+      .paint-resize-e {
+        right: -4px;
+        top: 50%;
+        margin-top: -3px;
+        cursor: e-resize;
+      }
+      .paint-resize-s {
+        bottom: -4px;
+        left: 50%;
+        margin-left: -3px;
+        cursor: s-resize;
+      }
+      .paint-resize-se {
+        right: -4px;
+        bottom: -4px;
+        cursor: se-resize;
+      }
+      .paint-text-box {
+        position: absolute;
+        min-width: 40px;
+        min-height: 1.2em;
+        padding: 1px;
+        outline: 1px dashed #000;
+        background: transparent;
+        font-family: Arial, sans-serif;
+        white-space: pre;
+        cursor: text;
+      }
+      .paint-status {
+        flex-shrink: 0;
+        display: flex;
+        gap: 10px;
+        padding: 3px 8px;
+        font-size: 10px;
+        color: #1b1b18;
+        border-top: 1px solid var(--w98-hilite);
+        box-shadow: inset 0 1px 0 0 var(--w98-shadow);
+      }
+      .paint-status-pos {
+        margin-left: auto;
+      }
+      .paint-palette {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 6px;
+        border-top: 1px solid var(--w98-shadow);
+      }
+      .paint-cur {
+        position: relative;
+        width: 34px;
+        height: 24px;
+        flex-shrink: 0;
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite);
+      }
+      .paint-cur i {
+        position: absolute;
+        display: block;
+        box-shadow: inset 1px 1px 0 0 rgba(0, 0, 0, 0.4);
+      }
+      .paint-cur .bg {
+        width: 18px;
+        height: 16px;
+        right: 0;
+        bottom: 0;
+      }
+      .paint-cur .fg {
+        width: 18px;
+        height: 16px;
+        left: 0;
+        top: 0;
+      }
+      .paint-swatches {
+        display: grid;
+        grid-template-columns: repeat(14, 15px);
+        grid-template-rows: repeat(2, 12px);
+        gap: 1px;
+        overflow-x: auto;
+      }
+      .paint-swatch {
+        width: 15px;
+        height: 12px;
+        padding: 0;
+        border: 1px solid #6f6c63;
+        cursor: pointer;
+      }
+      .paint-field {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+      }
+      .paint-field input[type="number"] {
+        width: 64px;
+        font: inherit;
+        padding: 2px 4px;
+        background: #fff;
+        border: 0;
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite);
+      }
+      @media (max-width: 640px), (pointer: coarse) {
+        .paint-toolbox {
+          width: 60px;
+        }
+        .paint-tool {
+          width: 26px;
+          height: 25px;
+        }
+        .paint-swatch {
+          width: 20px;
+          height: 18px;
+        }
+        .paint-swatches {
+          grid-template-columns: repeat(14, 20px);
+          grid-template-rows: repeat(2, 18px);
         }
       }
     </style>
@@ -3131,7 +3410,7 @@
           <path
             d="M14 24v-7l7-1.6V22"
             fill="none"
-            stroke="#22384f"
+            stroke="#f19280"
             stroke-width="1.8"
             stroke-linecap="round"
           />
@@ -3230,6 +3509,34 @@
       >
         <img src="ico/grabadora.png" alt="" draggable="false" />
         <span>Grabadora</span>
+      </button>
+
+      <button
+        class="desk-icon"
+        type="button"
+        data-open="paint"
+        title="Doble clic para abrir"
+        aria-label="Paint (doble clic para abrir)"
+      >
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path
+            d="M16 4c7.2 0 12 4.9 12 11 0 4-2.6 6-6 6h-2.3c-1 0-1.7.8-1.7 1.7 0 .6.3 1.1.6 1.5.4.5.6 1 .6 1.6 0 1.6-1.5 2.2-3.2 2.2C9 28 4 23 4 16 4 9.4 9.4 4 16 4z"
+            fill="#e4e1d8"
+            stroke="#3a3a34"
+            stroke-width="1.2"
+          />
+          <circle cx="10.5" cy="13" r="1.8" fill="#e0463c" />
+          <circle cx="16.5" cy="9.5" r="1.8" fill="#f0c419" />
+          <circle cx="21.3" cy="13.2" r="1.8" fill="#3d7dca" />
+          <circle cx="11.2" cy="19" r="1.8" fill="#4c9a53" />
+          <path
+            d="M19.5 22.5l5.5-5.5"
+            stroke="#6f5d13"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
+        </svg>
+        <span>Paint</span>
       </button>
     </div>
 
@@ -3529,5 +3836,6 @@ SELECT * FROM Info;</textarea
     <script src="js/sisop-grabadora.js"></script>
     <script src="js/sisop-sqlconsole.js"></script>
     <script src="js/sisop-user-files.js"></script>
+    <script src="js/sisop-paint.js"></script>
   </body>
 </html>

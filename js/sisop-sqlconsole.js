@@ -1138,13 +1138,13 @@
         '<svg viewBox="0 0 32 32" aria-hidden="true">' +
         '<path d="M2.5 7.5h9l2.5 3H29a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 29 26.5H4A1.5 1.5 0 0 1 2.5 25z" fill="#5f8f9c" stroke="#2c4750" stroke-width="1.2"/>' +
         '<path d="M2.5 12.5h27a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 29.5 26.5H4A1.5 1.5 0 0 1 2.5 25z" fill="#8fc0cc" stroke="#2c4750" stroke-width="1.2"/>' +
-        '<path d="M15 23.5v-7l6-1.5v7" fill="none" stroke="#22384f" stroke-width="1.6" stroke-linecap="round"/>' +
+        '<path d="M15 23.5v-7l6-1.5v7" fill="none" stroke="#f19280" stroke-width="1.6" stroke-linecap="round"/>' +
         '<circle cx="13.4" cy="23.6" r="1.9" fill="#f19280"/><circle cx="19.4" cy="22.1" r="1.9" fill="#f19280"/></svg>',
       mp3:
         '<svg viewBox="0 0 32 32" aria-hidden="true">' +
         '<path d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#f0ece4" stroke="#2f4467" stroke-width="1.3"/>' +
         '<path d="M19 3v5h5" fill="none" stroke="#2f4467" stroke-width="1.3"/>' +
-        '<path d="M14 24v-8l6-1.5V22" fill="none" stroke="#2f4467" stroke-width="1.6" stroke-linecap="round"/>' +
+        '<path d="M14 24v-8l6-1.5V22" fill="none" stroke="#f19280" stroke-width="1.6" stroke-linecap="round"/>' +
         '<circle cx="12.4" cy="24.1" r="2" fill="#f19280"/><circle cx="18.4" cy="22.6" r="2" fill="#f19280"/></svg>',
       note:
         '<svg viewBox="0 0 32 32" aria-hidden="true">' +
@@ -1156,6 +1156,23 @@
         '<path d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#f0ece4" stroke="#9a3232" stroke-width="1.3"/>' +
         '<path d="M19 3v5h5" fill="none" stroke="#9a3232" stroke-width="1.3"/>' +
         '<path d="M11 15h10M11 18.5h10M11 22h6" stroke="#9a3232" stroke-width="1.6" stroke-linecap="round"/></svg>',
+      /* Mismos dibujos que los íconos de escritorio de «Juegos» y «FOTOS»,
+         para que la ventana y la taskbar repitan ese ícono en vez de uno
+         genérico de carpeta. */
+      juegos:
+        '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+        '<path d="M2.5 7.5h9l2.5 3H29a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 29 26.5H4A1.5 1.5 0 0 1 2.5 25z" fill="#7a6cae" stroke="#3b3363" stroke-width="1.2"/>' +
+        '<path d="M2.5 12.5h27a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 29.5 26.5H4A1.5 1.5 0 0 1 2.5 25z" fill="#a99ed6" stroke="#3b3363" stroke-width="1.2"/>' +
+        '<rect x="8" y="15" width="16" height="9" rx="4.5" fill="#4a4270" stroke="#2a244a" stroke-width="1.1"/>' +
+        '<path d="M12 18v3M10.5 19.5h3" stroke="#f0ece4" stroke-width="1.5" stroke-linecap="round"/>' +
+        '<circle cx="19.2" cy="18.6" r="1.4" fill="#f19280"/><circle cx="21.6" cy="21" r="1.4" fill="#7eb8c9"/></svg>',
+      fotos:
+        '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+        '<path d="M2.5 7.5h9l2.5 3H29a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 29 26.5H4A1.5 1.5 0 0 1 2.5 25z" fill="#c98a5b" stroke="#5c3b22" stroke-width="1.2"/>' +
+        '<path d="M2.5 12.5h27a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 29.5 26.5H4A1.5 1.5 0 0 1 2.5 25z" fill="#e6b88b" stroke="#5c3b22" stroke-width="1.2"/>' +
+        '<rect x="9" y="14.5" width="14" height="9.5" rx="1" fill="#f0ece4"/>' +
+        '<circle cx="12.6" cy="17.6" r="1.5" fill="#f19280"/>' +
+        '<path d="M9.5 24l4-4 3 2.5 2.5-2 3.5 3.5z" fill="#7eb8c9"/></svg>',
     };
 
     var SITE_W = 1000;
@@ -1196,7 +1213,7 @@
       },
       juegos: {
         title: "Juegos",
-        icon: "folder",
+        icon: "juegos",
         type: "folder",
         w: 360,
         h: 260,
@@ -1219,7 +1236,7 @@
       },
       fotos: {
         title: "FOTOS",
-        icon: "photo",
+        icon: "fotos",
         type: "photos",
         w: 540,
         h: 410,
@@ -1446,7 +1463,7 @@
       var moved = false;
       var sx, sy, ox, oy;
       handle.addEventListener("pointerdown", function (e) {
-        if (e.target.closest(".tb-btn, a")) return;
+        if (e.target.closest(".tb-btn")) return;
         if (
           w.classList.contains("w98max") ||
           w.classList.contains("w98-game") ||
@@ -1735,6 +1752,9 @@
       if (linkable) {
         tEl.href = linkHref;
         tEl.title = "Abrir «" + cfg.title + "» en una pestaña nueva";
+        // Evita que el navegador dispare un drag nativo del link (que
+        // compite con el arrastre de la ventana implementado abajo).
+        tEl.draggable = false;
       }
       w.appendChild(tb);
 
@@ -1744,15 +1764,6 @@
         w.style.top = "";
         w.style.width = "";
         w.style.height = "";
-        var hotzone = document.createElement("div");
-        hotzone.className = "w98-game-hotzone";
-        hotzone.setAttribute("aria-hidden", "true");
-        // En touch no hay ":hover": un tap en la franja también revela la
-        // barra de título (ver .w98win.w98-game.tb-open en sisop.html).
-        hotzone.addEventListener("click", function () {
-          w.classList.toggle("tb-open");
-        });
-        w.insertBefore(hotzone, tb);
       }
 
       var bd = document.createElement("div");

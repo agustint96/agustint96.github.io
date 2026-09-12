@@ -394,8 +394,7 @@ function drawStars() {
       // Notas en fila horizontal hacia la derecha, con pequeño offset vertical alternado
       const startX = x + i * spacing;
       const startY = y + (i % 2 === 0 ? 0 : -8);
-      const NOTE_COLORS = ["#1a2d4a8f", "#f19380"];
-      const noteColor = NOTE_COLORS[i % 2];
+      const noteColor = "#f19280";
       el.style.cssText = `
         position: fixed;
         left: ${startX}px;

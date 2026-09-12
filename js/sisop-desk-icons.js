@@ -223,6 +223,169 @@
 
   icons.forEach(bindDrag);
 
+  // ---- Navegar entre iconos con las flechitas ----
+  // Reusa las coordenadas (col,row) de `layout`, así que respeta el
+  // acomodo real de la cuadrícula (incluso arrastrado a mano) en vez de
+  // adivinar por posición en píxeles. Busca, entre los demás iconos, el más
+  // cercano en la dirección pedida: primero el que está más alineado
+  // (mismo row para izq/der, misma col para arriba/abajo) y, entre esos, el
+  // más próximo.
+  var ARROW_KEYS = {
+    ArrowUp: 1,
+    ArrowDown: 1,
+    ArrowLeft: 1,
+    ArrowRight: 1,
+  };
+  function findInDirection(fromId, key) {
+    var p = layout[fromId];
+    if (!p) return null;
+    var dx = key === "ArrowRight" ? 1 : key === "ArrowLeft" ? -1 : 0;
+    var dy = key === "ArrowDown" ? 1 : key === "ArrowUp" ? -1 : 0;
+    var bestId = null;
+    var bestScore = Infinity;
+    icons.forEach(function (ic) {
+      var id = iconId(ic);
+      if (id === fromId) return;
+      var q = layout[id];
+      if (!q) return;
+      var ddx = q.col - p.col;
+      var ddy = q.row - p.row;
+      var primary = dx ? ddx * dx : ddy * dy;
+      if (primary <= 0) return; // no está del lado pedido
+      var perp = dx ? ddy : ddx;
+      var score = Math.abs(perp) * 1000 + primary;
+      if (score < bestScore) {
+        bestScore = score;
+        bestId = id;
+      }
+    });
+    return bestId;
+  }
+  desk.addEventListener("keydown", function (e) {
+    if (!ARROW_KEYS[e.key]) return;
+    var active = document.activeElement;
+    if (!active || !active.classList || !active.classList.contains("desk-icon"))
+      return;
+    e.preventDefault();
+    var targetId = findInDirection(iconId(active), e.key);
+    if (!targetId) return;
+    var targetEl = icons.filter(function (ic) {
+      return iconId(ic) === targetId;
+    })[0];
+    if (!targetEl) return;
+    document
+      .querySelectorAll(".desk-icon.selected, .folder-icon.selected")
+      .forEach(function (x) {
+        x.classList.remove("selected");
+      });
+    targetEl.classList.add("selected");
+    targetEl.focus();
+  });
+
+  // ---- Selección múltiple por lazo (forma libre, no un cuadrado) ----
+  // Arrancás el arrastre en el fondo del escritorio (no sobre un ícono: eso
+  // ya lo maneja bindDrag) y vas dibujando el contorno a mano; al soltar, se
+  // cierra el trazo y quedan seleccionados los íconos cuyo centro cayó
+  // adentro. La selección se actualiza en vivo mientras arrastrás, como el
+  // rectángulo de selección de Windows pero con la forma que quieras.
+  var lassoSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  lassoSvg.setAttribute("class", "desk-lasso");
+  var lassoPath = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "path",
+  );
+  lassoSvg.appendChild(lassoPath);
+  desk.appendChild(lassoSvg);
+
+  var LASSO_MIN_DRAG = 4; // px: por debajo de esto es un click normal, no un lazo
+  var lassoPts = null;
+  var lassoStartX = 0,
+    lassoStartY = 0;
+
+  // Abierto a propósito: mientras se arrastra se ve sólo el trazo libre
+  // siguiendo el mouse, no una forma cerrada (si no, cualquier arrastre en
+  // "L" se ve como un cuadrilátero). El cierre contra el primer punto es
+  // sólo para el cálculo de qué íconos quedaron adentro (ver
+  // iconsInsideLasso), nunca se dibuja.
+  function svgPathFromPoints(pts) {
+    var d = "M" + pts[0][0] + "," + pts[0][1];
+    for (var i = 1; i < pts.length; i++) d += "L" + pts[i][0] + "," + pts[i][1];
+    return d;
+  }
+  // Ray casting clásico: ¿(x,y) cae adentro del polígono cerrado `pts`?
+  function pointInPolygon(x, y, pts) {
+    var inside = false;
+    for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      var xi = pts[i][0],
+        yi = pts[i][1];
+      var xj = pts[j][0],
+        yj = pts[j][1];
+      var intersect =
+        yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+  function iconsInsideLasso(pts) {
+    var rDesk = desk.getBoundingClientRect();
+    return icons.filter(function (ic) {
+      var r = ic.getBoundingClientRect();
+      var cx = r.left + r.width / 2 - rDesk.left;
+      var cy = r.top + r.height / 2 - rDesk.top;
+      return pointInPolygon(cx, cy, pts);
+    });
+  }
+
+  desk.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0) return;
+    if (e.target.closest(".desk-icon")) return;
+    var r = desk.getBoundingClientRect();
+    lassoPts = [[e.clientX - r.left, e.clientY - r.top]];
+    lassoStartX = e.clientX;
+    lassoStartY = e.clientY;
+    try {
+      desk.setPointerCapture(e.pointerId);
+    } catch (_) {}
+  });
+  desk.addEventListener("pointermove", function (e) {
+    if (!lassoPts) return;
+    var r = desk.getBoundingClientRect();
+    var x = e.clientX - r.left,
+      y = e.clientY - r.top;
+    var last = lassoPts[lassoPts.length - 1];
+    if (Math.abs(x - last[0]) + Math.abs(y - last[1]) < 2) return;
+    lassoPts.push([x, y]);
+    var dragged =
+      Math.abs(e.clientX - lassoStartX) + Math.abs(e.clientY - lassoStartY) >
+      LASSO_MIN_DRAG;
+    if (!dragged) return;
+    lassoSvg.classList.add("active");
+    lassoPath.setAttribute("d", svgPathFromPoints(lassoPts));
+    var inside = iconsInsideLasso(lassoPts.concat([lassoPts[0]]));
+    icons.forEach(function (ic) {
+      ic.classList.toggle("selected", inside.indexOf(ic) !== -1);
+    });
+  });
+  function endLasso(e) {
+    if (!lassoPts) return;
+    try {
+      desk.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+    var dragged =
+      Math.abs(e.clientX - lassoStartX) + Math.abs(e.clientY - lassoStartY) >
+      LASSO_MIN_DRAG;
+    lassoPts = null;
+    lassoSvg.classList.remove("active");
+    lassoPath.setAttribute("d", "");
+    // Sin arrastre real: fue un click normal, lo maneja el listener de
+    // siempre (limpia la selección al clickear el fondo). Con arrastre real,
+    // la selección ya quedó puesta en vivo: sólo evitamos que el "click"
+    // sintético que sigue al soltar la borre de nuevo.
+    if (dragged) window.sisopTouch.suppressNextClick(desk);
+  }
+  desk.addEventListener("pointerup", endLasso);
+  desk.addEventListener("pointercancel", endLasso);
+
   /* API para otros scripts (ej. sisop-user-files.js): sumar/sacar iconos
      del escritorio después de la carga inicial (carpetas/notas/archivos que
      crea el usuario), reusando la misma cuadrícula y el mismo arrastre.
@@ -266,5 +429,14 @@
     saveLayout();
   }
 
-  window.deskIcons = { add: addIcon, remove: removeIcon };
+  // "Actualizar" del menú contextual: descarta el acomodo a mano y vuelve a
+  // ordenar todo como al principio (mismo orden en que aparecen los iconos
+  // en el escritorio: primero los del HTML, después los que se hayan ido
+  // sumando).
+  function resetLayout() {
+    layout = {};
+    applyLayout();
+  }
+
+  window.deskIcons = { add: addIcon, remove: removeIcon, reset: resetLayout };
 })();

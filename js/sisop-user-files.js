@@ -214,8 +214,73 @@
       document.addEventListener("pointerdown", onOutside, true);
     }, 0);
   }
+  // "Actualizar" del escritorio: releé todo lo guardado (por si otra
+  // pestaña agregó algo), agrega los íconos que falten y reacomoda TODOS
+  // los del escritorio en el orden original (descarta el arrastre a mano),
+  // como pedís. Adentro de una carpeta no hay posiciones que reacomodar
+  // (es un flujo simple): ahí `onDone` es la grilla de esa carpeta, que ya
+  // se redibuja sola con lo último de la base.
+  function refreshFromDB(parentId, onDone) {
+    flashIcons(parentId);
+    dbGetAll()
+      .then(function (items) {
+        itemsById = {};
+        items.forEach(function (it) {
+          itemsById[it.id] = it;
+        });
+        if (parentId === "root") {
+          addMissingDeskIcons();
+          updateTrashIcon();
+          if (window.deskIcons && window.deskIcons.reset)
+            window.deskIcons.reset();
+        } else if (typeof onDone === "function") {
+          onDone();
+        }
+      })
+      .catch(function () {
+        /* IndexedDB no disponible: no hay nada más que releer. */
+      });
+  }
+  // Parpadeo breve de los íconos visibles, nomás para que se note que el
+  // clic en "Actualizar" hizo algo (Windows redibuja el escritorio igual).
+  function flashIcons(parentId) {
+    var container =
+      parentId === "root"
+        ? document.getElementById("desk")
+        : document.querySelector(
+            '.w98win[data-app="uf:' + parentId + '"] .w98-folder',
+          );
+    if (!container) return;
+    var icons = [].slice.call(
+      container.querySelectorAll(".desk-icon, .folder-icon"),
+    );
+    icons.forEach(function (ic) {
+      ic.classList.add("uf-refresh-flash");
+    });
+    setTimeout(function () {
+      icons.forEach(function (ic) {
+        ic.classList.remove("uf-refresh-flash");
+      });
+    }, 150);
+  }
+  // Escritorio: agrega el ícono de cualquier ítem propio que todavía no lo
+  // tenga (ej. lo creó otra pestaña). addDeskIconFor ya se guarda de no
+  // duplicar el de uno que ya está, así que a los existentes ni los toca.
+  function addMissingDeskIcons() {
+    allItems()
+      .filter(function (it) {
+        return it.parent === "root" && !it.trashed;
+      })
+      .forEach(addDeskIconFor);
+  }
   function showCreateMenu(x, y, parentId, onChange) {
     showMenu(x, y, [
+      {
+        label: "Actualizar",
+        onClick: function () {
+          refreshFromDB(parentId, onChange);
+        },
+      },
       {
         label: "Nueva carpeta",
         onClick: function () {
@@ -236,7 +301,8 @@
       },
     ]);
   }
-  function showItemMenu(x, y, item, el, onChange) {
+  function showItemMenu(x, y, item, el, onChange, selectedEls) {
+    var multi = selectedEls && selectedEls.length > 1;
     showMenu(x, y, [
       {
         label: "Renombrar",
@@ -245,9 +311,16 @@
         },
       },
       {
-        label: "Eliminar",
+        label: multi ? "Eliminar (" + selectedEls.length + ")" : "Eliminar",
         onClick: function () {
-          trashItem(item, onChange);
+          if (multi) {
+            selectedEls.forEach(function (selEl) {
+              var it = itemsById[selEl.getAttribute("data-user-item")];
+              if (it) trashItem(it);
+            });
+          } else {
+            trashItem(item, onChange);
+          }
         },
       },
     ]);
@@ -699,22 +772,39 @@
     window.sisopTouch.bindActivate(el, function () {
       openItem(item);
     });
+    function onChangeCb() {
+      var label = el.querySelector(".fi-label, span:last-child");
+      if (label) label.textContent = item.name;
+      if (refreshParent) refreshParent();
+    }
     el.addEventListener("keydown", function (e) {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         openItem(item);
       }
+      // Delete no se maneja acá: lo cubre un solo listener global (ver
+      // boot()) que mira la clase .selected en vez del foco, así funciona
+      // igual para uno solo o para toda una selección múltiple por lazo
+      // (ahí ningún ícono queda enfocado).
     });
     el.addEventListener("contextmenu", function (e) {
       e.preventDefault();
       e.stopPropagation();
-      var onChangeCb = function () {
-        var label = el.querySelector(".fi-label, span:last-child");
-        if (label) label.textContent = item.name;
-        if (refreshParent) refreshParent();
-      };
-      if (kind === "trash") showTrashItemMenu(e.clientX, e.clientY, item, onChangeCb);
-      else showItemMenu(e.clientX, e.clientY, item, el, onChangeCb);
+      if (kind === "trash") {
+        showTrashItemMenu(e.clientX, e.clientY, item, onChangeCb);
+        return;
+      }
+      // Si el ítem clickeado ya era parte de una selección múltiple (lazo),
+      // "Eliminar" actúa sobre todos los seleccionados; si no, sólo sobre
+      // este.
+      var selectedEls = el.classList.contains("selected")
+        ? [].slice.call(
+            document.querySelectorAll(
+              ".desk-icon.selected[data-user-item], .folder-icon.selected[data-user-item]",
+            ),
+          )
+        : [el];
+      showItemMenu(e.clientX, e.clientY, item, el, onChangeCb, selectedEls);
     });
     // Arrastre: en el escritorio ya lo maneja sisop-desk-icons.js (ver
     // addDeskIconFor); adentro de una carpeta lo maneja este mismo archivo.
@@ -1077,6 +1167,29 @@
         showCreateMenu(e.clientX, e.clientY, "root", null);
       });
     }
+    // Delete sobre lo seleccionado: un solo listener global en vez de uno
+    // por ícono, porque mira la clase .selected (no el foco) — así cubre
+    // por igual un ícono clickeado y toda una selección múltiple por lazo
+    // (ahí ningún ícono queda con foco). Como "Eliminar" del menú
+    // contextual: manda a la Papelera, no borra directo. Se ignora si el
+    // foco está en un campo de texto (ej. renombrando).
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Delete") return;
+      var ae = document.activeElement;
+      if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable))
+        return;
+      var els = [].slice.call(
+        document.querySelectorAll(
+          ".desk-icon.selected[data-user-item], .folder-icon.selected[data-user-item]",
+        ),
+      );
+      if (!els.length) return;
+      e.preventDefault();
+      els.forEach(function (el) {
+        var item = itemsById[el.getAttribute("data-user-item")];
+        if (item) trashItem(item);
+      });
+    });
     registerTrashApp();
     wireTrashDeskIcon();
     dbGetAll()
