@@ -537,9 +537,10 @@
     });
   }
   function deriveNoteName(text) {
-    var firstLine = String(text || "")
-      .split("\n")[0]
-      .trim();
+    var plain = window.sisopRichText
+      ? window.sisopRichText.toPlain(text)
+      : String(text || "");
+    var firstLine = plain.split("\n")[0].trim();
     if (!firstLine) return "Nota";
     return firstLine.length > 24 ? firstLine.slice(0, 24) + "…" : firstLine;
   }
@@ -550,6 +551,7 @@
       type: "note",
       name: deriveNoteName(text),
       text: text || "",
+      rt: true,
       createdAt: Date.now(),
     };
     itemsById[item.id] = item;
@@ -916,6 +918,7 @@
     if (!window.sisopPostit) return;
     window.sisopPostit.open(item.id, {
       text: item.text || "",
+      rt: !!item.rt,
       x: typeof item.x === "number" ? item.x : undefined,
       y: typeof item.y === "number" ? item.y : undefined,
       rot: typeof item.rot === "number" ? item.rot : undefined,
@@ -923,6 +926,7 @@
       h: typeof item.h === "number" ? item.h : undefined,
       onUpdate: function (snap) {
         item.text = snap.text;
+        item.rt = snap.rt;
         item.x = snap.x;
         item.y = snap.y;
         item.rot = snap.rot;

@@ -53,8 +53,15 @@
           "--desk-col",
         ),
       ) || 82;
+    // Un ícono seleccionado muestra su nombre completo (ver .desk-icon span
+    // en el CSS), lo que puede estirarlo a varias líneas. Si se lo dejara
+    // entrar acá, esa altura de sobra pasaría a ser el alto de TODA la
+    // cuadrícula mientras dure la selección, corriendo de lugar al resto de
+    // los íconos. Por eso se ignoran los seleccionados: el resto siempre
+    // mide su alto normal (una sola línea).
     var maxH = 0;
     icons.forEach(function (ic) {
+      if (ic.classList.contains("selected")) return;
       maxH = Math.max(maxH, ic.offsetHeight || 0);
     });
     if (!maxH) maxH = 78;

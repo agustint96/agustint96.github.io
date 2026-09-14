@@ -274,6 +274,9 @@
       }
 
       .desk-icon span {
+        display: block;
+        max-width: 100%;
+        box-sizing: border-box;
         font-size: 11px;
         line-height: 1.25;
         text-align: center;
@@ -281,6 +284,21 @@
         text-shadow:
           0 1px 2px rgba(0, 0, 0, 0.8),
           0 0 2px rgba(0, 0, 0, 0.6);
+        /* Una sola línea con "..." si no entra: así todos los iconos miden
+           lo mismo de alto y la cuadrícula de sisop-desk-icons.js queda
+           pareja (un nombre largo no puede "robarle" altura de celda a los
+           demás). El nombre completo aparece recién al seleccionar el
+           icono. */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .desk-icon.selected {
+        /* El nombre completo puede desbordar hacia abajo (ver .desk-icon
+           span de arriba): que se dibuje por encima del icono de la fila
+           siguiente en vez de quedar tapado por él. */
+        z-index: 2;
       }
 
       .desk-icon.selected img,
@@ -289,6 +307,10 @@
       }
 
       .desk-icon.selected span {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        word-break: break-word;
         background: var(--w98-selbg);
         color: var(--w98-seltext);
         text-shadow: none;
@@ -442,15 +464,18 @@
       .w98win.w98-game > .title-bar {
         flex-shrink: 0;
         height: 26px;
-        padding: 0;
+        padding: 0 3px 0 4px;
         background: var(--w98-face);
+        color: #1b1b18;
         cursor: default;
         box-shadow: none;
       }
 
-      .w98win.w98-game > .title-bar .tb-glyph,
-      .w98win.w98-game > .title-bar .tb-text {
-        display: none;
+      /* El título es un link a la página del juego, igual que en las
+         ventanas de "Pags Web" -no se oculta como el resto del chrome
+         minimalista de esta barra. */
+      .w98win.w98-game > .title-bar a.tb-text:focus-visible {
+        outline-color: #1b1b18;
       }
 
       .w98win.w98-game > .title-bar .tb-btns {
@@ -2119,9 +2144,9 @@
         background: #f7e98f;
         background-image: linear-gradient(#f7e98f, #f3e074);
       }
-      .notes-app textarea {
+      .notes-app .notes-input {
         flex: 1;
-        resize: none;
+        overflow-y: auto;
         border: 0;
         outline: 0;
         padding: 4px 2px;
@@ -2130,9 +2155,13 @@
         font-size: 13px;
         line-height: 1.55;
         color: #4a3f18;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
       }
-      .notes-app textarea::placeholder {
+      .notes-app .notes-input:empty::before {
+        content: attr(data-placeholder);
         color: #b3a24f;
+        pointer-events: none;
       }
       .notes-app .notes-foot {
         display: flex;
@@ -3702,7 +3731,7 @@ SELECT * FROM Info;</textarea
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 9v6h4l5 4V5L8 9H4z" />
             <path
-              d="l5 8.8a4 4 0 0 1 0 6.4"
+              d="M15 8.8a4 4 0 0 1 0 6.4"
               fill="none"
               stroke="currentColor"
               stroke-width="2"

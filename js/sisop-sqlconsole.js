@@ -562,6 +562,100 @@
     });
   }
 
+  /* ---------- Texto enriquecido (negrita / subrayado / tachado) ----------
+   *  Usan esto los post-its y la caja de la app «Notas»: Ctrl+B, Ctrl+U y
+   *  Ctrl+Shift+X sobre el texto seleccionado en un <div contenteditable>.
+   *  Lo que se persiste es HTML saneado a sólo <b>/<u>/<s>/<br> -nunca
+   *  clases, estilos ni etiquetas pegadas desde afuera. */
+  var RT_BLOCK_TAGS = { DIV: 1, P: 1 };
+  function sanitizeRichText(html) {
+    function stripAttrs(el) {
+      while (el.attributes.length) el.removeAttribute(el.attributes[0].name);
+    }
+    function replaceTag(el, tagName) {
+      var r = document.createElement(tagName);
+      while (el.firstChild) r.appendChild(el.firstChild);
+      el.parentNode.replaceChild(r, el);
+    }
+    function unwrap(el) {
+      while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+      el.parentNode.removeChild(el);
+    }
+    function walk(node) {
+      var child = node.firstChild;
+      while (child) {
+        var next = child.nextSibling;
+        if (child.nodeType === 1) {
+          walk(child);
+          var tag = child.tagName;
+          if (tag === "B" || tag === "STRONG") replaceTag(child, "b");
+          else if (tag === "U") replaceTag(child, "u");
+          else if (tag === "S" || tag === "STRIKE") replaceTag(child, "s");
+          else if (tag === "BR") stripAttrs(child);
+          else {
+            // Bloque (DIV/P) u otra etiqueta ajena: si era un bloque y no
+            // es el primer nodo, se agrega un salto antes de desenvolverlo
+            // para no perder el corte de línea al aplanar la estructura.
+            if (RT_BLOCK_TAGS[tag] && child.previousSibling) {
+              node.insertBefore(document.createElement("br"), child);
+            }
+            unwrap(child);
+          }
+        } else if (child.nodeType !== 3) {
+          node.removeChild(child);
+        }
+        child = next;
+      }
+    }
+    var root = document.createElement("div");
+    root.innerHTML = html || "";
+    walk(root);
+    return root.innerHTML;
+  }
+  function richTextToPlain(html) {
+    var root = document.createElement("div");
+    root.innerHTML = html || "";
+    root.querySelectorAll("br").forEach(function (br) {
+      br.replaceWith("\n");
+    });
+    return root.textContent || "";
+  }
+  function plainToRich(text) {
+    return esc(String(text || "")).replace(/\r\n|\r|\n/g, "<br>");
+  }
+  /* true si aplicó un atajo de formato (el llamador debe preventDefault) */
+  function applyRichShortcut(e) {
+    var mod = e.ctrlKey || e.metaKey;
+    if (!mod || e.altKey) return false;
+    var key = e.key.toLowerCase();
+    if (!e.shiftKey && key === "b") {
+      document.execCommand("bold");
+      return true;
+    }
+    if (!e.shiftKey && key === "u") {
+      document.execCommand("underline");
+      return true;
+    }
+    if (e.shiftKey && key === "x") {
+      document.execCommand("strikeThrough");
+      return true;
+    }
+    return false;
+  }
+  /* Pegar siempre como texto plano: el formato sólo se agrega con los
+     atajos de arriba, nunca copiando estilos de afuera. */
+  function pasteAsPlainText(e) {
+    e.preventDefault();
+    var clip = e.clipboardData || window.clipboardData;
+    var plain = clip ? clip.getData("text/plain") : "";
+    document.execCommand("insertText", false, plain);
+  }
+  window.sisopRichText = {
+    sanitize: sanitizeRichText,
+    toPlain: richTextToPlain,
+    fromPlain: plainToRich,
+  };
+
   /* ---------- Ejecutar ---------- */
   function run() {
     if (!ready) return;
@@ -1642,20 +1736,43 @@
       var wrap = document.createElement("div");
       wrap.className = "notes-app";
       wrap.innerHTML =
-        '<textarea placeholder="Escribí una nota…" spellcheck="false" autocomplete="off"></textarea>' +
+        '<div class="notes-input" contenteditable="true" spellcheck="false" ' +
+        'data-placeholder="Escribí una nota… (Ctrl+B negrita, Ctrl+U subrayado, Ctrl+Shift+X tachado)"></div>' +
         '<div class="notes-foot">' +
         '<button class="btn" type="button" data-notes="guardar">Guardar nota</button>' +
         '<button class="btn" type="button" data-notes="pin">Pegar en el escritorio</button>' +
         "</div>";
-      var ta = wrap.querySelector("textarea");
+      var ta = wrap.querySelector(".notes-input");
+      ta.addEventListener("focus", function () {
+        try {
+          document.execCommand("defaultParagraphSeparator", false, "br");
+        } catch (_) {}
+      });
+      ta.addEventListener("paste", pasteAsPlainText);
+      ta.addEventListener("input", function () {
+        // Al borrar todo, algunos navegadores dejan un <br> suelto que
+        // impide que vuelva a matchear :empty (y por ende el placeholder).
+        if (ta.innerHTML === "<br>") ta.innerHTML = "";
+      });
+      ta.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          pin();
+          return;
+        }
+        if (applyRichShortcut(e)) e.preventDefault();
+      });
+      function vacia() {
+        return !richTextToPlain(ta.innerHTML).trim();
+      }
       function pin() {
-        var text = ta.value.replace(/\s+$/, "");
-        if (!text.trim()) {
+        if (vacia()) {
           ta.focus();
           return;
         }
-        if (typeof agregarNota === "function") agregarNota(text);
-        ta.value = "";
+        var html = sanitizeRichText(ta.innerHTML);
+        if (typeof agregarNota === "function") agregarNota(html);
+        ta.innerHTML = "";
         ta.focus();
       }
       // «Guardar nota»: a diferencia del papelito de arriba (que no tiene
@@ -1663,15 +1780,15 @@
       // con su propio ícono en el escritorio — se puede volver a abrir
       // después de cerrarla con sólo hacerle doble clic.
       function guardar() {
-        var text = ta.value.replace(/\s+$/, "");
-        if (!text.trim()) {
+        if (vacia()) {
           ta.focus();
           return;
         }
+        var html = sanitizeRichText(ta.innerHTML);
         if (window.sisopUserFiles && typeof window.sisopUserFiles.saveNote === "function") {
-          window.sisopUserFiles.saveNote(text);
+          window.sisopUserFiles.saveNote(html);
         }
-        ta.value = "";
+        ta.innerHTML = "";
         ta.focus();
       }
       wrap
@@ -1680,12 +1797,6 @@
       wrap
         .querySelector('[data-notes="guardar"]')
         .addEventListener("click", guardar);
-      ta.addEventListener("keydown", function (e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-          e.preventDefault();
-          pin();
-        }
-      });
       bd.appendChild(wrap);
       setTimeout(function () {
         ta.focus();
@@ -1891,8 +2002,14 @@
     var deskIcons = [].slice.call(
       document.querySelectorAll(".desk-icon"),
     );
+    // Ojo: no iterar `deskIcons` acá. Ese array es una foto fija tomada al
+    // arrancar (sólo los iconos que ya estaban en el HTML): un ícono
+    // creado después -una nota, una carpeta- no entraría, y entonces
+    // seleccionar un ícono de los de siempre (ej. Papelera) no lo
+    // deseleccionaría. Con querySelectorAll en vivo se limpia cualquiera,
+    // viejo o nuevo.
     function clearDeskSel() {
-      deskIcons.forEach(function (i) {
+      document.querySelectorAll(".desk-icon.selected").forEach(function (i) {
         i.classList.remove("selected");
       });
     }
@@ -2027,7 +2144,8 @@
               var sized = n.el.classList.contains("pi-sized");
               return {
                 id: n.id,
-                text: n.text.value,
+                text: sanitizeRichText(n.text.innerHTML),
+                rt: true,
                 x: parseFloat(n.el.style.left) || 0,
                 y: parseFloat(n.el.style.top) || 0,
                 rot: n.rot,
@@ -2068,11 +2186,13 @@
       el.style.zIndex = 3;
       el.innerHTML =
         '<button class="pi-close" type="button" title="Quitar nota" aria-label="Quitar nota">✕</button>' +
-        '<textarea class="pi-text" rows="1" spellcheck="false" wrap="soft"></textarea>' +
+        '<div class="pi-text" contenteditable="true" spellcheck="false"></div>' +
         '<span class="pi-resize" title="Cambiar tamaño" aria-hidden="true"></span>';
       var text = el.querySelector(".pi-text");
       var grip = el.querySelector(".pi-resize");
-      text.value = data.text || "";
+      text.innerHTML = data.rt
+        ? sanitizeRichText(data.text || "")
+        : plainToRich(data.text || "");
       document.body.appendChild(el);
 
       var n = {
@@ -2126,7 +2246,8 @@
       function snapshot() {
         var sized = el.classList.contains("pi-sized");
         return {
-          text: text.value,
+          text: sanitizeRichText(text.innerHTML),
+          rt: true,
           x: parseFloat(el.style.left) || 0,
           y: parseFloat(el.style.top) || 0,
           rot: n.rot,
@@ -2147,7 +2268,15 @@
         el.classList.add("editing");
         text.focus();
         try {
-          text.setSelectionRange(text.value.length, text.value.length);
+          document.execCommand("defaultParagraphSeparator", false, "br");
+        } catch (_) {}
+        try {
+          var range = document.createRange();
+          range.selectNodeContents(text);
+          range.collapse(false);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
         } catch (_) {}
       }
       window.sisopTouch.bindActivate(el, function (e) {
@@ -2157,9 +2286,10 @@
         editar();
       });
       text.addEventListener("input", autogrow);
+      text.addEventListener("paste", pasteAsPlainText);
       text.addEventListener("blur", function () {
         el.classList.remove("editing");
-        if (!text.value.trim()) {
+        if (!richTextToPlain(text.innerHTML).trim()) {
           // Vacío al perder foco: se descarta, igual que un papelito común
           // (si es uno archivado, quien lo abrió se entera para borrar
           // también el ícono del escritorio).
@@ -2173,7 +2303,10 @@
         if (e.key === "Escape") {
           e.preventDefault();
           text.blur();
+          e.stopPropagation();
+          return;
         }
+        if (applyRichShortcut(e)) e.preventDefault();
         e.stopPropagation();
       });
       el.querySelector(".pi-close").addEventListener(
@@ -2388,9 +2521,10 @@
       return n;
     }
 
-    /* API que usa la app «Notas» al pegar un papelito */
+    /* API que usa la app «Notas» al pegar un papelito (ya llega como HTML
+       saneado, ver buildNotes) */
     agregarNota = function (texto) {
-      var n = crear({ text: texto });
+      var n = crear({ text: texto, rt: true });
       raise(n.el);
       return n;
     };
