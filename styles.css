@@ -79,6 +79,22 @@ body {
     background-attachment: scroll;
   }
 }
+/* Envuelve nav + footer + parallax (todo menos la nave, que sigue mobile
+   siempre) para poder ocultarlos como bloque cuando entra la escena de
+   espacio (.space-scene). Replica el flex column del body para que
+   .starry-bg (flex:1) siga repartiendo el alto igual que antes de existir
+   este wrapper. */
+.site-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100vh;
+  transition: opacity 0.5s ease;
+}
+.site-content.space-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
 nav {
   position: fixed;
   top: 0;
@@ -259,6 +275,150 @@ nav.nav-compact {
   height: 100%;
   pointer-events: none;
 }
+/* "Segunda pantalla": cuando la nave toca el borde superior del viewport
+   (solo desktop), .site-content se oculta y esta escena aparece encima
+   tapando todo (nav, footer, parallax) — mismo fondo starry azul que la
+   pantalla principal, pero a pantalla completa y sin el parallax; la nave
+   reaparece chica por abajo y sigue siendo mobile (z-index por encima de
+   esta escena). Transición disparada por clase (script.js hace el toggle
+   al tocar el borde). */
+.space-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  overflow: hidden;
+  background-color: var(--navy);
+  /* Oscurece la textura estrellada para que se sienta más "espacio
+     profundo" que la pantalla principal, que usa la misma imagen sin
+     oscurecer -y todavía más hacia arriba, como si esa zona quedara más
+     lejos/perdida- y le suma un brillo muy difuso asomando desde el
+     borde inferior. */
+  background-image: radial-gradient(
+      ellipse 90% 55% at 50% 100%,
+      rgba(126, 184, 201, 0.22),
+      rgba(126, 184, 201, 0) 70%
+    ),
+    linear-gradient(rgba(0, 0, 0, 0.52), rgba(0, 0, 0, 0.44)),
+    url("parallax/fondo-estrellado.png");
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  will-change: opacity;
+}
+.space-scene.space-visible {
+  opacity: 1;
+}
+#space-scene-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* Astronauta flotando en el espacio profundo, en la esquina inferior
+   derecha -mismo rincón donde reaparece la nave al entrar a esta escena
+   (ver script.js). Va fuera de #space-scene y es `position: fixed`, como la
+   nave: ese div tiene su propio z-index (crea contexto de apilamiento
+   propio), así que un z-index puesto adentro nunca se compara contra el de
+   la nave -tiene que vivir al mismo nivel que .starry-cohete-pair para que
+   la nave (z-index 253) quede realmente detrás. La visibilidad la
+   controla script.js con la misma clase "space-visible". */
+.space-astronaut {
+  position: fixed;
+  bottom: 5%;
+  right: 4%;
+  z-index: 265;
+  /* Un poco más grande que el alto de parallax 2.png (280px, ver
+     #group-256 .gl img). */
+  height: 340px;
+  max-height: 40vh;
+  width: auto;
+  max-width: 46vw;
+  pointer-events: none;
+  opacity: 0;
+  filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.4));
+  transition: opacity 0.5s ease;
+  animation: floatAstronaut 9s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.space-astronaut.space-visible {
+  opacity: 1;
+}
+@keyframes floatAstronaut {
+  0%,
+  100% {
+    transform: translateY(-16px) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(16px) rotate(4deg);
+  }
+}
+@media (max-width: 900px) {
+  .space-astronaut {
+    height: 230px;
+  }
+}
+@media (max-width: 600px) {
+  .space-astronaut {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .space-scene {
+    display: none;
+  }
+}
+/* Nave "Boga net" (referencia: cartel soviético) flotando arriba de la
+   escena de espacio profundo, unida por un cordón/cable largo y ondulado
+   -todo un mismo sprite- cuya punta cae siempre detrás del astronauta:
+   right/bottom se calculan en base a los mismos 4%/5% + tamaño fijo del
+   astronauta (ver .space-astronaut) para que la punta (a ~45%/84% del
+   alto del sprite) quede sobre su torso, y el z-index (255, por debajo de
+   .space-astronaut en 265 y por encima de la nave principal en 253)
+   asegura que la nave principal pase por detrás. El leve balanceo
+   pivotea cerca de esa misma punta (transform-origin) para que se note
+   el cordón "flotando" sin
+   despegar la punta del astronauta. */
+.space-bora-nave {
+  position: fixed;
+  right: calc(4% - 36px);
+  bottom: calc(5% + 97px);
+  height: 750px;
+  max-height: 70vh;
+  width: auto;
+  pointer-events: none;
+  z-index: 255;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  transform-origin: 45% 84%;
+  animation: swayBoraNave 7s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.space-bora-nave.space-visible {
+  opacity: 1;
+}
+@keyframes swayBoraNave {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+@media (max-width: 900px) {
+  .space-bora-nave {
+    right: calc(4% - 25px);
+    bottom: calc(5% + 66px);
+    height: 508px;
+  }
+}
+@media (max-width: 600px) {
+  .space-bora-nave {
+    display: none;
+  }
+}
 .starry-cohete-pair {
   position: fixed;
   left: 0;
@@ -270,13 +430,20 @@ nav.nav-compact {
      la nave (que persigue al mouse) se para encima. El click real se maneja
      con un test de pixel opaco en script.js. */
   pointer-events: none;
+  /* Bajo en la escena principal (z-index original: la nave pasa por
+     detrás del nombre/contenedor de .footer-col-left, que está a 20) para
+     no romper esa jerarquía de siempre. En la escena de espacio profundo
+     .in-space la sube por encima de .space-scene (250) pero por debajo de
+     .space-bora-nave (255), para que ahí sí pase por detrás del
+     cohete/cordón del astronauta -ver toggle en script.js. */
   z-index: 10;
   cursor: pointer;
   opacity: 0;
   will-change: transform, opacity;
-  clip-path: inset(0);
   max-width: 130px;
-  overflow: hidden;
+}
+.starry-cohete-pair.in-space {
+  z-index: 253;
 }
 .starry-cohete {
   position: absolute;

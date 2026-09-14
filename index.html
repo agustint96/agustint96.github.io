@@ -24,7 +24,8 @@
   </head>
 
   <body>
-    <nav id="main-nav">
+    <div class="site-content" id="site-content">
+      <nav id="main-nav">
       <a
         class="power-btn"
         href="sisop.html"
@@ -117,20 +118,6 @@
       </ul>
     </nav>
 
-    <div class="starry-cohete-pair" id="starry-cohete-pair">
-      <img
-        src="parallax/cohete_fondo.png"
-        class="starry-cohete starry-cohete-fondo"
-        alt=""
-      />
-
-      <img
-        src="parallax/cohete.png"
-        class="starry-cohete starry-cohete-top"
-        alt=""
-      />
-    </div>
-
     <div class="starry-bg">
       <canvas id="star-canvas"></canvas>
 
@@ -193,6 +180,41 @@
           </p>
         </div>
       </div>
+    </div>
+    </div>
+
+    <div class="space-scene" id="space-scene" aria-hidden="true">
+      <canvas id="space-scene-canvas"></canvas>
+    </div>
+
+    <img
+      src="parallax/nave bora het.png"
+      class="space-bora-nave"
+      id="space-bora-nave"
+      alt=""
+      aria-hidden="true"
+    />
+
+    <img
+      src="parallax/Astronauta.png"
+      class="space-astronaut"
+      id="space-astronaut"
+      alt=""
+      aria-hidden="true"
+    />
+
+    <div class="starry-cohete-pair" id="starry-cohete-pair">
+      <img
+        src="parallax/cohete_fondo.png"
+        class="starry-cohete starry-cohete-fondo"
+        alt=""
+      />
+
+      <img
+        src="parallax/cohete.png"
+        class="starry-cohete starry-cohete-top"
+        alt=""
+      />
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>

@@ -244,9 +244,7 @@ if (powerBtn) {
 
 // Al volver con "atrás" (bfcache), limpiar el overlay de encendido que quedó
 window.addEventListener("pageshow", () => {
-  document
-    .querySelectorAll(".crt-screen")
-    .forEach((el) => el.remove());
+  document.querySelectorAll(".crt-screen").forEach((el) => el.remove());
   if (powerBtn) delete powerBtn.dataset.booting;
 });
 
@@ -366,7 +364,8 @@ function updateP7Flee() {
     bottom: safeRect.bottom,
   };
   const shipFar =
-    shipCenterX === null || !pointInRect(shipCenterX, shipCenterY, homeSafeRect);
+    shipCenterX === null ||
+    !pointInRect(shipCenterX, shipCenterY, homeSafeRect);
   if (shipFar) {
     p7FleeOffsetX = Math.min(0, p7FleeOffsetX + P7_RETURN_SPEED);
     p7FleeScale = Math.min(1, p7FleeScale + P7_RETURN_GROW_RATE);
@@ -413,9 +412,26 @@ function addStars(t, e) {
     stars.push({
       x: Math.random() * a,
       y: Math.random() * n,
+      rot: Math.random() * Math.PI * 0.5,
       alpha: e ?? 0.9,
       vy: -(0.3 * Math.random() + 0.008),
     });
+}
+// Estrella de 4 puntas (destello), no un círculo -mismo dibujo que las
+// estrellas de la escena de espacio profundo (ver drawSparkle ahí)-.
+function drawStarSparkle(x, y, r, rot) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (rot) ctx.rotate(rot);
+  ctx.beginPath();
+  ctx.moveTo(0, -r);
+  ctx.quadraticCurveTo(r * 0.18, -r * 0.18, r, 0);
+  ctx.quadraticCurveTo(r * 0.18, r * 0.18, 0, r);
+  ctx.quadraticCurveTo(-r * 0.18, r * 0.18, -r, 0);
+  ctx.quadraticCurveTo(-r * 0.18, -r * 0.18, 0, -r);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 function drawStars() {
   (ctx.clearRect(0, 0, starCanvas.width, starCanvas.height),
@@ -423,9 +439,7 @@ function drawStars() {
   for (const t of stars)
     ((ctx.globalAlpha = t.alpha),
       (ctx.fillStyle = "#f19280"),
-      ctx.beginPath(),
-      ctx.arc(Math.round(t.x), Math.round(t.y), starRadius, 0, 2 * Math.PI),
-      ctx.fill(),
+      drawStarSparkle(Math.round(t.x), Math.round(t.y), starRadius, t.rot),
       (t.y += t.vy),
       (t.alpha -= 0.006));
   ((ctx.globalAlpha = 1), requestAnimationFrame(drawStars));
@@ -434,11 +448,11 @@ function drawStars() {
   new ResizeObserver(resizeCanvas).observe(starryBg),
   window.addEventListener("resize", resizeCanvas),
   starryBg.addEventListener("mousemove", () =>
-    addStars(Math.floor(4 * Math.random()) + 1),
+    addStars(Math.floor(2 * Math.random()) + 1),
   ),
   starryBg.addEventListener("touchmove", () => {
     if (window.innerWidth <= 600) addStars(1);
-    else addStars(Math.floor(4 * Math.random()) + 1);
+    else addStars(Math.floor(2 * Math.random()) + 1);
   }),
   starryBg.addEventListener(
     "touchstart",
@@ -451,10 +465,222 @@ function drawStars() {
   setInterval(() => addStars(Math.floor(3 * Math.random()) + 2, 0.75), 300),
   drawStars(),
   (function () {
+    // Cielo estrellado real: las estrellas quedan fijas en su lugar -no
+    // nacen ni derivan ni mueren como las partículas de .starry-bg-, y
+    // solo un ~4% titila (se apaga y vuelve a prender) en cualquier
+    // momento dado, sin depender del mouse. El mouse/touch no las toca:
+    // en cambio hace aparecer destellos salmón nuevos, en otros lugares al
+    // azar, que se prenden y apagan solos (ver spaceSparkles más abajo).
+    const canvas = document.getElementById("space-scene-canvas");
+    if (!canvas) return;
+    const spaceScene = document.getElementById("space-scene");
+    const ctx2 = canvas.getContext("2d");
+    let spaceStars = [];
+    let spaceSparkles = [];
+    const SPACE_BLINK_RATIO = 0.04;
+    function isSpaceVisible() {
+      return !!spaceScene && spaceScene.classList.contains("space-visible");
+    }
+    // La mayoría chiquitas (polvo de estrellas) y de vez en cuando alguna
+    // más grande que se destaque.
+    function randomSpaceStarRadius() {
+      return Math.random() < 0.12
+        ? Math.random() * 0.5 + 0.9
+        : Math.random() * 0.5 + 0.25;
+    }
+    function initSpaceStars() {
+      const w = canvas.width,
+        h = canvas.height;
+      const count = Math.floor((w * h) / 7000);
+      spaceStars = [];
+      for (let k = 0; k < count; k++)
+        spaceStars.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: randomSpaceStarRadius(),
+          rot: Math.random() * Math.PI * 0.5,
+          baseAlpha: Math.random() * 0.6 + 0.3,
+          blinking: false,
+          blinkT: 0,
+          blinkSpeed: 0,
+        });
+    }
+    function resizeSpaceCanvas() {
+      const w = window.innerWidth,
+        h = window.innerHeight;
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        initSpaceStars();
+      }
+    }
+    function startBlink(s) {
+      if (s.blinking) return;
+      s.blinking = true;
+      s.blinkT = 0;
+      s.blinkSpeed = 1 / (40 + Math.random() * 55); // ~0.7-1.6s a 60fps
+    }
+    // Prende el parpadeo ambiental en N estrellas fijas al azar que no
+    // estén titilando ya.
+    function triggerBlinks(count) {
+      const candidates = spaceStars.filter((s) => !s.blinking);
+      for (let k = 0; k < count && candidates.length; k++) {
+        const idx = Math.floor(Math.random() * candidates.length);
+        startBlink(candidates[idx]);
+        candidates.splice(idx, 1);
+      }
+    }
+    // Destellos salmón efímeros: nacen en un punto al azar (no en las
+    // estrellas fijas), pulsan una vez (aparecen y se apagan) y
+    // desaparecen del todo -las dispara el mouse/touch-.
+    function spawnSparkles(count) {
+      const w = canvas.width || window.innerWidth,
+        h = canvas.height || window.innerHeight;
+      for (let k = 0; k < count; k++)
+        spaceSparkles.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: randomSpaceStarRadius(),
+          rot: Math.random() * Math.PI * 0.5,
+          t: 0,
+          speed: 1 / (30 + Math.random() * 35), // ~0.5-1.1s a 60fps
+        });
+    }
+    // Estrella de 4 puntas (destello), no un círculo: un rombo con lados
+    // cóncavos que termina en punta arriba/abajo/izq/der. A tamaños
+    // chiquitos se ve casi como un punto igual -como cualquier estrella
+    // lejana-, pero las más grandes sí se notan como destello.
+    function drawSparkle(ctx, x, y, r, rot) {
+      ctx.save();
+      ctx.translate(x, y);
+      if (rot) ctx.rotate(rot);
+      ctx.beginPath();
+      ctx.moveTo(0, -r);
+      ctx.quadraticCurveTo(r * 0.18, -r * 0.18, r, 0);
+      ctx.quadraticCurveTo(r * 0.18, r * 0.18, 0, r);
+      ctx.quadraticCurveTo(-r * 0.18, r * 0.18, -r, 0);
+      ctx.quadraticCurveTo(-r * 0.18, -r * 0.18, 0, -r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    function drawSpaceStars() {
+      ctx2.clearRect(0, 0, canvas.width, canvas.height);
+      for (const s of spaceStars) {
+        let alpha = s.baseAlpha;
+        if (s.blinking) {
+          alpha = s.baseAlpha * Math.max(0, 1 - Math.sin(s.blinkT * Math.PI));
+          s.blinkT += s.blinkSpeed;
+          if (s.blinkT >= 1) {
+            s.blinking = false;
+            s.blinkT = 0;
+          }
+        }
+        ((ctx2.globalAlpha = alpha),
+          (ctx2.fillStyle = "#f0ece4"),
+          drawSparkle(
+            ctx2,
+            Math.round(s.x),
+            Math.round(s.y),
+            s.r * 1.8,
+            s.rot,
+          ));
+      }
+      if (spaceSparkles.length) {
+        spaceSparkles = spaceSparkles.filter((s) => s.t < 1);
+        for (const s of spaceSparkles) {
+          const pulse = Math.sin(Math.min(1, s.t) * Math.PI);
+          const x = Math.round(s.x),
+            y = Math.round(s.y);
+          ctx2.globalAlpha = pulse;
+          // Halo difuso salmón detrás...
+          ctx2.fillStyle = "#f19280";
+          ctx2.shadowColor = "#f19280";
+          ctx2.shadowBlur = 14 + s.r * 8;
+          drawSparkle(ctx2, x, y, s.r * 2.8, s.rot);
+          // ...y un núcleo casi blanco encima, sin blur: es lo que se lee
+          // como "muy brillante" en vez de solo una mancha salmón difusa.
+          ctx2.shadowBlur = 0;
+          ctx2.fillStyle = "#fff3ee";
+          drawSparkle(ctx2, x, y, s.r * 1.3, s.rot);
+          s.t += s.speed;
+        }
+      }
+      ((ctx2.globalAlpha = 1), requestAnimationFrame(drawSpaceStars));
+    }
+    resizeSpaceCanvas();
+    drawSpaceStars();
+    window.addEventListener("resize", resizeSpaceCanvas);
+    document.addEventListener("mousemove", () => {
+      if (isSpaceVisible()) spawnSparkles(Math.floor(3 * Math.random()) + 1);
+    });
+    document.addEventListener(
+      "touchmove",
+      () => {
+        if (isSpaceVisible()) spawnSparkles(Math.floor(3 * Math.random()) + 1);
+      },
+      { passive: true },
+    );
+    document.addEventListener(
+      "touchstart",
+      () => {
+        if (isSpaceVisible()) spawnSparkles(2);
+      },
+      { passive: true },
+    );
+    // Mantiene ~SPACE_BLINK_RATIO de las estrellas titilando en todo
+    // momento -el "cielo estrellado" ambiental, sin depender del mouse-.
+    setInterval(() => {
+      if (!isSpaceVisible() || !spaceStars.length) return;
+      const target = Math.round(spaceStars.length * SPACE_BLINK_RATIO);
+      const current = spaceStars.reduce((n, s) => n + (s.blinking ? 1 : 0), 0);
+      if (current < target) triggerBlinks(target - current);
+    }, 400);
+  })(),
+  (function () {
     const t = document.getElementById("starry-cohete-pair");
     if (!t) return;
+    const siteContent = document.getElementById("site-content");
+    const spaceScene = document.getElementById("space-scene");
     const FLIGHT_MARGIN = 100; // cuánto puede salirse la nave del viewport, en px
     const FLIGHT_MARGIN_TOP = 160; // arriba necesita más margen: al rotar, la nave (130px) sobresale de su caja
+    // Solo en desktop: al llegar la nave al borde superior, se corta a la
+    // segunda pantalla (mismo fondo starry azul, a pantalla completa, sin
+    // parallax) que tapa nav/footer/parallax, y la nave reaparece del mismo
+    // tamaño por abajo — siempre mobile, sigue al mouse/gamepad igual que en
+    // la escena normal. Desde ahí, se vuelve a la escena normal yendo hacia
+    // abajo (borde inferior).
+    // Tamaño de la nave en la escena de espacio profundo según lo arriba
+    // que esté volando: "NEAR" es recién entrando (abajo del todo, mismo
+    // tamaño que ya tenía) y "FAR" es en lo más alto que puede llegar a
+    // volar -el cambio es gradual cuadro a cuadro en base a su posición
+    // vertical, con su propio suavizado (shipScale) para que no se sienta
+    // como un salto.
+    const SHIP_SPACE_SCALE_NEAR = 0.55;
+    const SHIP_SPACE_SCALE_FAR = 0.49;
+    let shipScale = 1;
+    const SHIP_SPACE_SPEED_MULT = 0.35; // velocidad muy reducida en la escena de espacio profundo
+    const spaceAstronaut = document.getElementById("space-astronaut");
+    const spaceBoraNave = document.getElementById("space-bora-nave");
+    // Se define más abajo, junto con la luz de la nave: la referencia queda
+    // acá para que el loop de vuelo (tick) pueda llamarla al cruzar el
+    // borde de la escena de espacio, y así la luz -si ya estaba prendida-
+    // se ajuste sin esperar a que el usuario la vuelva a tocar.
+    let applyLightFilter = null;
+    let inSpaceScene = false;
+    // Fundido de entrada: la nave arranca fuera de pantalla (e = -FLIGHT_MARGIN)
+    // y aparece de a poco al acercarse al borde izquierdo. Una vez que llegó a
+    // opacidad 1 la primera vez queda fija ahí -si no, como la opacidad se
+    // recalculaba en cada frame en base a la posición actual, la nave se
+    // transparentaba de nuevo cada vez que el usuario la llevaba de vuelta
+    // cerca del borde izquierdo durante el uso normal.
+    let introOpacity = 0;
+    // En la escena de espacio profundo la nave se ve casi transparente, como
+    // si quedara detrás de una nebulosa: shipAlpha viaja suavemente hacia
+    // SHIP_SPACE_ALPHA (o de vuelta a 1) en vez de saltar de golpe al cruzar
+    // el borde.
+    const SHIP_SPACE_ALPHA = 0.55; // transparente pero todavía bien visible
+    let shipAlpha = 1;
     let e = -FLIGHT_MARGIN,
       a = 180,
       n = 0,
@@ -476,7 +702,8 @@ function drawStars() {
     const BTN_DPAD_DOWN = 13;
     const BTN_DPAD_LEFT = 14;
     const BTN_DPAD_RIGHT = 15;
-    const isPressed = (gp, idx) => !!(gp.buttons[idx] && gp.buttons[idx].pressed);
+    const isPressed = (gp, idx) =>
+      !!(gp.buttons[idx] && gp.buttons[idx].pressed);
     function getFirstGamepad() {
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       for (let k = 0; k < pads.length; k++) if (pads[k]) return pads[k];
@@ -526,7 +753,7 @@ function drawStars() {
       document.addEventListener("mouseleave", () => {
         l = !1;
       }),
-      requestAnimationFrame(function d() {
+      requestAnimationFrame(function tick() {
         const gp = getFirstGamepad();
         let gx = 0,
           gy = 0,
@@ -557,15 +784,21 @@ function drawStars() {
           h = u - a,
           v = Math.sqrt(m * m + h * h);
 
+        // En la escena de espacio profundo la nave se maneja mucho más
+        // lenta -sensación de ir a la deriva- en vez de a la velocidad
+        // ágil de la escena principal.
+        const speedMult = inSpaceScene ? SHIP_SPACE_SPEED_MULT : 1;
         if (gamepadActive) {
-          const thrust = boosting ? GAMEPAD_THRUST_BOOST : GAMEPAD_THRUST_BASE;
+          const thrust =
+            (boosting ? GAMEPAD_THRUST_BOOST : GAMEPAD_THRUST_BASE) * speedMult;
           n += gx * thrust;
           r += gy * thrust;
         } else {
           const followThreshold = l ? (isMobileTouch() ? 120 : 220) : 0;
           if (v > followThreshold + 1) {
             const t = l ? (v - followThreshold) / v : 1;
-            ((n += m * t * 0.022), (r += h * t * 0.022));
+            ((n += m * t * 0.022 * speedMult),
+              (r += h * t * 0.022 * speedMult));
           }
         }
 
@@ -594,6 +827,37 @@ function drawStars() {
           r = 0;
         }
 
+        let enteringOrLeavingSpace = false;
+        if (!inSpaceScene && !isMobileTouch() && a <= minY) {
+          inSpaceScene = true;
+          // Reaparece por abajo, al medio tirando a la izquierda -no en la
+          // esquina- para que se sienta perdida en el espacio profundo.
+          e = window.innerWidth * 0.38 - 65;
+          a = window.innerHeight - 150;
+          enteringOrLeavingSpace = true;
+        } else if (inSpaceScene && a >= maxY) {
+          // Desde la segunda pantalla se vuelve a la principal yendo hacia
+          // abajo (borde inferior), no repitiendo el borde superior.
+          inSpaceScene = false;
+          e = 40;
+          a = minY + 50;
+          enteringOrLeavingSpace = true;
+        }
+        if (enteringOrLeavingSpace) {
+          n = 0;
+          r = 0;
+          if (siteContent)
+            siteContent.classList.toggle("space-hidden", inSpaceScene);
+          if (spaceScene)
+            spaceScene.classList.toggle("space-visible", inSpaceScene);
+          if (spaceAstronaut)
+            spaceAstronaut.classList.toggle("space-visible", inSpaceScene);
+          if (spaceBoraNave)
+            spaceBoraNave.classList.toggle("space-visible", inSpaceScene);
+          t.classList.toggle("in-space", inSpaceScene);
+          if (applyLightFilter) applyLightFilter();
+        }
+
         if (l && null !== i) {
           const toX = i - e,
             toY = o - a;
@@ -609,10 +873,28 @@ function drawStars() {
         shipCenterX = e + 65;
         shipCenterY = a + 65;
 
-        const f = Math.max(0, Math.min(1, (e + FLIGHT_MARGIN) / 80));
+        if (introOpacity < 1) {
+          introOpacity = Math.max(
+            introOpacity,
+            Math.max(0, Math.min(1, (e + FLIGHT_MARGIN) / 80)),
+          );
+        }
+        shipAlpha += ((inSpaceScene ? SHIP_SPACE_ALPHA : 1) - shipAlpha) * 0.05;
+        const f = introOpacity * shipAlpha;
+        // 1 recién entrando por abajo (maxY) -> 0 arriba del todo (minY):
+        // cuanto más arriba vuela la nave en esta escena, más chica se
+        // pone, en vez de un tamaño fijo.
+        const spaceT = inSpaceScene
+          ? Math.max(0, Math.min(1, (a - minY) / (maxY - minY)))
+          : 1;
+        const targetScale = inSpaceScene
+          ? SHIP_SPACE_SCALE_FAR +
+            (SHIP_SPACE_SCALE_NEAR - SHIP_SPACE_SCALE_FAR) * spaceT
+          : 1;
+        shipScale += (targetScale - shipScale) * 0.05;
         ((t.style.opacity = f),
-          (t.style.transform = `translate(${e}px, ${a}px) rotate(${s}deg)`),
-          requestAnimationFrame(d));
+          (t.style.transform = `translate(${e}px, ${a}px) rotate(${s}deg) scale(${shipScale})`),
+          requestAnimationFrame(tick));
       }));
     const d = t.querySelector(".starry-cohete-fondo");
     const cohetteTop = t.querySelector(".starry-cohete-top");
@@ -620,23 +902,33 @@ function drawStars() {
       d.style.transition =
         "transform 0.18s cubic-bezier(0.4,0,0.2,1), filter 0.18s ease";
       let lightOn = false;
+      // En la escena de espacio profundo la luz alumbra bastante más lejos
+      // -segunda capa de drop-shadow, más ancha y difusa- que en la escena
+      // principal. Ya no hay overflow/clip-path en la caja de la nave (ver
+      // .starry-cohete-pair en CSS), así que ese brillo grande puede
+      // difuminarse libre sin cortarse en un contorno cuadrado.
+      applyLightFilter = () => {
+        if (!lightOn) {
+          d.style.filter = "none";
+          return;
+        }
+        d.style.filter = inSpaceScene
+          ? "drop-shadow(0 2px 14px rgba(255, 159, 154, 0.85)) drop-shadow(0 0 70px rgba(255, 159, 154, 0.7))"
+          : "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))";
+      };
       const toggleLight = () => {
         lightOn = !lightOn;
-        if (lightOn) {
-          d.style.transform = "translate(1px, 0px)";
-          d.style.filter = "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))";
-          if (cohetteTop) cohetteTop.src = "parallax/cohete_on.png";
-          const snd = new Audio("audio/light_on.mp3");
-          snd.volume = 1;
-          snd.play().catch(() => {});
-        } else {
-          d.style.transform = "translate(0, 0)";
-          d.style.filter = "none";
-          if (cohetteTop) cohetteTop.src = "parallax/cohete.png";
-          const snd = new Audio("audio/light_off.mp3");
-          snd.volume = 1;
-          snd.play().catch(() => {});
-        }
+        d.style.transform = lightOn ? "translate(1px, 0px)" : "translate(0, 0)";
+        applyLightFilter();
+        if (cohetteTop)
+          cohetteTop.src = lightOn
+            ? "parallax/cohete_on.png"
+            : "parallax/cohete.png";
+        const snd = new Audio(
+          lightOn ? "audio/light_on.mp3" : "audio/light_off.mp3",
+        );
+        snd.volume = inSpaceScene ? 0.2 : 1;
+        snd.play().catch(() => {});
       };
       toggleShipLight = toggleLight;
       // La caja de la nave (130x130) es casi toda transparente y sigue al
@@ -667,9 +959,13 @@ function drawStars() {
         t.classList.remove("spinning");
         t.offsetWidth;
         t.classList.add("spinning");
-        t.addEventListener("animationend", () => t.classList.remove("spinning"), {
-          once: !0,
-        });
+        t.addEventListener(
+          "animationend",
+          () => t.classList.remove("spinning"),
+          {
+            once: !0,
+          },
+        );
         e.currentTime = 0;
         e.play().catch(() => {});
       };
