@@ -317,6 +317,55 @@ if (p3el) {
   });
 }
 
+// Parpadeo de "luz" en parallax 4: al pasar el mouse por encima (pixel
+// opaco real, no todo el rectángulo transparente) hace un parpadeo cortito
+// -como un cartel de luz que titila al prenderse- del sprite de la luz sola
+// ("parallax 4 luz sola.png", superpuesto en CSS sobre el dibujo base) y la
+// deja fija prendida. Después de un rato prendida se apaga sola, sin
+// parpadeo, y vuelve a estar disponible para prenderse de nuevo con otro
+// hover.
+const p4el = document.getElementById("p4");
+if (p4el) {
+  const p4Img = p4el.querySelector("img");
+  const p4LuzImg = p4el.querySelector("img.p4-luz");
+  const p4Glow = p4el.querySelector(".p4-glow");
+  if (p4Img && p4LuzImg && p4Glow) {
+    const hitP4 = createAlphaHitTester(p4Img);
+    // Cuántos ms esperar entre cada cambio del parpadeo inicial (prendida,
+    // apagada, prendida...); termina siempre prendida.
+    const P4_FLICKER_STEPS = [60, 40, 90, 50, 120];
+    const P4_LIT_MS = 5000; // cuánto tiempo se queda prendida antes de apagarse sola
+    let p4Lit = false; // prendida (parpadeando o ya fija): ignora nuevos hovers
+    const setP4LuzOn = (on) => {
+      p4LuzImg.style.opacity = on ? "1" : "0";
+      p4Glow.style.opacity = on ? "1" : "0";
+    };
+    const runP4Flicker = () => {
+      if (p4Lit) return;
+      p4Lit = true;
+      let i = 0;
+      const step = () => {
+        setP4LuzOn(i % 2 === 0);
+        if (i >= P4_FLICKER_STEPS.length) {
+          setP4LuzOn(true);
+          setTimeout(() => {
+            setP4LuzOn(false);
+            p4Lit = false;
+          }, P4_LIT_MS);
+          return;
+        }
+        setTimeout(step, P4_FLICKER_STEPS[i]);
+        i++;
+      };
+      step();
+    };
+    document.addEventListener("mousemove", (ev) => {
+      if (p4Lit) return;
+      if (hitP4(ev.clientX, ev.clientY)) runP4Flicker();
+    });
+  }
+}
+
 // El "planeta" de parallax 7 le tiene miedo SOLO a la nave (no al mouse/touch
 // en sí, solo cuando mueve a la nave): apenas se acerca a su dibujo real (no
 // al margen transparente), sale corriendo hacia la izquierda mientras se

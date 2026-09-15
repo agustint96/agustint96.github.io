@@ -560,6 +560,45 @@ nav.nav-compact {
   left: 0;
   bottom: 0;
   height: 280px;
+  /* El halo de abajo usa mix-blend-mode: screen para que ilumine de verdad
+     en vez de pintar un círculo plano encima; "isolate" lo encierra adentro
+     de este layer para que sólo mezcle con el dibujo de la ventana, no con
+     los demás layers del parallax que quedan detrás. */
+  isolation: isolate;
+}
+/* Sprite del brillo solo (transparente salvo la luz), superpuesto sobre el
+   dibujo base para el parpadeo -ver script.js-, en vez de cambiar el PNG
+   entero cada vez. */
+#p4 img.p4-luz {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+/* Halo amarillo difuso alrededor de la ventanita que se prende: un círculo
+   con degradado (más claro y opaco en el centro, transparente en el borde)
+   posicionado a mano sobre las coordenadas de esa ventana dentro del PNG
+   (es un recuadro de ~2% del dibujo, muy chico para que un filtro
+   drop-shadow se note -el desenfoque diluye casi toda su opacidad-, así que
+   en vez de eso se dibuja un brillo propio del tamaño que hace falta). */
+#p4 .p4-glow {
+  position: absolute;
+  left: 29.6%;
+  top: 36.5%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 244, 190, 0.55) 0%,
+    rgba(187, 189, 42, 0.3) 40%,
+    rgba(187, 189, 42, 0) 75%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+  opacity: 0;
 }
 #group-256 {
   z-index: 4;
