@@ -297,7 +297,7 @@ const lerp = (t, e, a) => t + (e - t) * a;
 
 if (p3el) {
   const guitarraAudio = new Audio("audio/Guitarra.mp3");
-  guitarraAudio.preload = "auto";
+  guitarraAudio.preload = "none"; // sólo se baja si tocan la guitarra, no en cada carga
   guitarraAudio.volume = 0.12;
   const playGuitarra = () => {
     guitarraAudio.currentTime = 0;
@@ -1001,7 +1001,7 @@ function drawStars() {
       const t = document.querySelector(".starry-p9");
       if (!t) return;
       const e = new Audio("audio/satelite.mp3");
-      e.preload = "auto";
+      e.preload = "none"; // sólo se baja si tocan el satélite, no en cada carga
       e.volume = 0.25;
       const triggerSatelite = () => {
         if (window.innerWidth <= 600) return;
@@ -1040,7 +1040,7 @@ function drawStars() {
   if (!bassTarget) return;
 
   const bassAudio = new Audio("audio/bass.mp3");
-  bassAudio.preload = "auto";
+  bassAudio.preload = "none"; // sólo se baja si tocan esa nota, no en cada carga
   bassAudio.volume = 0.6;
 
   const NOTE_CHARS = ["♩", "♪", "♫", "♬"];

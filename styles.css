@@ -12,6 +12,7 @@
 @font-face {
   font-family: Spaceport;
   src: url("fonts/Spaceport_2006.otf");
+  font-display: swap;
 }
 *,
 ::after,
