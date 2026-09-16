@@ -335,6 +335,7 @@
       out.size = it.size || 0;
       out.file = filePath;
     }
+    if (it.type === "app") out.appId = it.appId;
     return out;
   }
 
