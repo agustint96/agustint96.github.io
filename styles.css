@@ -96,6 +96,13 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+/* El <main> es sólo un landmark de accesibilidad (nav queda afuera, ver
+   index.html): no debe alterar el flex column de .site-content, así que
+   sus hijos (.starry-bg, .parallax-footer) siguen siendo los flex items
+   directos como si el wrapper no existiera. */
+#main-content {
+  display: contents;
+}
 nav {
   position: fixed;
   top: 0;
