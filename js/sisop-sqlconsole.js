@@ -1605,7 +1605,13 @@
       var moved = false;
       var sx, sy, ox, oy;
       handle.addEventListener("pointerdown", function (e) {
-        if (e.target.closest(".tb-btn")) return;
+        // El título es un link cuando hay linkUrl/url (ver makeWin, .tb-link
+        // target="_blank"): si acá se arranca el arrastre igual, el
+        // setPointerCapture() de abajo le pisa el click nativo al link (no
+        // navega) aunque no te hayas movido nada — sólo pasaba en ventana
+        // flotante porque maximizada/juego ya cortan por la condición de
+        // abajo antes de llegar a este punto.
+        if (e.target.closest(".tb-btn, .tb-link")) return;
         if (
           w.classList.contains("w98max") ||
           w.classList.contains("w98-game") ||
