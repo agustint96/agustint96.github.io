@@ -135,6 +135,12 @@
       '<rect x="3" y="6" width="26" height="20" rx="1.5" fill="#f0ece4" stroke="#2f4467" stroke-width="1.3"/>' +
       '<circle cx="11" cy="13" r="2.6" fill="#f19280"/>' +
       '<path d="M5 24l7-8 5 5 4-3 6 6z" fill="#7eb8c9"/></svg>',
+    video:
+      '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+      '<path d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#f0ece4" stroke="#2f4467" stroke-width="1.3"/>' +
+      '<path d="M19 3v5h5" fill="none" stroke="#2f4467" stroke-width="1.3"/>' +
+      '<rect x="10.5" y="14.5" width="11" height="8" rx="1" fill="#2b2b2b"/>' +
+      '<path d="M14.5 17v3.5l4-1.75z" fill="#7eb8c9"/></svg>',
     trashEmpty:
       '<svg viewBox="0 0 32 32" aria-hidden="true">' +
       '<path d="M9 10h14l-1.3 15.6a1.6 1.6 0 0 1-1.6 1.4H11.9a1.6 1.6 0 0 1-1.6-1.4z" fill="#e3e6ea" stroke="#454f59" stroke-width="1.2"/>' +
@@ -160,6 +166,7 @@
     }
     if (item.mime && item.mime.indexOf("image/") === 0) return SVG.image;
     if (item.mime && item.mime.indexOf("audio/") === 0) return SVG.audio;
+    if (isVideoItem(item)) return SVG.video;
     return SVG.file;
   }
   // Carpeta "tmp": convención propia de Agus para su borrador/scratch — el
@@ -179,6 +186,20 @@
   }
   function isAudioItem(item) {
     return item.type === "file" && item.mime && item.mime.indexOf("audio/") === 0;
+  }
+  // El navegador no siempre completa item.mime al elegir el archivo (en
+  // Windows, extensiones poco comunes suelen llegar como "" o como
+  // "application/octet-stream"): para que CUALQUIER formato de video
+  // abra en el reproductor (no sólo los que el SO sabe reconocer), si el
+  // mime no dice "video/" se prueba por extensión antes de descartarlo.
+  var VIDEO_EXT_RE =
+    /\.(mp4|m4v|webm|ogv|ogg|mov|qt|avi|wmv|flv|mkv|3gp|3g2|mpg|mpeg|m2v|ts|mts|m2ts)$/i;
+  function isVideoItem(item) {
+    if (item.type !== "file") return false;
+    if (item.mime && item.mime.indexOf("video/") === 0) return true;
+    if (item.mime && item.mime.indexOf("audio/") === 0) return false;
+    if (item.mime && item.mime.indexOf("image/") === 0) return false;
+    return VIDEO_EXT_RE.test(String(item.name || ""));
   }
   function setThumbnail(el, item) {
     try {
@@ -1008,14 +1029,15 @@
     var appId = "uf:" + item.id;
     var img = isImageItem(item);
     var audio = isAudioItem(item);
+    var video = isVideoItem(item);
     window.sisopWin.registerApp(appId, {
       title: item.name,
-      iconHtml: img ? SVG.image : audio ? SVG.audio : SVG.file,
+      iconHtml: img ? SVG.image : audio ? SVG.audio : video ? SVG.video : SVG.file,
       type: "custom",
-      w: img ? 640 : 420,
-      h: img ? 500 : 190,
+      w: img || video ? 640 : 420,
+      h: img || video ? 500 : 190,
       transient: true,
-      render: function (bd) {
+      render: function (bd, win) {
         var url = URL.createObjectURL(item.blob);
         if (img) {
           var v = document.createElement("div");
@@ -1025,18 +1047,55 @@
           im.alt = item.name;
           v.appendChild(im);
           bd.appendChild(v);
+        } else if (video) {
+          if (window.sisopVideoPlayer) {
+            var vidPlayer = window.sisopVideoPlayer.mount(bd, {
+              url: url,
+              name: item.name,
+            });
+            var closeBtn = win && win.querySelector('[data-w="close"]');
+            if (closeBtn)
+              closeBtn.addEventListener("click", function () {
+                vidPlayer.destroy();
+              });
+          }
         } else if (audio) {
           var wrap = document.createElement("div");
           wrap.className = "uf-audio";
           var name = document.createElement("p");
           name.className = "uf-audio-name";
           name.textContent = item.name;
+          // Ecualizador decorativo: barras celeste/salmón que animan
+          // mientras suena (ver .uf-audio-viz en sisop.html).
+          var viz = document.createElement("div");
+          viz.className = "uf-audio-viz";
+          viz.setAttribute("aria-hidden", "true");
+          // Delay y duración por barra al azar: con más de 5-6 barras,
+          // que todas compartan el mismo timing se ve como una sola fila
+          // moviéndose en bloque en vez de un ecualizador.
+          for (var vi = 0; vi < 16; vi++) {
+            var vbar = document.createElement("span");
+            vbar.style.animationDuration = (0.7 + Math.random() * 0.6).toFixed(2) + "s";
+            vbar.style.animationDelay = (Math.random() * -1).toFixed(2) + "s";
+            viz.appendChild(vbar);
+          }
           var player = document.createElement("audio");
           player.controls = true;
           player.src = url;
+          player.addEventListener("play", function () {
+            viz.classList.add("playing");
+          });
+          player.addEventListener("pause", function () {
+            viz.classList.remove("playing");
+          });
+          player.addEventListener("ended", function () {
+            viz.classList.remove("playing");
+          });
           wrap.appendChild(name);
+          wrap.appendChild(viz);
           wrap.appendChild(player);
           bd.appendChild(wrap);
+          player.play().catch(function () {});
         } else {
           var g = document.createElement("div");
           g.className = "uf-generic";

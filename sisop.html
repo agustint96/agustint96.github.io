@@ -725,6 +725,58 @@
       .uf-audio audio {
         width: 100%;
       }
+      /* Ecualizador decorativo (no es un análisis real del audio, sólo
+         barras animadas): corre mientras suena y se para en pausa/al
+         terminar, ver los listeners "play"/"pause"/"ended" en
+         openFile() de sisop-user-files.js. Colores de acento del sitio
+         (--accent2 celeste, --accent salmón, ver :root arriba). */
+      .uf-audio-viz {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 3px;
+        height: 40px;
+        margin: 4px 0;
+      }
+      .uf-audio-viz span {
+        width: 4px;
+        flex: 1;
+        max-width: 6px;
+        height: 8px;
+        border-radius: 2px 2px 0 0;
+        background: var(--accent2);
+        /* animation-delay/duration por barra van inline (ver el for en
+           openFile(), sisop-user-files.js) para que no se muevan todas
+           en fila india con más de 5-6 barras. */
+        animation-name: uf-viz-bounce;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+        animation-play-state: paused;
+      }
+      .uf-audio-viz span:nth-child(odd) {
+        background: var(--accent);
+      }
+      .uf-audio-viz.playing span {
+        animation-play-state: running;
+      }
+      @keyframes uf-viz-bounce {
+        0%,
+        100% {
+          height: 8px;
+        }
+        50% {
+          height: 36px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .uf-audio-viz span {
+          animation: none;
+          height: 8px;
+        }
+        .uf-audio-viz.playing span {
+          height: 20px;
+        }
+      }
 
       /* Ventana de la Papelera: barra de "Vaciar papelera" arriba, grilla
          de ítems eliminados abajo (el w98-body de las ventanas custom es
@@ -797,6 +849,235 @@
         max-width: 100%;
         max-height: 100%;
         display: block;
+      }
+
+      /* ---------- Reproductor de video (ver js/sisop-video-player.js) ----------
+         Un mismo <video> + barra de controles ("vid-wrap") se reparenta
+         entre la ventana, un panel de miniatura, la capa de fondo del
+         escritorio o el propio Fullscreen API según el modo elegido; acá
+         sólo el aspecto de cada contenedor. (Excepción: en modo "fondo" la
+         barra se separa del <video> para no quedar atrapada en el
+         z-index negativo de esa capa — ver el comentario en
+         .vid-wallpaper-layer más abajo.) */
+      .vid-slot {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        background: #2b2b2b;
+      }
+      .vid-slot.vid-slot-parked {
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: var(--w98-field);
+      }
+      .vid-parked {
+        font-size: 11px;
+        line-height: 1.5;
+        text-align: center;
+        color: var(--w98-shadow);
+      }
+      .vid-wrap {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        background: #2b2b2b;
+      }
+      .vid-stage {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        background: #2b2b2b;
+      }
+      .vid-el {
+        flex: 1;
+        min-width: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: #2b2b2b;
+      }
+      /* Formato que el navegador no supo decodificar (ver el listener de
+         "error" en sisop-video-player.js): reemplaza el <video> por un
+         aviso + descarga, en vez de dejar un reproductor roto. */
+      .vid-error {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px;
+        text-align: center;
+        font-size: 11px;
+        line-height: 1.5;
+        color: var(--w98-shadow);
+        background: var(--w98-field);
+      }
+      .vid-wrap:fullscreen {
+        width: 100vw;
+        height: 100vh;
+      }
+      .vid-wrap:fullscreen .vid-el {
+        object-fit: cover;
+      }
+
+      .vid-bar {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 5px;
+        flex-shrink: 0;
+        background: var(--w98-face);
+        box-shadow: inset 0 1px 0 0 var(--w98-hilite);
+      }
+      .vid-btn {
+        width: 22px;
+        height: 20px;
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        background: var(--w98-face);
+        border: 0;
+        cursor: pointer;
+        color: #1b1b18;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite);
+      }
+      .vid-btn svg {
+        width: 12px;
+        height: 12px;
+      }
+      .vid-btn:active,
+      .vid-btn.active {
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite),
+          inset 2px 2px 0 0 var(--w98-shadow),
+          inset -2px -2px 0 0 var(--w98-face-lite);
+      }
+      .vid-time {
+        font-size: 10px;
+        flex-shrink: 0;
+        min-width: 28px;
+        text-align: center;
+      }
+      .vid-seek {
+        flex: 1;
+        min-width: 40px;
+      }
+      .vid-vol {
+        width: 50px;
+        flex-shrink: 0;
+      }
+      .vid-seek,
+      .vid-vol {
+        accent-color: var(--w98-selbg);
+      }
+      .vid-sep {
+        width: 1px;
+        align-self: stretch;
+        margin: 2px 1px;
+        background: var(--w98-shadow);
+        box-shadow: 1px 0 0 var(--w98-hilite);
+      }
+      .vid-bar-compact .vid-time,
+      .vid-bar-compact .vid-vol {
+        display: none;
+      }
+
+      /* Miniatura flotante: ancla abajo a la derecha, tamaño ajustable
+         arrastrando la esquina opuesta (arriba-izquierda) para que
+         agrandarla no la empuje fuera de la pantalla. */
+      .vid-pip {
+        position: fixed;
+        right: 12px;
+        bottom: calc(var(--taskbar-h) + 12px);
+        width: 260px;
+        height: 165px;
+        z-index: 9996;
+        display: none;
+        flex-direction: column;
+        background: #2b2b2b;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite),
+          3px 3px 0 rgba(0, 0, 0, 0.35);
+      }
+      .vid-pip.vid-pip-show {
+        display: flex;
+      }
+      .vid-pip .vid-wrap {
+        flex: 1;
+        min-height: 0;
+      }
+      .vid-pip-resize {
+        position: absolute;
+        left: -5px;
+        top: -5px;
+        width: 14px;
+        height: 14px;
+        cursor: nwse-resize;
+        background: var(--w98-face);
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite);
+        touch-action: none;
+      }
+
+      /* Fondo de escritorio: reemplaza el fondo estrellado (.desk-bg-layer
+         / #stars) mientras un video está en modo "fondo" — siempre en
+         blanco y negro para no competir visualmente con íconos/ventanas.
+         z-index:-1 acá abajo crea su propio contexto de apilamiento: un
+         hijo suyo queda atrapado en ese nivel sin importar su propio
+         z-index (ni que sea position:fixed) — por eso la capa sólo
+         contiene el <video> (.vid-stage). La barra de controles
+         (.vid-bar-wallpaper, ver claimWallpaper() en
+         sisop-video-player.js) NO es hija de esta capa: cuelga directo
+         de <body> con su propio z-index alto, así flota de verdad por
+         encima de los íconos del escritorio y recibe los clics (si no,
+         los clics le pasaban de largo y terminaban seleccionando el
+         escritorio). */
+      .vid-wallpaper-layer {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        overflow: hidden;
+        display: none;
+      }
+      html.video-wallpaper-active .vid-wallpaper-layer {
+        display: block;
+      }
+      html.video-wallpaper-active #stars {
+        opacity: 0;
+      }
+      .vid-wallpaper-layer .vid-stage {
+        width: 100%;
+        height: 100%;
+      }
+      .vid-wallpaper-layer .vid-el {
+        object-fit: cover;
+        filter: grayscale(1);
+      }
+      .vid-bar.vid-bar-wallpaper {
+        position: fixed;
+        left: 12px;
+        bottom: calc(var(--taskbar-h) + 12px);
+        width: max-content;
+        z-index: 9995;
+        box-shadow:
+          inset -1px -1px 0 0 var(--w98-dkshadow),
+          inset 1px 1px 0 0 var(--w98-hilite),
+          inset -2px -2px 0 0 var(--w98-shadow),
+          inset 2px 2px 0 0 var(--w98-face-lite),
+          2px 2px 0 rgba(0, 0, 0, 0.3);
       }
 
       /* ---------- Ventana Windows 98 ---------- */
@@ -4039,6 +4320,7 @@ SELECT * FROM Info;</textarea
     <script src="js/sisop-dialog.js"></script>
     <script src="js/sisop-grabadora.js"></script>
     <script src="js/sisop-sqlconsole.js"></script>
+    <script src="js/sisop-video-player.js"></script>
     <script src="js/sisop-user-files.js"></script>
     <script src="js/sisop-publish.js"></script>
     <script src="js/sisop-paint.js"></script>
