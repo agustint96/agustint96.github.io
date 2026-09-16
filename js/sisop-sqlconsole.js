@@ -1267,6 +1267,16 @@
         '<rect x="9" y="14.5" width="14" height="9.5" rx="1" fill="#f0ece4"/>' +
         '<circle cx="12.6" cy="17.6" r="1.5" fill="#f19280"/>' +
         '<path d="M9.5 24l4-4 3 2.5 2.5-2 3.5 3.5z" fill="#7eb8c9"/></svg>',
+      /* Documento con flechas circulares (conversion) para Formator, ver
+         APPS.formator mas abajo. */
+      formator:
+        '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+        '<path d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#f0ece4" stroke="#2f4467" stroke-width="1.3"/>' +
+        '<path d="M19 3v5h5" fill="none" stroke="#2f4467" stroke-width="1.3"/>' +
+        '<path d="M11.5 18.5a5 5 0 0 1 8.3-3.7" fill="none" stroke="#7eb8c9" stroke-width="1.8" stroke-linecap="round"/>' +
+        '<path d="M19.2 13.4l1-3.2 2.9 1.4" fill="none" stroke="#7eb8c9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<path d="M20.5 19.5a5 5 0 0 1-8.3 3.7" fill="none" stroke="#f19280" stroke-width="1.8" stroke-linecap="round"/>' +
+        '<path d="M12.8 24.6l-1-3.2-2.9 1.4" fill="none" stroke="#f19280" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
 
     var SITE_W = 1000;
@@ -1391,6 +1401,14 @@
         w: 840,
         h: 640,
         game: true,
+      },
+      formator: {
+        title: "Formator",
+        icon: "formator",
+        type: "iframe",
+        url: "https://conversor-archivos-acjs.onrender.com/",
+        w: SITE_W,
+        h: SITE_H,
       },
     };
 
@@ -1648,12 +1666,7 @@
         b.querySelector(".fi-label").textContent = it.title;
         b.addEventListener("click", function (e) {
           e.stopPropagation();
-          grid
-            .querySelectorAll(".folder-icon.selected")
-            .forEach(function (x) {
-              x.classList.remove("selected");
-            });
-          b.classList.add("selected");
+          window.sisopSelect.handleClick(e, b, grid, ".folder-icon");
         });
         window.sisopTouch.bindActivate(b, function () {
           openApp(itemId);
@@ -2013,11 +2026,11 @@
         i.classList.remove("selected");
       });
     }
+    var desk = document.getElementById("desk");
     deskIcons.forEach(function (ic) {
       ic.addEventListener("click", function (e) {
         e.stopPropagation();
-        clearDeskSel();
-        ic.classList.add("selected");
+        window.sisopSelect.handleClick(e, ic, desk, ".desk-icon");
       });
     });
     document.addEventListener("click", clearDeskSel);
