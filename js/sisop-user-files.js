@@ -274,7 +274,7 @@
       .forEach(addDeskIconFor);
   }
   function showCreateMenu(x, y, parentId, onChange) {
-    showMenu(x, y, [
+    var entries = [
       {
         label: "Actualizar",
         onClick: function () {
@@ -299,7 +299,17 @@
           pickFiles(parentId, onChange);
         },
       },
-    ]);
+    ];
+    // "Restaurar" trae de vuelta lo último publicado (ver restorePublished
+    // más abajo): es una acción de escritorio, no tiene sentido adentro de
+    // una carpeta.
+    if (parentId === "root") {
+      entries.push({
+        label: "Restaurar",
+        onClick: restorePublished,
+      });
+    }
+    showMenu(x, y, entries);
   }
   function showItemMenu(x, y, item, el, onChange, selectedEls) {
     var multi = selectedEls && selectedEls.length > 1;
@@ -1220,7 +1230,7 @@
     el.querySelector("span").textContent = item.name;
     if (isImageItem(item)) setThumbnail(el, item);
   }
-  function applyManifestItem(item, layout) {
+  function applyManifestItem(item, layout, force) {
     var local = itemsById[item.id];
     if (!local) {
       var fresh = {
@@ -1258,11 +1268,17 @@
         });
       });
     }
-    if (local.trashed) return Promise.resolve();
     if (local.origin !== "seed") return Promise.resolve(); // no debería pasar (ids al azar), por las dudas no se toca
-    if (seedContentKey(local) === seedContentKey(item)) return Promise.resolve();
+    var wasTrashed = local.trashed;
+    // Sin forzar (sync automático de fondo), un ítem que el visitante ya
+    // mandó a su papelera se respeta tal cual. "Restaurar" (ver
+    // restorePublished más abajo) sí lo trae de vuelta: es justamente para
+    // deshacer un borrado de algo original.
+    if (wasTrashed && !force) return Promise.resolve();
+    if (!wasTrashed && seedContentKey(local) === seedContentKey(item)) return Promise.resolve();
     local.name = item.name;
     local.parent = item.parent;
+    local.trashed = false;
     if (item.type === "note") local.text = item.text || "";
     var afterBlob2 = Promise.resolve();
     if (item.type === "file") {
@@ -1278,11 +1294,22 @@
     }
     return afterBlob2.then(function () {
       return dbPut(local).then(function () {
-        if (local.parent === "root") refreshDeskIconLabel(local);
+        if (local.parent !== "root") return;
+        if (wasTrashed) {
+          // El ícono ya no estaba en el escritorio (se sacó al mandarlo a
+          // la papelera): hay que recrearlo, no sólo refrescar la etiqueta.
+          addDeskIconFor(local);
+          if (layout[local.id] && window.deskIcons)
+            window.deskIcons.setPosition(local.id, layout[local.id]);
+          refreshTrashView();
+          updateTrashIcon();
+        } else {
+          refreshDeskIconLabel(local);
+        }
       });
     });
   }
-  function applyManifest(manifest) {
+  function applyManifest(manifest, force) {
     var items = manifest.items || [];
     var layout = manifest.layout || {};
     var byId = {};
@@ -1313,7 +1340,7 @@
           appliedAny = true;
           known[item.id] = true;
           chain = chain.then(function () {
-            return applyManifestItem(item, layout);
+            return applyManifestItem(item, layout, force);
           });
         } else {
           next.push(item);
@@ -1351,6 +1378,41 @@
       })
       .catch(function () {
         /* sin conexión, o Agus todavía no publicó nada: se sigue como siempre */
+      });
+  }
+  // "Restaurar" del menú contextual: a diferencia de syncPublished() (que
+  // sólo actúa si cambió la versión publicada, y nunca toca algo que el
+  // visitante ya mandó a su papelera), esto vuelve a traer lo último que
+  // Agus publicó sin importar la versión ni la papelera — para deshacer un
+  // borrado de algo original por error. Lo que el visitante subió por su
+  // cuenta (no "seed") no se toca.
+  function restorePublished() {
+    return window.sisopDialog
+      .confirm({
+        title: "Restaurar",
+        message:
+          'Vuelve a traer el escritorio que Agus publicó por última vez: si borraste algo original, aparece de nuevo. Lo que subiste vos por tu cuenta no se toca.\n\n¿Restaurar?',
+        okLabel: "Restaurar",
+        cancelLabel: "Cancelar",
+      })
+      .then(function (ok) {
+        if (!ok) return;
+        return fetch("data/published-desktop.json", { cache: "no-store" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("sin manifest publicado");
+            return r.json();
+          })
+          .then(function (manifest) {
+            return applyManifest(manifest, true);
+          })
+          .catch(function () {
+            return window.sisopDialog.confirm({
+              title: "Restaurar",
+              message: "No se pudo traer lo publicado (¿sin conexión, o Agus todavía no publicó nada?).",
+              okLabel: "Cerrar",
+              hideCancel: true,
+            });
+          });
       });
   }
 
