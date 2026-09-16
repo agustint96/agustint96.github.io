@@ -1323,7 +1323,7 @@
       grabadora: {
         title: "Grabadora",
         iconHtml:
-          '<img src="ico/grabadora.png" alt="" style="width:100%;height:100%;object-fit:contain;display:block;">',
+          '<img src="ico/grabadora.webp" alt="" style="width:100%;height:100%;object-fit:contain;display:block;">',
         type: "recorder",
         w: 340,
         h: 508,

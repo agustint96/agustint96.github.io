@@ -971,8 +971,8 @@ function drawStars() {
         applyLightFilter();
         if (cohetteTop)
           cohetteTop.src = lightOn
-            ? "parallax/cohete_on.png"
-            : "parallax/cohete.png";
+            ? "parallax/cohete_on.webp"
+            : "parallax/cohete.webp";
         const snd = new Audio(
           lightOn ? "audio/light_on.mp3" : "audio/light_off.mp3",
         );
@@ -1035,7 +1035,7 @@ function drawStars() {
   const bassGroup = document.getElementById("group-256");
   if (!bassGroup) return;
   const bassTarget =
-    bassGroup.querySelector('.gl img[src="parallax/parallax 2.png"]') ||
+    bassGroup.querySelector('.gl img[src="parallax/parallax 2.webp"]') ||
     bassGroup.querySelectorAll(".gl img")[0];
   if (!bassTarget) return;
 

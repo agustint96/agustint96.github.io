@@ -39,8 +39,8 @@
     function fraseRecibe() {
       return RECIBE[Math.floor(Math.random() * RECIBE.length)];
     }
-    var REST = "bot/atendedor1.png";
-    var POKED = "bot/atendedor2.png";
+    var REST = "bot/atendedor1.webp";
+    var POKED = "bot/atendedor2.webp";
     var LS = "sisop:atendedor";
     var LS_CHAT = "sisop:atendedor:chat";
     var volver = 0;
@@ -106,7 +106,7 @@
       taskBtn.className = "task-btn active";
       taskBtn.title = "Atendedor.ia";
       taskBtn.innerHTML =
-        '<img class="tb-icon" src="bot/atendedor1.png" alt="" />' +
+        '<img class="tb-icon" src="bot/atendedor1.webp" alt="" />' +
         "<span>Atendedor.ia</span>";
       taskBtn.addEventListener("click", function () {
         if (estado === "min") restaurar();

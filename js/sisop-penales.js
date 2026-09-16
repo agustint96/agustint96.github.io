@@ -627,7 +627,7 @@
   window.sisopApps.penales = {
     title: "Penales.js",
     iconHtml: PENALES_ICON,
-    previewImg: "ico/penales-preview.png",
+    previewImg: "ico/penales-preview.webp",
     open: openWidget,
     close: closeWidget,
   };
