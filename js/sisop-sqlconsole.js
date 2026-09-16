@@ -1694,12 +1694,38 @@
       // bastante y de otro modo se ve una ventana vacía todo ese rato.
       if (cfg.icon === "formator") load.innerHTML = formatorLoadingHtml();
       else load.textContent = "Cargando…";
-      f.addEventListener("load", function () {
-        load.remove();
-        // Juegos como Casus Liber: que el teclado responda apenas carga,
-        // sin que el visitante tenga que clickear adentro primero.
-        if (cfg.game) focusIframe(f);
-      });
+      if (cfg.icon === "formator") {
+        // Formator vive en Render (free tier): si el servicio estaba
+        // dormido, la primera respuesta del iframe no es la app sino la
+        // pantalla negra de "despertando" de Render — igual dispara
+        // "load" porque es un documento HTML completo. Cuando el
+        // servicio termina de levantar, esa pantalla navega sola (reload
+        // o redirect) a la app real, lo que dispara OTRO "load" acá. Por
+        // eso no se saca el loader en el primer "load": se espera un
+        // margen y, si hubo una navegación más en ese margen, se vuelve
+        // a esperar. Recién cuando pasa quieto un rato sin nuevos
+        // "load" se asume que es la app real y se saca el loader. El
+        // timer de seguridad es sólo por si algo falla y "load" no
+        // llega a dispararse nunca.
+        var settleTimer = null;
+        var safety = setTimeout(function () {
+          load.remove();
+        }, 90000);
+        f.addEventListener("load", function () {
+          clearTimeout(settleTimer);
+          settleTimer = setTimeout(function () {
+            clearTimeout(safety);
+            load.remove();
+          }, 1200);
+        });
+      } else {
+        f.addEventListener("load", function () {
+          load.remove();
+          // Juegos como Casus Liber: que el teclado responda apenas carga,
+          // sin que el visitante tenga que clickear adentro primero.
+          if (cfg.game) focusIframe(f);
+        });
+      }
       bd.appendChild(f);
       bd.appendChild(load);
     }
