@@ -1,5 +1,5 @@
 {
-  "version": 1789531331303,
+  "version": 1789537430325,
   "layout": {
     "papelera": {
       "col": 0,
@@ -19,15 +19,15 @@
     },
     "musica": {
       "col": 0,
-      "row": 5
+      "row": 4
     },
     "cv": {
-      "col": 1,
-      "row": 4
+      "col": 0,
+      "row": 6
     },
     "deskIcon": {
       "col": 0,
-      "row": 6
+      "row": 5
     },
     "deskAtendedor": {
       "col": 0,
@@ -49,31 +49,37 @@
       "col": 1,
       "row": 3
     },
+    "brunomunari": {
+      "col": 2,
+      "row": 6
+    },
+    "penales": {
+      "col": 1,
+      "row": 5
+    },
     "ufmu3k93otxi6d00": {
-      "col": 0,
+      "col": 1,
       "row": 4
     },
     "ufmu3kjxv5rrbkby": {
-      "col": 2,
-      "row": 0
+      "col": 1,
+      "row": 5
     }
   },
   "items": [
     {
-      "id": "ufmtzrr5m4gb81q4",
+      "id": "ufappbrunomunari01",
       "parent": "ufmu3k93otxi6d00",
-      "type": "note",
-      "name": "Cambiar el esquema/datos…",
-      "createdAt": 1789301230636,
-      "text": "Cambiar el esquema/datos \"de fábrica\" (lo que ve cualquier visitante nuevo, o quien haga \"Restaurar base Agus\"): editá el array SEED_SQL en js/sisop-sqlconsole.js — ahí están info, estudios, experiencia, proyectos, idiomas, tecnologias, musica como CREATE TABLE + INSERT. Después de editar, subí SEED_VERSION (js/sisop-sqlconsole.js:17, formato \"YYYY-MM-DD.N\") — si no, los navegadores que ya tienen la base guardada en localStorage no van a ver el cambio, porque applySeed() solo se corre en primera carga o al restaurar."
+      "type": "app",
+      "name": "Brunomunari.js",
+      "createdAt": 1789531400000
     },
     {
-      "id": "ufmtzry32daxxdno",
+      "id": "ufapppenalesjs01",
       "parent": "ufmu3k93otxi6d00",
-      "type": "note",
-      "name": "Modificarla en vivo, en …",
-      "createdAt": 1789301553925,
-      "text": "Modificarla en vivo, en tu propio navegador: abrí sisop.html, doble clic en el ícono \"Agus.db\" del escritorio, y corré ALTER TABLE, INSERT, UPDATE, etc. directamente en la consola SQL. Eso se guarda solo en tu localStorage (función saveDb()), no se persiste al repo ni se comparte con otros visitantes."
+      "type": "app",
+      "name": "Penales.js",
+      "createdAt": 1789531400001
     },
     {
       "id": "ufmu3k93otxi6d00",
