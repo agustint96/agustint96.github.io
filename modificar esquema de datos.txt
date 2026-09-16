@@ -1,0 +1,7 @@
+Cambiar el esquema/datos "de fábrica" (lo que ve cualquier visitante nuevo, o quien haga "Restaurar base Agus"): editá el array SEED_SQL en js/sisop-sqlconsole.js — ahí están info, estudios, experiencia, proyectos, idiomas, tecnologias, musica como CREATE TABLE + INSERT. Después de editar, subí SEED_VERSION (js/sisop-sqlconsole.js:17, formato "YYYY-MM-DD.N") — si no, los navegadores que ya tienen la base guardada en localStorage no van a ver el cambio, porque applySeed() solo se corre en primera carga o al restaurar.
+
+
+
+Modificarla en vivo, en tu propio navegador: abrí sisop.html, doble clic en el ícono "Agus.db" del escritorio, y corré ALTER TABLE, INSERT, UPDATE, etc. directamente en la consola SQL. Eso se guarda solo en tu localStorage (función saveDb()), no se persiste al repo ni se comparte con otros visitantes.
+
+

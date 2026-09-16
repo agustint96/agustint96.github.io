@@ -1205,15 +1205,64 @@
           var player = document.createElement("audio");
           player.controls = true;
           player.src = url;
+          // Los webm/opus que graba la Grabadora (ver sisop-grabadora.js,
+          // MediaRecorder) salen con una duración rota: el navegador la
+          // reporta como Infinity hasta que se hace este truco (saltar
+          // bien al final y volver a 0), un bug conocido de Chrome. Sin
+          // esto la barra de progreso no responde al arrastre ("adelantar"
+          // no hace nada) y el fin de pista no se detecta bien, así que
+          // tampoco se puede reiniciar para el loop.
+          player.addEventListener("loadedmetadata", function fixDuration() {
+            if (player.duration === Infinity || isNaN(player.duration)) {
+              player.currentTime = 1e101;
+              player.addEventListener("timeupdate", function onTimeUpdate() {
+                player.removeEventListener("timeupdate", onTimeUpdate);
+                player.currentTime = 0;
+              });
+            }
+          });
           player.addEventListener("play", function () {
             viz.classList.add("playing");
           });
+          // No alcanza con "ended": si se llega al final arrastrando la
+          // barra de progreso (en vez de por reproducción natural), varios
+          // navegadores pausan al llegar al final sin llegar a disparar
+          // "ended". Por eso el reinicio se chequea también en "pause",
+          // mirando si quedó parado cerca del final. La tolerancia es
+          // generosa (1s) porque la duración reportada por metadata no
+          // siempre coincide con dónde termina realmente el audio
+          // decodificado (headers VBR de MP3, por ejemplo): medido con un
+          // archivo real, la diferencia fue de ~0.3s.
+          function maybeLoopRestart() {
+            if (
+              player.loop &&
+              player.duration &&
+              player.currentTime >= player.duration - 1
+            ) {
+              // Con solo tocar currentTime, el elemento queda en un estado
+              // fantasma tras llegar al final: play() se llama, paused pasa
+              // a false, pero la promesa nunca se resuelve ni se rechaza y
+              // no suena nada. load() reinicia el pipeline de decodificación
+              // del navegador (y de paso vuelve currentTime a 0 solo) y
+              // esperar a "canplay" antes de reproducir es lo que
+              // efectivamente lo saca de ese estado.
+              var resumed = false;
+              function resume() {
+                if (resumed) return;
+                resumed = true;
+                player.removeEventListener("canplay", resume);
+                player.play().catch(function () {});
+              }
+              player.addEventListener("canplay", resume);
+              setTimeout(resume, 500);
+              player.load();
+            }
+          }
           player.addEventListener("pause", function () {
             viz.classList.remove("playing");
+            maybeLoopRestart();
           });
-          player.addEventListener("ended", function () {
-            viz.classList.remove("playing");
-          });
+          player.addEventListener("ended", maybeLoopRestart);
           loopBtn.addEventListener("click", function () {
             player.loop = !player.loop;
             loopBtn.classList.toggle("active", player.loop);
