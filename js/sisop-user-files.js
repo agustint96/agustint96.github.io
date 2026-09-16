@@ -154,6 +154,18 @@
     if (item.mime && item.mime.indexOf("audio/") === 0) return SVG.audio;
     return SVG.file;
   }
+  // Carpeta "tmp": convención propia de Agus para su borrador/scratch — el
+  // ícono va en blanco y negro y se pone a color recién al pasar el mouse,
+  // para que no compita visualmente con el resto del escritorio. Se decide
+  // por el nombre (no hay un campo "temporal" en el modelo de datos), así
+  // que aplica apenas se lo renombra a o desde "tmp", sin importar si vino
+  // de una creación local o de lo publicado.
+  function isTmpFolder(item) {
+    return item.type === "folder" && String(item.name || "").trim().toLowerCase() === "tmp";
+  }
+  function applyTmpClass(el, item) {
+    el.classList.toggle("uf-tmp", isTmpFolder(item));
+  }
   function isImageItem(item) {
     return item.type === "file" && item.mime && item.mime.indexOf("image/") === 0;
   }
@@ -640,6 +652,7 @@
       if (newName && newName !== original) {
         item.name = newName;
         label.textContent = newName;
+        applyTmpClass(el, item);
         dbPut(item).then(function () {
           if (onDone) onDone();
         });
@@ -833,6 +846,7 @@
     b.setAttribute("aria-label", item.name + " (doble clic para abrir)");
     b.innerHTML = glyphFor(item) + "<span></span>";
     b.querySelector("span").textContent = item.name;
+    applyTmpClass(b, item);
     wireItemIcon(b, item, null, false);
     if (isImageItem(item)) setThumbnail(b, item);
     return b;
@@ -847,6 +861,7 @@
       glyphFor(item) +
       '</span><span class="fi-label"></span>';
     b.querySelector(".fi-label").textContent = item.name;
+    applyTmpClass(b, item);
     wireItemIcon(b, item, refreshParent, kind !== "trash", kind);
     if (isImageItem(item)) setThumbnail(b, item);
     return b;
@@ -1228,6 +1243,7 @@
     el.setAttribute("aria-label", item.name + " (doble clic para abrir)");
     el.innerHTML = glyphFor(item) + "<span></span>";
     el.querySelector("span").textContent = item.name;
+    applyTmpClass(el, item);
     if (isImageItem(item)) setThumbnail(el, item);
   }
   function applyManifestItem(item, layout, force) {

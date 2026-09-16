@@ -1624,6 +1624,28 @@
       });
     }
 
+    // Mismos paths que el ícono de las "o" de Formator (ver el desktop-icon
+    // en sisop.html y el h1 de la propia app): acá se dibujan dos veces
+    // porque el spinner necesita una copia en gris (de fondo, siempre
+    // visible) y una a color (la que la barra de .fl-fill va revelando).
+    var FORMATOR_O_PATHS =
+      '<path d="M-7.5 2.3a8 8 0 0 1 13.2-5.9" fill="none" stroke="#2f5fa8" stroke-width="3" stroke-linecap="round"/>' +
+      '<path d="M5 -7.6l1.6-5.1 4.6 2.3" fill="none" stroke="#2f5fa8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M7.5 -2.3a8 8 0 0 1 -13.2 5.9" fill="none" stroke="#808076" stroke-width="3" stroke-linecap="round"/>' +
+      '<path d="M-5 7.6l-1.6 5.1-4.6-2.3" fill="none" stroke="#808076" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+    function formatorLoadingHtml() {
+      return (
+        '<div class="formator-loader" role="status" aria-label="Cargando…">' +
+        '<div class="fl-spin"><svg class="fl-icon fl-gray" viewBox="-14 -14 28 28" aria-hidden="true">' +
+        FORMATOR_O_PATHS +
+        "</svg></div>" +
+        '<div class="fl-fill"><div class="fl-spin"><svg class="fl-icon fl-color" viewBox="-14 -14 28 28" aria-hidden="true">' +
+        FORMATOR_O_PATHS +
+        "</svg></div></div>" +
+        "</div>" +
+        "<span>Cargando…</span>"
+      );
+    }
     function buildIframe(cfg, bd) {
       var f = document.createElement("iframe");
       f.src = cfg.url;
@@ -1632,7 +1654,10 @@
       f.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
       var load = document.createElement("div");
       load.className = "w98-loading";
-      load.textContent = "Cargando…";
+      // Formator vive en Render: el primer arranque en frío puede tardar
+      // bastante y de otro modo se ve una ventana vacía todo ese rato.
+      if (cfg.icon === "formator") load.innerHTML = formatorLoadingHtml();
+      else load.textContent = "Cargando…";
       f.addEventListener("load", function () {
         load.remove();
         // Juegos como Casus Liber: que el teclado responda apenas carga,

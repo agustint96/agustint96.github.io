@@ -323,6 +323,21 @@
         outline-offset: 2px;
       }
 
+      /* Carpeta "tmp": en blanco y negro, a color recién al pasar el mouse
+         o enfocarla — así no compite visualmente con el resto del
+         escritorio (ver isTmpFolder en sisop-user-files.js). */
+      .desk-icon.uf-tmp svg,
+      .folder-icon.uf-tmp .fi-glyph svg {
+        filter: grayscale(1);
+        transition: filter 0.15s ease;
+      }
+      .desk-icon.uf-tmp:hover svg,
+      .desk-icon.uf-tmp:focus-visible svg,
+      .folder-icon.uf-tmp:hover .fi-glyph svg,
+      .folder-icon.uf-tmp:focus-visible .fi-glyph svg {
+        filter: none;
+      }
+
       /* ---------- Ventanas genéricas Windows 98 (apps + carpetas) ---------- */
       .w98win {
         position: fixed;
@@ -414,13 +429,72 @@
       .w98-loading {
         position: absolute;
         inset: 0;
-        display: grid;
-        place-items: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
         font-size: 11px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--w98-shadow);
         background: var(--w98-field);
+      }
+
+      /* Spinner de Formator para el "Cargando…" de su ventana: el mismo
+         ícono de flechas circulares que reemplaza las "o", girando, con una
+         barra de abajo hacia arriba que lo pasa de blanco y negro a color.
+         El giro y el relleno son capas separadas a propósito: la que
+         rellena NO gira, así "abajo" siempre es abajo de la pantalla, no
+         del dibujo. */
+      .formator-loader {
+        position: relative;
+        width: 72px;
+        height: 72px;
+        flex: none;
+      }
+      .formator-loader .fl-icon {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .formator-loader .fl-gray {
+        filter: grayscale(1) opacity(0.55);
+      }
+      .formator-loader .fl-spin {
+        position: absolute;
+        inset: 0;
+        animation: fl-spin 1.1s linear infinite;
+      }
+      .formator-loader .fl-fill {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        clip-path: inset(100% 0 0 0);
+        animation: fl-fill 1.6s ease-in-out infinite;
+      }
+      @keyframes fl-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes fl-fill {
+        from {
+          clip-path: inset(100% 0 0 0);
+        }
+        to {
+          clip-path: inset(0% 0 0 0);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .formator-loader .fl-spin {
+          animation: none;
+        }
+        .formator-loader .fl-fill {
+          animation: none;
+          clip-path: inset(50% 0 0 0);
+        }
       }
 
       /* ---------- Modo juego: app ejecutable a pantalla completa ----------
