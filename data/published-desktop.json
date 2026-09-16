@@ -1,1 +1,54 @@
-{"version":0,"layout":{},"items":[]}
+{
+  "version": 1789529910727,
+  "layout": {
+    "papelera": {
+      "col": 0,
+      "row": 0
+    },
+    "pagsweb": {
+      "col": 0,
+      "row": 1
+    },
+    "juegos": {
+      "col": 0,
+      "row": 2
+    },
+    "fotos": {
+      "col": 0,
+      "row": 3
+    },
+    "musica": {
+      "col": 0,
+      "row": 4
+    },
+    "cv": {
+      "col": 0,
+      "row": 5
+    },
+    "deskIcon": {
+      "col": 0,
+      "row": 6
+    },
+    "deskAtendedor": {
+      "col": 0,
+      "row": 7
+    },
+    "notas": {
+      "col": 1,
+      "row": 0
+    },
+    "grabadora": {
+      "col": 1,
+      "row": 1
+    },
+    "paint": {
+      "col": 1,
+      "row": 2
+    },
+    "formator": {
+      "col": 1,
+      "row": 3
+    }
+  },
+  "items": []
+}
