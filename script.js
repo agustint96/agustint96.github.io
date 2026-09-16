@@ -1186,3 +1186,36 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   requestAnimationFrame(pollButtons);
 })();
+
+// CV: elegir idioma — el ícono del nav ya no descarga directo, abre un
+// menú chico con Español/English (ver .cv-picker en styles.css).
+(function () {
+  const picker = document.getElementById("cvPicker");
+  if (!picker) return;
+  const btn = picker.querySelector(".cv-btn");
+  const menu = picker.querySelector(".cv-menu");
+
+  function open() {
+    menu.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+  }
+  function close() {
+    menu.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+  }
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (menu.hidden) open();
+    else close();
+  });
+  document.addEventListener("click", (e) => {
+    if (!menu.hidden && !picker.contains(e.target)) close();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !menu.hidden) {
+      close();
+      btn.focus();
+    }
+  });
+})();

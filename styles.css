@@ -191,6 +191,71 @@ nav.nav-compact {
   }
 }
 
+/* Ícono de CV: en vez de descargar directo, abre un menú chico para elegir
+   idioma (ver el IIFE "CV: elegir idioma" en script.js). Mismo look que el
+   resto de nav-links, el menú reusa --card-bg/--card-border ya definidos
+   para las tarjetas del portfolio. */
+.cv-picker {
+  position: relative;
+}
+.cv-btn {
+  display: inline-flex;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.cv-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  pointer-events: none;
+}
+.cv-btn:hover,
+.cv-btn:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+.cv-menu {
+  position: absolute;
+  top: calc(100% + 14px);
+  right: -8px;
+  list-style: none;
+  min-width: 120px;
+  background: var(--navy-mid);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 210;
+}
+.cv-menu[hidden] {
+  display: none;
+}
+.cv-menu a {
+  display: block;
+  padding: 6px 10px;
+  font-family: "DM Mono", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  border-radius: 4px;
+  white-space: nowrap;
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+.cv-menu a:hover,
+.cv-menu a:focus-visible {
+  color: var(--accent);
+  background: rgba(241, 146, 128, 0.1);
+  outline: none;
+}
+
 /* Encendido: parpadeo estilo monitor CRT antes de entrar a la consola */
 .crt-screen {
   position: fixed;

@@ -64,8 +64,15 @@
           </a>
         </li>
 
-        <li>
-          <a href="CV_Agustin_Tardella.pdf" download aria-label="CV" title="CV">
+        <li class="cv-picker" id="cvPicker">
+          <button
+            type="button"
+            class="cv-btn"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-label="CV"
+            title="CV"
+          >
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
                 d="M6 2.75h8l4 4v13.5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3.75a1 1 0 0 1 1-1z"
@@ -86,7 +93,15 @@
                 stroke-linecap="round"
               />
             </svg>
-          </a>
+          </button>
+          <ul class="cv-menu" hidden>
+            <li>
+              <a href="CV_Agustin_Tardella.pdf" download>Español</a>
+            </li>
+            <li>
+              <a href="CV_Agustin_Tardella_EN.pdf" download>English</a>
+            </li>
+          </ul>
         </li>
 
         <li>
