@@ -375,7 +375,18 @@
           pathById[it.id] = path;
           return p
             .then(function () {
-              return blobToBase64(it.blob);
+              if (it.blob) return it.blob;
+              // Ítem "seed" (sincronizado desde lo ya publicado, nunca
+              // abierto en este navegador): sisop-user-files.js no le bajó
+              // el contenido todavía (ver applyManifestItem, sólo lo hace
+              // recién al abrirlo), así que se lo trae ahora para poder
+              // republicarlo.
+              return fetch(it.file).then(function (r) {
+                return r.blob();
+              });
+            })
+            .then(function (blob) {
+              return blobToBase64(blob);
             })
             .then(function (b64) {
               return ghPut(path, b64, "Publicar: " + it.name, shaByPath[path], token);

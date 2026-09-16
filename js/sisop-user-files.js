@@ -1145,7 +1145,32 @@
       w: img || video ? 640 : 420,
       h: img || video ? 500 : 190,
       transient: true,
-      render: function (bd, win) {
+      render: function renderBody(bd, win) {
+        // Audio/video/genérico sincronizado desde lo publicado (ver
+        // applyManifestItem en este mismo archivo): el contenido no se bajó
+        // solo al sincronizar, recién ahora que se abre. Mientras tanto se
+        // muestra un "Cargando…" y, apenas llega, se repinta esta misma
+        // ventana con el contenido real.
+        if (!item.remoteUrl && !item.blob) {
+          bd.innerHTML = '<div class="w98-empty">Cargando…</div>';
+          fetch(item.file)
+            .then(function (r) {
+              return r.blob();
+            })
+            .then(function (blob) {
+              item.blob = blob;
+              return dbPut(item);
+            })
+            .then(function () {
+              bd.innerHTML = "";
+              renderBody(bd, win);
+            })
+            .catch(function () {
+              bd.innerHTML =
+                '<div class="w98-empty">No se pudo descargar el archivo.</div>';
+            });
+          return;
+        }
         var url = item.remoteUrl || URL.createObjectURL(item.blob);
         if (img) {
           var v = document.createElement("div");
@@ -1530,7 +1555,10 @@
         // link ya apunta directo al storage externo.
         if (item.remoteUrl) {
           fresh.remoteUrl = item.remoteUrl;
-        } else {
+        } else if (isImageItem(fresh)) {
+          // La miniatura del ícono (ver setThumbnail) necesita el blob ya
+          // mismo: no se puede mostrar recién al abrir.
+          fresh.file = item.file;
           afterBlob = fetch(item.file)
             .then(function (r) {
               return r.blob();
@@ -1538,6 +1566,14 @@
             .then(function (blob) {
               fresh.blob = blob;
             });
+        } else {
+          // Audio / video / archivo genérico: puede pesar varios MB y el
+          // ícono no necesita el contenido hasta que se abre, así que acá
+          // sólo se guarda de dónde bajarlo. openFile() lo baja recién al
+          // abrirlo (ver más abajo) — si esto bajara todo de entrada, un
+          // visitante que nunca toca ese ícono igual pagaría la descarga
+          // completa en cada sincronización de fondo.
+          fresh.file = item.file;
         }
       }
       return afterBlob.then(function () {
@@ -1570,7 +1606,8 @@
       local.size = item.size || 0;
       if (item.remoteUrl) {
         local.remoteUrl = item.remoteUrl;
-      } else {
+      } else if (isImageItem(local)) {
+        local.file = item.file;
         afterBlob2 = fetch(item.file)
           .then(function (r) {
             return r.blob();
@@ -1578,6 +1615,10 @@
           .then(function (blob) {
             local.blob = blob;
           });
+      } else {
+        // Ver el mismo caso en la rama de "ítem nuevo" más arriba.
+        local.file = item.file;
+        local.blob = undefined; // el contenido publicado cambió: descartar el viejo, se vuelve a bajar al abrir
       }
     }
     return afterBlob2.then(function () {
