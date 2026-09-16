@@ -150,6 +150,14 @@
   function glyphFor(item) {
     if (item.type === "folder") return SVG.folder;
     if (item.type === "note") return SVG.note;
+    if (item.type === "app") {
+      var app = window.sisopApps && window.sisopApps[item.appId];
+      // Penales.js declara previewImg (una captura del juego); Brunomunari.js
+      // no, así que se queda con su ícono vectorial (iconHtml).
+      if (app && app.previewImg)
+        return '<img class="ufi-thumb" src="' + app.previewImg + '" alt="">';
+      return (app && app.iconHtml) || SVG.file;
+    }
     if (item.mime && item.mime.indexOf("image/") === 0) return SVG.image;
     if (item.mime && item.mime.indexOf("audio/") === 0) return SVG.audio;
     return SVG.file;
@@ -883,6 +891,15 @@
   // Abrir cada tipo de ítem (ventanas w98 reales, vía window.sisopWin)
   // ---------------------------------------------------------------------
   function openItem(item) {
+    // Acceso directo a una mini-app suelta (ver js/sisop-brunomunari.js y
+    // js/sisop-penales.js): un ítem real más -se puede seleccionar, borrar,
+    // arrastrar y renombrar como cualquier otro- que en vez de abrir una
+    // ventana w98 abre el widget flotante registrado en window.sisopApps.
+    if (item.type === "app") {
+      var app = window.sisopApps && window.sisopApps[item.appId];
+      if (app && app.open) app.open();
+      return;
+    }
     if (!window.sisopWin) return;
     if (item.type === "folder") return openFolder(item);
     if (item.type === "note") return openNote(item);
@@ -1230,6 +1247,7 @@
       text: it.text,
       mime: it.mime,
       size: it.size,
+      appId: it.appId,
     });
   }
   // Refresca la etiqueta/miniatura de un ícono de escritorio ya existente
@@ -1261,6 +1279,7 @@
         fresh.text = item.text || "";
         fresh.rt = true;
       }
+      if (item.type === "app") fresh.appId = item.appId;
       var afterBlob = Promise.resolve();
       if (item.type === "file") {
         fresh.mime = item.mime || "";
@@ -1296,6 +1315,7 @@
     local.parent = item.parent;
     local.trashed = false;
     if (item.type === "note") local.text = item.text || "";
+    if (item.type === "app") local.appId = item.appId;
     var afterBlob2 = Promise.resolve();
     if (item.type === "file") {
       local.mime = item.mime || "";

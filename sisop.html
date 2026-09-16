@@ -20,6 +20,27 @@
         src: url("fonts/Spaceport_2006.otf");
         font-display: swap;
       }
+      /* Usada por el globo de diálogo de Brunomunari.js (ver
+         js/sisop-brunomunari.js). Dos pesos, un solo font-family. */
+      @font-face {
+        font-family: Geometrica;
+        src: url("fonts/Geometrica.otf");
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: Geometrica;
+        src: url("fonts/Geometrica Extra Light.otf");
+        font-weight: 200;
+        font-display: swap;
+      }
+      /* Usada por el pie de firma del mismo globo: "Creado con p5.js" y
+         el año. */
+      @font-face {
+        font-family: "Proggy Square";
+        src: url("fonts/ProggySquare.ttf");
+        font-display: swap;
+      }
 
       :root {
         --navy: #0d1b2e;
@@ -4081,5 +4102,7 @@ SELECT * FROM Info;</textarea
     <script src="js/sisop-user-files.js"></script>
     <script src="js/sisop-publish.js"></script>
     <script src="js/sisop-paint.js"></script>
+    <script src="js/sisop-brunomunari.js"></script>
+    <script src="js/sisop-penales.js"></script>
   </body>
 </html>
