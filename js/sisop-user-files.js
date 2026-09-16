@@ -240,6 +240,11 @@
   // como pedís. Adentro de una carpeta no hay posiciones que reacomodar
   // (es un flujo simple): ahí `onDone` es la grilla de esa carpeta, que ya
   // se redibuja sola con lo último de la base.
+  // De paso, en el escritorio también dispara syncPublished(): la misma
+  // sync silenciosa que corre sola al abrir la página, por si Agus publicó
+  // algo nuevo desde la última visita. No fuerza nada (a diferencia de
+  // "Restaurar"): si no cambió la versión publicada, o si borraste algo
+  // original, se respeta tal cual.
   function refreshFromDB(parentId, onDone) {
     flashIcons(parentId);
     dbGetAll()
@@ -253,6 +258,7 @@
           updateTrashIcon();
           if (window.deskIcons && window.deskIcons.reset)
             window.deskIcons.reset();
+          syncPublished();
         } else if (typeof onDone === "function") {
           onDone();
         }
