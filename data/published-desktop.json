@@ -1,5 +1,5 @@
 {
-  "version": 1789530584282,
+  "version": 1789531010844,
   "layout": {
     "papelera": {
       "col": 0,
@@ -52,6 +52,10 @@
     "ufmu3k93otxi6d00": {
       "col": 0,
       "row": 4
+    },
+    "ufmu3kjxv5rrbkby": {
+      "col": 2,
+      "row": 0
     }
   },
   "items": [
@@ -77,6 +81,16 @@
       "type": "folder",
       "name": "tmp",
       "createdAt": 1789530495725
+    },
+    {
+      "id": "ufmu3kjxv5rrbkby",
+      "parent": "root",
+      "type": "file",
+      "name": "Radio-FM-0001.mp3",
+      "createdAt": 1789531001393,
+      "mime": "audio/mpeg",
+      "size": 1164068,
+      "file": "data/published-desktop-files/ufmu3kjxv5rrbkby-Radio-FM-0001.mp3"
     }
   ]
 }
