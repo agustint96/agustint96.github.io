@@ -1,5 +1,5 @@
 {
-  "version": 1789531010844,
+  "version": 1789531331303,
   "layout": {
     "papelera": {
       "col": 0,
@@ -91,6 +91,16 @@
       "mime": "audio/mpeg",
       "size": 1164068,
       "file": "data/published-desktop-files/ufmu3kjxv5rrbkby-Radio-FM-0001.mp3"
+    },
+    {
+      "id": "ufmu3kqm36l0ynsx",
+      "parent": "ufmu3k93otxi6d00",
+      "type": "file",
+      "name": "seinfeld usb off2.wav",
+      "createdAt": 1789531312722,
+      "mime": "audio/wav",
+      "size": 355236,
+      "file": "data/published-desktop-files/ufmu3kqm36l0ynsx-seinfeld_usb_off2.wav"
     }
   ]
 }
