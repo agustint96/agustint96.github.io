@@ -446,11 +446,26 @@
   }
   function setPosition(id, pos) {
     if (!pos || typeof pos.col !== "number" || typeof pos.row !== "number") return;
-    layout[id] = { col: pos.col, row: pos.row };
+    var cell = cellSize();
+    var grid = gridSize(cell);
+    // El (col,row) viene de un manifest publicado por Agus, calculado sobre
+    // SU propia pantalla — puede no entrar en la grilla de este visitante
+    // (menos columnas) o coincidir con una celda que acá ya ocupa otro
+    // ícono. Sin este chequeo, dos ítems terminan superpuestos en la misma
+    // celda (el bug de "carpetas encimadas" al sincronizar lo publicado).
+    var target = {
+      col: Math.min(Math.max(0, pos.col), grid.cols - 1),
+      row: Math.min(Math.max(0, pos.row), grid.rows - 1),
+    };
+    var occ = occupiedCells(id);
+    if (occ[target.col + "," + target.row]) {
+      target = nearestFreeCell(target.col, target.row, grid, id);
+    }
+    layout[id] = target;
     saveLayout();
     for (var i = 0; i < icons.length; i++) {
       if (iconId(icons[i]) === id) {
-        place(icons[i], layout[id], cellSize());
+        place(icons[i], layout[id], cell);
         break;
       }
     }
