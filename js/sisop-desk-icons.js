@@ -436,6 +436,26 @@
     saveLayout();
   }
 
+  /* API para sisop-publish.js: leer/fijar posiciones sin que ese módulo
+     tenga que conocer la clave de localStorage (mismo principio que ya
+     sigue sisop-user-files.js, que nunca toca STORAGE_KEY directamente). */
+  function getLayout() {
+    var copy = {};
+    for (var id in layout) copy[id] = { col: layout[id].col, row: layout[id].row };
+    return copy;
+  }
+  function setPosition(id, pos) {
+    if (!pos || typeof pos.col !== "number" || typeof pos.row !== "number") return;
+    layout[id] = { col: pos.col, row: pos.row };
+    saveLayout();
+    for (var i = 0; i < icons.length; i++) {
+      if (iconId(icons[i]) === id) {
+        place(icons[i], layout[id], cellSize());
+        break;
+      }
+    }
+  }
+
   // "Actualizar" del menú contextual: descarta el acomodo a mano y vuelve a
   // ordenar todo como al principio (mismo orden en que aparecen los iconos
   // en el escritorio: primero los del HTML, después los que se hayan ido
@@ -445,5 +465,11 @@
     applyLayout();
   }
 
-  window.deskIcons = { add: addIcon, remove: removeIcon, reset: resetLayout };
+  window.deskIcons = {
+    add: addIcon,
+    remove: removeIcon,
+    reset: resetLayout,
+    getLayout: getLayout,
+    setPosition: setPosition,
+  };
 })();

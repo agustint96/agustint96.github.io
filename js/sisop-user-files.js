@@ -128,7 +128,7 @@
       '<svg viewBox="0 0 32 32" aria-hidden="true">' +
       '<path d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#f0ece4" stroke="#2f4467" stroke-width="1.3"/>' +
       '<path d="M19 3v5h5" fill="none" stroke="#2f4467" stroke-width="1.3"/>' +
-      '<path d="M14 24v-8l6-1.5V22" fill="none" stroke="#2f4467" stroke-width="1.6" stroke-linecap="round"/>' +
+      '<path d="M14 24v-8l6-1.5V22" fill="none" stroke="#f19280" stroke-width="1.6" stroke-linecap="round"/>' +
       '<circle cx="12.4" cy="24.1" r="2" fill="#f19280"/><circle cx="18.4" cy="22.6" r="2" fill="#f19280"/></svg>',
     image:
       '<svg viewBox="0 0 32 32" aria-hidden="true">' +
@@ -274,7 +274,7 @@
       .forEach(addDeskIconFor);
   }
   function showCreateMenu(x, y, parentId, onChange) {
-    showMenu(x, y, [
+    var entries = [
       {
         label: "Actualizar",
         onClick: function () {
@@ -299,7 +299,27 @@
           pickFiles(parentId, onChange);
         },
       },
-    ]);
+    ];
+    // "Publicar" es una acción de escritorio (no tiene sentido adentro de
+    // una carpeta): la resuelve sisop-publish.js, acá sólo se cuelga la
+    // entrada si ese módulo llegó a cargar.
+    if (parentId === "root" && window.sisopPublish) {
+      entries.push(
+        {
+          label: "Publicar mi escritorio…",
+          onClick: function () {
+            window.sisopPublish.publish();
+          },
+        },
+        {
+          label: "Cambiar token de publicación…",
+          onClick: function () {
+            window.sisopPublish.promptForToken();
+          },
+        },
+      );
+    }
+    showMenu(x, y, entries);
   }
   function showItemMenu(x, y, item, el, onChange, selectedEls) {
     var multi = selectedEls && selectedEls.length > 1;
@@ -1157,7 +1177,202 @@
     saveNote: function (text) {
       return createNoteWithText("root", text, null);
     },
+    // Para sisop-publish.js: copia superficial de todo lo no-papelera (en
+    // cualquier profundidad), sin el campo `origin` — es contable local de
+    // este navegador, nunca se publica.
+    exportAll: function () {
+      return allItems()
+        .filter(function (it) {
+          return !it.trashed;
+        })
+        .map(function (it) {
+          var copy = {};
+          for (var k in it) {
+            if (k !== "origin") copy[k] = it[k];
+          }
+          return copy;
+        });
+    },
   };
+
+  // ---------------------------------------------------------------------
+  // Sincronizar lo que Agus haya publicado (ver sisop-publish.js): trae
+  // data/published-desktop.json y lo concilia con lo que ya hay en este
+  // navegador. Nunca toca un ítem que no sea "seed" (lo que el propio
+  // visitante subió) ni resucita algo que el visitante ya mandó a su
+  // papelera; tampoco pisa la posición de un ítem seed que el visitante ya
+  // reacomodó, salvo que su contenido haya cambiado.
+  // ---------------------------------------------------------------------
+  var SEED_VERSION_KEY = "sisop.uf.seed.version.v1";
+  function storedSeedVersion() {
+    return parseInt(localStorage.getItem(SEED_VERSION_KEY), 10) || 0;
+  }
+  function saveSeedVersion(v) {
+    try {
+      localStorage.setItem(SEED_VERSION_KEY, String(v || 0));
+    } catch (_) {
+      /* sin localStorage: se vuelve a sincronizar en el próximo boot, no pasa nada */
+    }
+  }
+  // Sólo el contenido "publicable" de un ítem (nunca la posición): así un
+  // visitante que ya reacomodó un ícono o un post-it no lo pierde si Agus
+  // vuelve a publicar sin haber cambiado ese ítem en particular.
+  function seedContentKey(it) {
+    return JSON.stringify({
+      name: it.name,
+      type: it.type,
+      parent: it.parent,
+      text: it.text,
+      mime: it.mime,
+      size: it.size,
+    });
+  }
+  // Refresca la etiqueta/miniatura de un ícono de escritorio ya existente
+  // sin removerlo: sacarlo con deskIcons.remove() le borraría la posición
+  // guardada (ver removeIcon() en sisop-desk-icons.js).
+  function refreshDeskIconLabel(item) {
+    var el = document.querySelector(
+      '.desk-icon[data-user-item="' + item.id + '"]',
+    );
+    if (!el) return;
+    el.setAttribute("aria-label", item.name + " (doble clic para abrir)");
+    el.innerHTML = glyphFor(item) + "<span></span>";
+    el.querySelector("span").textContent = item.name;
+    if (isImageItem(item)) setThumbnail(el, item);
+  }
+  function applyManifestItem(item, layout) {
+    var local = itemsById[item.id];
+    if (!local) {
+      var fresh = {
+        id: item.id,
+        parent: item.parent,
+        type: item.type,
+        name: item.name,
+        createdAt: item.createdAt || Date.now(),
+        origin: "seed",
+      };
+      if (item.type === "note") {
+        fresh.text = item.text || "";
+        fresh.rt = true;
+      }
+      var afterBlob = Promise.resolve();
+      if (item.type === "file") {
+        fresh.mime = item.mime || "";
+        fresh.size = item.size || 0;
+        afterBlob = fetch(item.file)
+          .then(function (r) {
+            return r.blob();
+          })
+          .then(function (blob) {
+            fresh.blob = blob;
+          });
+      }
+      return afterBlob.then(function () {
+        itemsById[fresh.id] = fresh;
+        return dbPut(fresh).then(function () {
+          if (fresh.parent === "root") {
+            addDeskIconFor(fresh);
+            if (layout[fresh.id] && window.deskIcons)
+              window.deskIcons.setPosition(fresh.id, layout[fresh.id]);
+          }
+        });
+      });
+    }
+    if (local.trashed) return Promise.resolve();
+    if (local.origin !== "seed") return Promise.resolve(); // no debería pasar (ids al azar), por las dudas no se toca
+    if (seedContentKey(local) === seedContentKey(item)) return Promise.resolve();
+    local.name = item.name;
+    local.parent = item.parent;
+    if (item.type === "note") local.text = item.text || "";
+    var afterBlob2 = Promise.resolve();
+    if (item.type === "file") {
+      local.mime = item.mime || "";
+      local.size = item.size || 0;
+      afterBlob2 = fetch(item.file)
+        .then(function (r) {
+          return r.blob();
+        })
+        .then(function (blob) {
+          local.blob = blob;
+        });
+    }
+    return afterBlob2.then(function () {
+      return dbPut(local).then(function () {
+        if (local.parent === "root") refreshDeskIconLabel(local);
+      });
+    });
+  }
+  function applyManifest(manifest) {
+    var items = manifest.items || [];
+    var layout = manifest.layout || {};
+    var byId = {};
+    items.forEach(function (it) {
+      byId[it.id] = it;
+    });
+    // `itemsById` recién se actualiza cuando cada dbPut() async resuelve,
+    // no en el momento en que se programa acá abajo — así que para decidir
+    // si ya se puede procesar un hijo en la MISMA pasada síncrona hace
+    // falta un set aparte, marcado apenas se decide programar un ítem (no
+    // cuando termina de guardarse). Si no, una carpeta nueva dentro de otra
+    // carpeta nueva se pierde en silencio.
+    var known = {};
+    Object.keys(itemsById).forEach(function (id) {
+      known[id] = true;
+    });
+    var pending = items.slice();
+    var chain = Promise.resolve();
+    var appliedAny = true;
+    // Varias pasadas: procesa cualquier ítem cuya carpeta padre ya exista
+    // (root, o ya programada en una pasada anterior u ésta), así no importa
+    // en qué orden vengan las carpetas y sus hijos en el manifest.
+    while (pending.length && appliedAny) {
+      appliedAny = false;
+      var next = [];
+      pending.forEach(function (item) {
+        if (item.parent === "root" || known[item.parent]) {
+          appliedAny = true;
+          known[item.id] = true;
+          chain = chain.then(function () {
+            return applyManifestItem(item, layout);
+          });
+        } else {
+          next.push(item);
+        }
+      });
+      pending = next;
+    }
+    return chain.then(function () {
+      // Lo que Agus sacó de su publicación: cualquier ítem local "seed"
+      // cuyo id ya no está en el manifest nuevo.
+      var toRemove = allItems().filter(function (it) {
+        return it.origin === "seed" && !byId[it.id];
+      });
+      return toRemove
+        .reduce(function (p, it) {
+          return p.then(function () {
+            return hardDeleteCascade(it);
+          });
+        }, Promise.resolve())
+        .then(function () {
+          updateTrashIcon();
+          saveSeedVersion(manifest.version);
+        });
+    });
+  }
+  function syncPublished() {
+    fetch("data/published-desktop.json", { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("sin manifest publicado");
+        return r.json();
+      })
+      .then(function (manifest) {
+        if (!manifest || (manifest.version || 0) === storedSeedVersion()) return;
+        return applyManifest(manifest);
+      })
+      .catch(function () {
+        /* sin conexión, o Agus todavía no publicó nada: se sigue como siempre */
+      });
+  }
 
   // ---------------------------------------------------------------------
   // Arranque: cargar lo guardado y colgar el menú contextual del escritorio
@@ -1207,6 +1422,7 @@
           })
           .forEach(addDeskIconFor);
         updateTrashIcon();
+        syncPublished();
       })
       .catch(function () {
         /* IndexedDB no disponible: el menú de crear sigue funcionando en la

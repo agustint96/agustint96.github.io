@@ -1951,6 +1951,28 @@
         white-space: pre-wrap;
       }
 
+      /* Input de texto dentro de un sisop-dialog (ej. pegar un token) —
+         mismo hundido que .rename-input, así no se inventa un estilo nuevo. */
+      .sisop-dialog .body .dlg-input {
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+        font: inherit;
+        font-size: 11px;
+        color: #1b1b18;
+        background: var(--w98-field);
+        border: 0;
+        padding: 4px 5px;
+        box-sizing: border-box;
+        box-shadow:
+          inset 1px 1px 0 0 var(--w98-dkshadow),
+          inset -1px -1px 0 0 var(--w98-hilite);
+      }
+      .sisop-dialog .body .dlg-input:focus {
+        outline: 1px dotted var(--w98-selbg);
+        outline-offset: -3px;
+      }
+
       /* Infotip estilo Windows 98 (texto completo de un campo al hacer hover) */
       .infotip {
         position: fixed;
@@ -3983,6 +4005,7 @@ SELECT * FROM Info;</textarea
     <script src="js/sisop-grabadora.js"></script>
     <script src="js/sisop-sqlconsole.js"></script>
     <script src="js/sisop-user-files.js"></script>
+    <script src="js/sisop-publish.js"></script>
     <script src="js/sisop-paint.js"></script>
   </body>
 </html>

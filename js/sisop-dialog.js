@@ -92,5 +92,81 @@
     });
   }
 
-  window.sisopDialog = { confirm: confirmDialog };
+  // Como confirmDialog, pero con un campo de texto (ej. pegar un token):
+  // devuelve el string escrito o null si se canceló (Escape/✕/click afuera).
+  function promptDialog(opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      if (current) closeCurrent(null);
+
+      var overlay = document.createElement("div");
+      overlay.className = "sisop-dialog-overlay";
+
+      var root = document.createElement("div");
+      root.className = "dialog sisop-dialog";
+      root.innerHTML =
+        '<div class="title-bar">' +
+        '<span class="tb-text"></span>' +
+        '<span class="tb-btns"><button class="tb-btn" type="button" data-act="cancel">✕</button></span>' +
+        "</div>" +
+        '<div class="body"><p></p><input type="password" class="dlg-input" autocomplete="off" /></div>' +
+        '<div class="foot"></div>';
+      root.querySelector(".tb-text").textContent = opts.title || "";
+      root.querySelector(".body p").textContent = opts.message || "";
+      var input = root.querySelector(".dlg-input");
+      input.value = opts.value || "";
+
+      var foot = root.querySelector(".foot");
+      var okBtn = document.createElement("button");
+      okBtn.type = "button";
+      okBtn.className = "btn";
+      okBtn.textContent = opts.okLabel || "Aceptar";
+      var cancelBtn = document.createElement("button");
+      cancelBtn.type = "button";
+      cancelBtn.className = "btn";
+      cancelBtn.textContent = opts.cancelLabel || "Cancelar";
+      foot.appendChild(okBtn);
+      foot.appendChild(cancelBtn);
+
+      function finish(result) {
+        closeCurrent(result);
+      }
+      okBtn.addEventListener("click", function () {
+        finish(input.value.trim());
+      });
+      cancelBtn.addEventListener("click", function () {
+        finish(null);
+      });
+      root.querySelector('[data-act="cancel"]').addEventListener(
+        "click",
+        function () {
+          finish(null);
+        },
+      );
+      overlay.addEventListener("click", function () {
+        finish(null);
+      });
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finish(input.value.trim());
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          finish(null);
+        }
+        e.stopPropagation();
+      });
+
+      document.body.appendChild(overlay);
+      document.body.appendChild(root);
+      input.focus();
+      input.select();
+
+      // onKey es un no-op acá (el input ya maneja Enter/Escape más arriba);
+      // closeCurrent() igual espera la forma { overlay, root, resolve, onKey }.
+      current = { overlay: overlay, root: root, resolve: resolve, onKey: function () {} };
+    });
+  }
+
+  window.sisopDialog = { confirm: confirmDialog, prompt: promptDialog };
 })();
