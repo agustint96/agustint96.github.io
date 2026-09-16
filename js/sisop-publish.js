@@ -418,7 +418,7 @@
           title: "Publicar mi escritorio",
           message: "Listo, se publicó tu escritorio.",
           okLabel: "Cerrar",
-          cancelLabel: "Cerrar",
+          hideCancel: true,
         });
       })
       .catch(function (err) {
@@ -447,7 +447,7 @@
           message:
             "No se pudo publicar: " + (err && err.message ? err.message : "error desconocido"),
           okLabel: "Cerrar",
-          cancelLabel: "Cerrar",
+          hideCancel: true,
         });
       });
   }
@@ -473,6 +473,7 @@
 
     var m = document.createElement("div");
     m.className = "ctxmenu sisop-publish-menu";
+    var buttons = [];
     [
       { label: "Publicar mi escritorio…", onClick: publish },
       { label: "Cambiar token de publicación…", onClick: changeToken },
@@ -486,6 +487,7 @@
         close();
         en.onClick();
       });
+      buttons.push(b);
       m.appendChild(b);
     });
     document.body.appendChild(m);
@@ -493,22 +495,38 @@
       mh = m.offsetHeight;
     m.style.left = Math.max(4, (window.innerWidth - mw) / 2) + "px";
     m.style.top = Math.max(4, (window.innerHeight - mh) / 2) + "px";
+    // "Publicar mi escritorio…" arranca enfocado: Enter la dispara directo
+    // (es el <button> nativo), y las flechas mueven el foco entre las dos.
+    buttons[0].focus();
 
     function close() {
       m.remove();
       document.removeEventListener("pointerdown", onOutside, true);
-      document.removeEventListener("keydown", onEsc, true);
+      document.removeEventListener("keydown", onKey, true);
     }
     function onOutside(e) {
       if (!m.contains(e.target)) close();
     }
-    function onEsc(e) {
-      if (e.key === "Escape") close();
+    function onKey(e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+        return;
+      }
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault();
+      var idx = buttons.indexOf(document.activeElement);
+      if (idx === -1) idx = 0;
+      var next =
+        e.key === "ArrowDown"
+          ? buttons[(idx + 1) % buttons.length]
+          : buttons[(idx - 1 + buttons.length) % buttons.length];
+      next.focus();
     }
     setTimeout(function () {
       document.addEventListener("pointerdown", onOutside, true);
     }, 0);
-    document.addEventListener("keydown", onEsc, true);
+    document.addEventListener("keydown", onKey, true);
   }
   document.addEventListener("keydown", function (e) {
     if (e.ctrlKey && e.shiftKey && (e.key === "P" || e.key === "p")) {

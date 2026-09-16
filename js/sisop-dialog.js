@@ -47,12 +47,17 @@
       okBtn.type = "button";
       okBtn.className = "btn" + (opts.danger ? " primary" : "");
       okBtn.textContent = opts.okLabel || "Aceptar";
-      var cancelBtn = document.createElement("button");
-      cancelBtn.type = "button";
-      cancelBtn.className = "btn";
-      cancelBtn.textContent = opts.cancelLabel || "Cancelar";
       foot.appendChild(okBtn);
-      foot.appendChild(cancelBtn);
+      // opts.hideCancel: para un aviso ("listo, se publicó") no tiene
+      // sentido un par de botones que hacen lo mismo — un solo "Cerrar".
+      var cancelBtn = null;
+      if (!opts.hideCancel) {
+        cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "btn";
+        cancelBtn.textContent = opts.cancelLabel || "Cancelar";
+        foot.appendChild(cancelBtn);
+      }
 
       function finish(result) {
         closeCurrent(result);
@@ -60,9 +65,11 @@
       okBtn.addEventListener("click", function () {
         finish(true);
       });
-      cancelBtn.addEventListener("click", function () {
-        finish(false);
-      });
+      if (cancelBtn) {
+        cancelBtn.addEventListener("click", function () {
+          finish(false);
+        });
+      }
       root.querySelector('[data-act="cancel"]').addEventListener(
         "click",
         function () {
