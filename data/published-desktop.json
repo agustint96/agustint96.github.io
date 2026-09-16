@@ -1,5 +1,5 @@
 {
-  "version": 1789529910727,
+  "version": 1789530574293,
   "layout": {
     "papelera": {
       "col": 0,
@@ -19,11 +19,11 @@
     },
     "musica": {
       "col": 0,
-      "row": 4
+      "row": 5
     },
     "cv": {
-      "col": 0,
-      "row": 5
+      "col": 1,
+      "row": 4
     },
     "deskIcon": {
       "col": 0,
@@ -48,7 +48,35 @@
     "formator": {
       "col": 1,
       "row": 3
+    },
+    "ufmu3k93otxi6d00": {
+      "col": 0,
+      "row": 4
     }
   },
-  "items": []
+  "items": [
+    {
+      "id": "ufmtzrr5m4gb81q4",
+      "parent": "ufmu3k93otxi6d00",
+      "type": "note",
+      "name": "Cambiar el esquema/datos…",
+      "createdAt": 1789301230636,
+      "text": "Cambiar el esquema/datos \"de fábrica\" (lo que ve cualquier visitante nuevo, o quien haga \"Restaurar base Agus\"): editá el array SEED_SQL en js/sisop-sqlconsole.js — ahí están info, estudios, experiencia, proyectos, idiomas, tecnologias, musica como CREATE TABLE + INSERT. Después de editar, subí SEED_VERSION (js/sisop-sqlconsole.js:17, formato \"YYYY-MM-DD.N\") — si no, los navegadores que ya tienen la base guardada en localStorage no van a ver el cambio, porque applySeed() solo se corre en primera carga o al restaurar."
+    },
+    {
+      "id": "ufmtzry32daxxdno",
+      "parent": "ufmu3k93otxi6d00",
+      "type": "note",
+      "name": "Modificarla en vivo, en …",
+      "createdAt": 1789301553925,
+      "text": "Modificarla en vivo, en tu propio navegador: abrí sisop.html, doble clic en el ícono \"Agus.db\" del escritorio, y corré ALTER TABLE, INSERT, UPDATE, etc. directamente en la consola SQL. Eso se guarda solo en tu localStorage (función saveDb()), no se persiste al repo ni se comparte con otros visitantes."
+    },
+    {
+      "id": "ufmu3k93otxi6d00",
+      "parent": "root",
+      "type": "folder",
+      "name": "tmp",
+      "createdAt": 1789530495725
+    }
+  ]
 }
