@@ -764,12 +764,12 @@
   function wireItemIcon(el, item, refreshParent, draggableInFolder, kind) {
     el.addEventListener("click", function (e) {
       e.stopPropagation();
-      document
-        .querySelectorAll(".desk-icon.selected, .folder-icon.selected")
-        .forEach(function (x) {
-          if (x !== el) x.classList.remove("selected");
-        });
-      el.classList.toggle("selected");
+      window.sisopSelect.handleClick(
+        e,
+        el,
+        el.parentElement,
+        ".desk-icon, .folder-icon",
+      );
     });
     window.sisopTouch.bindActivate(el, function () {
       openItem(item);
