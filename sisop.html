@@ -729,7 +729,12 @@
          barras animadas): corre mientras suena y se para en pausa/al
          terminar, ver los listeners "play"/"pause"/"ended" en
          openFile() de sisop-user-files.js. Colores de acento del sitio
-         (--accent2 celeste, --accent salmón, ver :root arriba). */
+         (--accent2 celeste, --accent salmón, ver :root arriba). La
+         celeste va con alpha (no var(--accent2) sólido) para que se vea
+         el fondo de la ventana detrás: al ser transparencia de verdad
+         (no un color fijo) funciona igual esté el escritorio en azul o
+         en negro (ver bgToggleBtn/bg-negro en sisop-sqlconsole.js), sin
+         depender de qué haya atrás. */
       .uf-audio-viz {
         display: flex;
         align-items: flex-end;
@@ -744,7 +749,7 @@
         max-width: 6px;
         height: 8px;
         border-radius: 2px 2px 0 0;
-        background: var(--accent2);
+        background: rgba(126, 184, 201, 0.5);
         /* animation-delay/duration por barra van inline (ver el for en
            openFile(), sisop-user-files.js) para que no se muevan todas
            en fila india con más de 5-6 barras. */
@@ -975,9 +980,15 @@
         width: 50px;
         flex-shrink: 0;
       }
-      .vid-seek,
       .vid-vol {
         accent-color: var(--w98-selbg);
+      }
+      /* Igual que la barra celeste del ecualizador de audio (ver
+         .uf-audio-viz span más arriba): transparencia real en vez de un
+         celeste sólido, para que se vea el fondo de la barra de
+         controles detrás sin importar el tema del escritorio. */
+      .vid-seek {
+        accent-color: rgba(126, 184, 201, 0.5);
       }
       .vid-sep {
         width: 1px;
