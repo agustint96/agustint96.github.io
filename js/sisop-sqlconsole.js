@@ -1770,7 +1770,8 @@
       ta.addEventListener("keydown", function (e) {
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
           e.preventDefault();
-          pin();
+          if (e.shiftKey) guardar();
+          else pin();
           return;
         }
         if (applyRichShortcut(e)) e.preventDefault();
