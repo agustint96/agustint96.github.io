@@ -29,12 +29,26 @@ window.sisopSelect = {
       container.__selectAnchor &&
       items.indexOf(container.__selectAnchor) !== -1
     ) {
-      var a = items.indexOf(container.__selectAnchor);
-      var b = items.indexOf(el);
-      var lo = Math.min(a, b),
-        hi = Math.max(a, b);
-      items.forEach(function (it, i) {
-        it.classList.toggle("selected", i >= lo && i <= hi);
+      // Rango por posición visual (el rectángulo entre el ancla y el
+      // clickeado), no por orden en el HTML: acá los íconos se arrastran a
+      // cualquier celda libre, así que el orden del DOM no tiene nada que
+      // ver con lo que se ve en pantalla. Es el mismo criterio que ya usa
+      // el lazo de selección (sisop-desk-icons.js): centro del ícono
+      // adentro del área.
+      var ra = container.__selectAnchor.getBoundingClientRect();
+      var rb = el.getBoundingClientRect();
+      var left = Math.min(ra.left, rb.left);
+      var right = Math.max(ra.right, rb.right);
+      var top = Math.min(ra.top, rb.top);
+      var bottom = Math.max(ra.bottom, rb.bottom);
+      items.forEach(function (it) {
+        var r = it.getBoundingClientRect();
+        var cx = r.left + r.width / 2;
+        var cy = r.top + r.height / 2;
+        it.classList.toggle(
+          "selected",
+          cx >= left && cx <= right && cy >= top && cy <= bottom,
+        );
       });
       return; // el ancla no se mueve con Shift, como en Windows
     }
