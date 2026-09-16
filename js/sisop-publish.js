@@ -299,4 +299,61 @@
       return !!getToken();
     },
   };
+
+  // ---------------------------------------------------------------------
+  // Disparador: Ctrl+Shift+P, no un ítem en el menú contextual del
+  // escritorio — así un visitante cualquiera que hace clic derecho no se
+  // encuentra con una opción de "Publicar" que no es para él. Reusa la
+  // estética .ctxmenu ya definida en sisop.html (la misma que usa el menú
+  // de clic derecho de sisop-user-files.js) para no inventar un look nuevo.
+  // ---------------------------------------------------------------------
+  function showPublishMenu() {
+    var existing = document.querySelector(".ctxmenu.sisop-publish-menu");
+    if (existing) existing.remove();
+
+    var m = document.createElement("div");
+    m.className = "ctxmenu sisop-publish-menu";
+    [
+      { label: "Publicar mi escritorio…", onClick: publish },
+      { label: "Cambiar token de publicación…", onClick: promptForToken },
+    ].forEach(function (en) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "ctxmenu-item";
+      b.textContent = en.label;
+      b.addEventListener("click", function (e) {
+        e.stopPropagation();
+        close();
+        en.onClick();
+      });
+      m.appendChild(b);
+    });
+    document.body.appendChild(m);
+    var mw = m.offsetWidth,
+      mh = m.offsetHeight;
+    m.style.left = Math.max(4, (window.innerWidth - mw) / 2) + "px";
+    m.style.top = Math.max(4, (window.innerHeight - mh) / 2) + "px";
+
+    function close() {
+      m.remove();
+      document.removeEventListener("pointerdown", onOutside, true);
+      document.removeEventListener("keydown", onEsc, true);
+    }
+    function onOutside(e) {
+      if (!m.contains(e.target)) close();
+    }
+    function onEsc(e) {
+      if (e.key === "Escape") close();
+    }
+    setTimeout(function () {
+      document.addEventListener("pointerdown", onOutside, true);
+    }, 0);
+    document.addEventListener("keydown", onEsc, true);
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey && e.shiftKey && (e.key === "P" || e.key === "p")) {
+      e.preventDefault();
+      showPublishMenu();
+    }
+  });
 })();

@@ -274,7 +274,7 @@
       .forEach(addDeskIconFor);
   }
   function showCreateMenu(x, y, parentId, onChange) {
-    var entries = [
+    showMenu(x, y, [
       {
         label: "Actualizar",
         onClick: function () {
@@ -299,27 +299,7 @@
           pickFiles(parentId, onChange);
         },
       },
-    ];
-    // "Publicar" es una acción de escritorio (no tiene sentido adentro de
-    // una carpeta): la resuelve sisop-publish.js, acá sólo se cuelga la
-    // entrada si ese módulo llegó a cargar.
-    if (parentId === "root" && window.sisopPublish) {
-      entries.push(
-        {
-          label: "Publicar mi escritorio…",
-          onClick: function () {
-            window.sisopPublish.publish();
-          },
-        },
-        {
-          label: "Cambiar token de publicación…",
-          onClick: function () {
-            window.sisopPublish.promptForToken();
-          },
-        },
-      );
-    }
-    showMenu(x, y, entries);
+    ]);
   }
   function showItemMenu(x, y, item, el, onChange, selectedEls) {
     var multi = selectedEls && selectedEls.length > 1;
