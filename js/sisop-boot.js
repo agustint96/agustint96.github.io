@@ -2,9 +2,19 @@
 (function () {
   /* Fondo negro (ver botón "cambiar fondo" en la barra de tareas): se
      aplica lo antes posible para que no haya un parpadeo azul→negro al
-     cargar la página con la preferencia ya guardada. */
+     cargar la página con la preferencia ya guardada. Si el visitante nunca
+     tocó el botón (sin preferencia guardada todavía), el default sigue la
+     hora LOCAL de su propio dispositivo (no la de Argentina: hay
+     visitantes en otros husos horarios) — de 20 a 6 arranca en negro. El
+     reacomodo si sigue con la pestaña abierta al cruzar esa hora lo hace
+     sisop-sqlconsole.js (acá sólo importa el primer pintado). */
   try {
-    if (localStorage.getItem("sisop.bg.v1") === "negro") {
+    var bgGuardado = localStorage.getItem("sisop.bg.v1");
+    var horaLocal = new Date().getHours();
+    var quiereNegro = bgGuardado
+      ? bgGuardado === "negro"
+      : horaLocal >= 20 || horaLocal < 6;
+    if (quiereNegro) {
       document.documentElement.classList.add("bg-negro");
     }
   } catch (e) {}

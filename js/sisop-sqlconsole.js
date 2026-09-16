@@ -214,6 +214,36 @@
       btn.title = negro ? "Cambiar a fondo azul" : "Cambiar a fondo negro";
     })();
 
+    // Si el visitante nunca eligió el fondo a mano (sin "sisop.bg.v1"
+    // guardado), lo sigue la hora local de SU dispositivo mientras tenga la
+    // pestaña abierta — para no quedarse en modo día toda la noche sólo
+    // porque no recargó. Apenas toca el botón (ver "toggle-bg" más abajo,
+    // que sí guarda su elección), esto deja de tocar nada.
+    function fondoPorHora() {
+      var h = new Date().getHours();
+      return h >= 20 || h < 6;
+    }
+    function reaplicarFondoAuto() {
+      var guardado;
+      try {
+        guardado = localStorage.getItem("sisop.bg.v1");
+      } catch (e) {
+        guardado = null;
+      }
+      if (guardado) return; // ya eligió a mano: no se auto-cambia más
+      var htmlEl = document.documentElement;
+      var quiereNegro = fondoPorHora();
+      if (htmlEl.classList.contains("bg-negro") === quiereNegro) return;
+      htmlEl.classList.toggle("bg-negro", quiereNegro);
+      var btn = $("bgToggleBtn");
+      if (btn) {
+        btn.classList.toggle("on", quiereNegro);
+        btn.setAttribute("aria-pressed", quiereNegro ? "true" : "false");
+        btn.title = quiereNegro ? "Cambiar a fondo azul" : "Cambiar a fondo negro";
+      }
+    }
+    setInterval(reaplicarFondoAuto, 5 * 60 * 1000);
+
     addStars(40, 0.5); // siembra inicial tenue
     // Al mover el mouse (hover sobre el fondo) brotan más estrellas
     window.addEventListener("mousemove", function () {
