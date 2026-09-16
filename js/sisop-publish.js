@@ -5,12 +5,19 @@
  * visitante nuevo. Del otro lado lo consume syncPublished() en
  * sisop-user-files.js.
  *
- * El único control de acceso posible en un sitio 100% estático es "saber
+ * El único control de acceso posible en un sitio 100% estático es "tener
  * el token": un fine-grained personal access token de GitHub, acotado a
- * este repo y sólo con permiso de Contents (read/write), pegado una vez
- * acá y guardado en el localStorage de ese navegador. Cualquiera puede ver
- * las entradas del menú (no hay forma real de ocultarlas en un sitio
- * estático), pero sin el token correcto sólo consiguen un error 401.
+ * este repo y sólo con permiso de Contents (read/write). Ese token es largo
+ * y lo genera GitHub (no se puede reemplazar por una clave corta inventada:
+ * es lo único que su API acepta) — pero sólo hace falta pegarlo una vez acá.
+ * De ahí en más queda guardado CIFRADO en este navegador (AES-GCM vía
+ * Web Crypto, PBKDF2 sobre el PIN), y lo que Agus escribe cada vez es un
+ * PIN corto propio, nunca el token. El token descifrado sólo vive en
+ * memoria de la pestaña (se pierde al recargar, hay que volver a poner el
+ * PIN). Ctrl+Shift+P y el menú que abre (ver el final del archivo) tampoco
+ * se pueden ocultar de un visitante cualquiera en un sitio estático, pero
+ * sin el PIN correcto (que descifra un token que además tiene que ser
+ * válido en GitHub) no consiguen nada.
  */
 (function () {
   var OWNER = "agustint96";
@@ -19,27 +26,198 @@
     "https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/";
   var MANIFEST_PATH = "data/published-desktop.json";
   var FILES_DIR = "data/published-desktop-files";
-  var TOKEN_KEY = "sisop.publish.token.v1";
+  var TOKEN_ENC_KEY = "sisop.publish.token.enc.v1";
+  var LEGACY_TOKEN_KEY = "sisop.publish.token.v1"; // versión anterior (texto plano, sin PIN), se migra y se borra
 
-  function getToken() {
+  var memToken = null; // token real ya descifrado, sólo en memoria de esta pestaña
+
+  function hasStoredToken() {
     try {
-      return localStorage.getItem(TOKEN_KEY) || "";
+      return !!localStorage.getItem(TOKEN_ENC_KEY);
+    } catch (_) {
+      return false;
+    }
+  }
+  function forgetStoredToken() {
+    memToken = null;
+    try {
+      localStorage.removeItem(TOKEN_ENC_KEY);
+    } catch (_) {}
+  }
+  function legacyToken() {
+    try {
+      return localStorage.getItem(LEGACY_TOKEN_KEY) || "";
     } catch (_) {
       return "";
     }
   }
-  function setToken(t) {
+  function clearLegacyToken() {
     try {
-      localStorage.setItem(TOKEN_KEY, t);
-    } catch (_) {
-      /* sin localStorage: el token no sobrevive a un reload, pero publicar
-         dentro de esta misma sesión igual funciona */
-    }
-  }
-  function clearToken() {
-    try {
-      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(LEGACY_TOKEN_KEY);
     } catch (_) {}
+  }
+
+  // ---------------------------------------------------------------------
+  // Cifrado del token con el PIN (Web Crypto: PBKDF2 -> AES-GCM). Un PIN
+  // incorrecto simplemente hace fallar el decrypt (falla la verificación
+  // del tag de GCM) — no hace falta guardar el PIN en ningún lado para
+  // comparar, ni siquiera con hash.
+  // ---------------------------------------------------------------------
+  function bufToB64(bytes) {
+    var bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function b64ToBuf(b64) {
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+  function deriveKey(pin, salt) {
+    return crypto.subtle
+      .importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveKey"])
+      .then(function (baseKey) {
+        return crypto.subtle.deriveKey(
+          { name: "PBKDF2", salt: salt, iterations: 150000, hash: "SHA-256" },
+          baseKey,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt", "decrypt"],
+        );
+      });
+  }
+  function encryptToken(token, pin) {
+    var salt = crypto.getRandomValues(new Uint8Array(16));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return deriveKey(pin, salt)
+      .then(function (key) {
+        return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(token));
+      })
+      .then(function (cipherBuf) {
+        var blob = {
+          salt: bufToB64(salt),
+          iv: bufToB64(iv),
+          data: bufToB64(new Uint8Array(cipherBuf)),
+        };
+        try {
+          localStorage.setItem(TOKEN_ENC_KEY, JSON.stringify(blob));
+        } catch (_) {
+          /* sin localStorage: el token descifrado sigue en memoria para
+             esta pestaña, pero no sobrevive a un reload */
+        }
+      });
+  }
+  function decryptToken(pin) {
+    var raw = null;
+    try {
+      raw = localStorage.getItem(TOKEN_ENC_KEY);
+    } catch (_) {}
+    if (!raw) return Promise.reject(new Error("no hay token guardado"));
+    var blob;
+    try {
+      blob = JSON.parse(raw);
+    } catch (_) {
+      return Promise.reject(new Error("token guardado corrupto"));
+    }
+    return deriveKey(pin, b64ToBuf(blob.salt))
+      .then(function (key) {
+        return crypto.subtle.decrypt({ name: "AES-GCM", iv: b64ToBuf(blob.iv) }, key, b64ToBuf(blob.data));
+      })
+      .then(function (plainBuf) {
+        return new TextDecoder().decode(plainBuf);
+      });
+    // si el PIN es incorrecto, crypto.subtle.decrypt rechaza la promesa
+    // (falla la verificación de integridad de AES-GCM) — no hace falta
+    // detectarlo a mano.
+  }
+
+  // ---------------------------------------------------------------------
+  // Flujo de alta/desbloqueo: la primera vez pide el token largo + un PIN
+  // propio y los guarda cifrados; de ahí en más sólo pide el PIN. Si había
+  // un token de la versión anterior (sin cifrar), lo migra pidiendo sólo
+  // el PIN, sin obligar a pegar el token de nuevo.
+  // ---------------------------------------------------------------------
+  function setupToken() {
+    return window.sisopDialog
+      .prompt({
+        title: "Publicar mi escritorio",
+        message:
+          "Pegá tu token de GitHub (fine-grained, acotado a este repo, permiso Contents: Read and write). Sólo hace falta esta vez.",
+        okLabel: "Siguiente",
+      })
+      .then(function (token) {
+        if (!token) return null;
+        return choosePin(token);
+      });
+  }
+  function choosePin(token) {
+    return window.sisopDialog
+      .prompt({
+        title: "Publicar mi escritorio",
+        message: "Elegí un PIN corto tuyo — lo vas a usar de acá en adelante en vez del token.",
+        okLabel: "Guardar",
+      })
+      .then(function (pin) {
+        if (!pin) return null;
+        return encryptToken(token, pin).then(function () {
+          clearLegacyToken();
+          memToken = token;
+          return token;
+        });
+      });
+  }
+  function unlockToken() {
+    if (memToken) return Promise.resolve(memToken);
+    if (!hasStoredToken()) {
+      var legacy = legacyToken();
+      if (legacy) {
+        return window.sisopDialog
+          .prompt({
+            title: "Publicar mi escritorio",
+            message: "Ya tenías un token guardado de antes. Elegí un PIN corto para no pegarlo de nuevo.",
+            okLabel: "Guardar",
+          })
+          .then(function (pin) {
+            if (!pin) return null;
+            return encryptToken(legacy, pin).then(function () {
+              clearLegacyToken();
+              memToken = legacy;
+              return legacy;
+            });
+          });
+      }
+      return setupToken();
+    }
+    return window.sisopDialog
+      .prompt({ title: "Publicar mi escritorio", message: "PIN:", okLabel: "Desbloquear" })
+      .then(function (pin) {
+        if (!pin) return null;
+        return decryptToken(pin)
+          .then(function (token) {
+            memToken = token;
+            return token;
+          })
+          .catch(function () {
+            return window.sisopDialog
+              .confirm({
+                title: "Publicar mi escritorio",
+                message: "PIN incorrecto.\n¿Reintentar?",
+                okLabel: "Reintentar",
+                cancelLabel: "Cancelar",
+              })
+              .then(function (retry) {
+                return retry ? unlockToken() : null;
+              });
+          });
+      });
+  }
+  // "Cambiar token de publicación…": pisa lo guardado y arranca de cero
+  // (token nuevo + PIN nuevo) — más simple que pedir el PIN viejo para
+  // autorizar el cambio, y no hace falta: es tu propio navegador.
+  function changeToken() {
+    forgetStoredToken();
+    return setupToken();
   }
 
   // ---------------------------------------------------------------------
@@ -161,12 +339,12 @@
   }
 
   function publish() {
-    var token = getToken();
-    if (!token) {
-      return promptForToken().then(function (t) {
-        if (t) return publish();
-      });
-    }
+    return unlockToken().then(function (token) {
+      if (!token) return; // canceló el PIN/token: no hace nada
+      return doPublish(token);
+    });
+  }
+  function doPublish(token) {
     var built = buildExport();
     var fileItems = built.items.filter(function (it) {
       return it.type === "file";
@@ -245,7 +423,7 @@
       })
       .catch(function (err) {
         if (err && (err.status === 401 || err.status === 403)) {
-          clearToken();
+          forgetStoredToken();
           return window.sisopDialog
             .confirm({
               title: "Publicar mi escritorio",
@@ -259,8 +437,8 @@
             })
             .then(function (retry) {
               if (!retry) return;
-              return promptForToken().then(function (t) {
-                if (t) return publish();
+              return setupToken().then(function (t) {
+                if (t) return doPublish(t);
               });
             });
         }
@@ -274,29 +452,11 @@
       });
   }
 
-  function promptForToken() {
-    return window.sisopDialog
-      .prompt({
-        title: "Publicar mi escritorio",
-        message:
-          "Pegá tu token de GitHub (fine-grained, acotado a este repo, permiso Contents: Read and write).",
-        value: getToken(),
-        okLabel: "Guardar",
-      })
-      .then(function (t) {
-        if (t) {
-          setToken(t);
-          return t;
-        }
-        return null;
-      });
-  }
-
   window.sisopPublish = {
     publish: publish,
-    promptForToken: promptForToken,
+    changeToken: changeToken,
     hasToken: function () {
-      return !!getToken();
+      return !!memToken || hasStoredToken() || !!legacyToken();
     },
   };
 
@@ -315,7 +475,7 @@
     m.className = "ctxmenu sisop-publish-menu";
     [
       { label: "Publicar mi escritorio…", onClick: publish },
-      { label: "Cambiar token de publicación…", onClick: promptForToken },
+      { label: "Cambiar token de publicación…", onClick: changeToken },
     ].forEach(function (en) {
       var b = document.createElement("button");
       b.type = "button";
