@@ -206,6 +206,10 @@ que pregunta, es como si no le hubieras contestado nada.
 - **Notas**: un bloc de notas simple que se guarda en el navegador.
 - **Grabadora**: graba un mensaje de voz corto y se lo manda a Agus.
 - **Paint**: Funciona como el clásico software de dibujo.
+- **Formator**: convertidor de archivos con estética Windows 98. Pasa PDF a
+  EPUB, imágenes JPG/PNG a un solo PDF, y documentos TXT/DOCX/ODT/RTF a PDF.
+  Se abre embebido, como las páginas de «Pags Web», pero corre en un servidor
+  propio (no vive en el navegador como el resto del SISOP).
 - Abajo hay una barra de tareas con los programas abiertos. Las ventanas se
   arrastran, se minimizan, se maximizan y se cierran.
 
