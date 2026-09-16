@@ -1271,12 +1271,12 @@
          APPS.formator mas abajo. */
       formator:
         '<svg viewBox="0 0 32 32" aria-hidden="true">' +
-        '<path d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#f0ece4" stroke="#2f4467" stroke-width="1.3"/>' +
-        '<path d="M19 3v5h5" fill="none" stroke="#2f4467" stroke-width="1.3"/>' +
-        '<path d="M11.5 18.5a5 5 0 0 1 8.3-3.7" fill="none" stroke="#7eb8c9" stroke-width="1.8" stroke-linecap="round"/>' +
-        '<path d="M19.2 13.4l1-3.2 2.9 1.4" fill="none" stroke="#7eb8c9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
-        '<path d="M20.5 19.5a5 5 0 0 1-8.3 3.7" fill="none" stroke="#f19280" stroke-width="1.8" stroke-linecap="round"/>' +
-        '<path d="M12.8 24.6l-1-3.2-2.9 1.4" fill="none" stroke="#f19280" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        '<path d="M8 3h11l5 5v21a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#f7f5ef" stroke="#1b1b18" stroke-width="1.3"/>' +
+        '<path d="M19 3v5h5" fill="none" stroke="#1b1b18" stroke-width="1.3"/>' +
+        '<path d="M11.5 18.5a5 5 0 0 1 8.3-3.7" fill="none" stroke="#12305a" stroke-width="1.8" stroke-linecap="round"/>' +
+        '<path d="M19.2 13.4l1-3.2 2.9 1.4" fill="none" stroke="#12305a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<path d="M20.5 19.5a5 5 0 0 1-8.3 3.7" fill="none" stroke="#808076" stroke-width="1.8" stroke-linecap="round"/>' +
+        '<path d="M12.8 24.6l-1-3.2-2.9 1.4" fill="none" stroke="#808076" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
 
     var SITE_W = 1000;
