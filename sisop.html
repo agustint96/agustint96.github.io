@@ -440,6 +440,38 @@
           inset -2px -2px 0 0 var(--w98-face-lite);
         overflow: hidden;
       }
+      /* "Ventana" real al escritorio, sin agujerear la ventana Win98: la
+         ventana (audio) sigue opaca como cualquier app -ver .uf-seethru
+         abajo, usado en la barra celeste del ecualizador de audio-.
+         Hacer transparente de verdad la ventana entera (probado antes)
+         exigía que TODO el árbol -.w98win, .w98-body, etc.- dejara de
+         pintar fondo propio, lo que además de complicado dejaba el
+         resto de la ventana (texto, controles nativos) sin nada opaco
+         atrás. Este truco es más simple: la barra repite la MISMA
+         imagen de fondo del escritorio con background-attachment:fixed
+         -se alinea sola, píxel a píxel, con .desk-bg-layer de abajo,
+         porque ambos miden el fondo relativo al viewport igual, sin
+         importar dónde esté la ventana en pantalla- así que se ve
+         igual que si de verdad se viera a través. */
+      .uf-seethru,
+      .uf-audio-viz span:nth-child(even) {
+        background-image:
+          linear-gradient(rgba(126, 184, 201, 0.42), rgba(126, 184, 201, 0.42)),
+          radial-gradient(
+            ellipse at 50% 0%,
+            rgba(126, 184, 201, 0.12),
+            transparent 60%
+          ),
+          url("parallax/fondo-estrellado.webp");
+        background-color: var(--navy);
+        background-size: cover, cover, cover;
+        background-attachment: fixed, fixed, fixed;
+        background-position: center, center, center;
+      }
+      html.bg-negro .uf-seethru,
+      html.bg-negro .uf-audio-viz span:nth-child(even) {
+        filter: grayscale(1) brightness(0.3) contrast(1.2);
+      }
       .w98-body iframe {
         flex: 1;
         width: 100%;
@@ -715,6 +747,15 @@
         font-weight: 700;
         word-break: break-word;
       }
+      /* Fila del nombre + botón de repetir (ver loopBtn en openFile(),
+         sisop-user-files.js), que reusa el mismo glifo/estilo .vid-btn
+         del reproductor de video. */
+      .uf-audio-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+      }
       .uf-generic-meta {
         font-size: 11px;
         color: var(--w98-dkshadow);
@@ -728,13 +769,11 @@
       /* Ecualizador decorativo (no es un análisis real del audio, sólo
          barras animadas): corre mientras suena y se para en pausa/al
          terminar, ver los listeners "play"/"pause"/"ended" en
-         openFile() de sisop-user-files.js. Colores de acento del sitio
-         (--accent2 celeste, --accent salmón, ver :root arriba). La
-         celeste va con alpha (no var(--accent2) sólido) para que se vea
-         el fondo de la ventana detrás: al ser transparencia de verdad
-         (no un color fijo) funciona igual esté el escritorio en azul o
-         en negro (ver bgToggleBtn/bg-negro en sisop-sqlconsole.js), sin
-         depender de qué haya atrás. */
+         openFile() de sisop-user-files.js. La salmón (impares) es un
+         color sólido común; la celeste (pares) usa .uf-seethru -ver más
+         arriba- en vez de un color, así se ve el escritorio real
+         (estrellas, azul u oscuro) a través de esa barra en vez de un
+         celeste plano. */
       .uf-audio-viz {
         display: flex;
         align-items: flex-end;
@@ -749,7 +788,7 @@
         max-width: 6px;
         height: 8px;
         border-radius: 2px 2px 0 0;
-        background: rgba(126, 184, 201, 0.5);
+        background: var(--accent);
         /* animation-delay/duration por barra van inline (ver el for en
            openFile(), sisop-user-files.js) para que no se muevan todas
            en fila india con más de 5-6 barras. */
@@ -757,9 +796,6 @@
         animation-timing-function: ease-in-out;
         animation-iteration-count: infinite;
         animation-play-state: paused;
-      }
-      .uf-audio-viz span:nth-child(odd) {
-        background: var(--accent);
       }
       .uf-audio-viz.playing span {
         animation-play-state: running;
@@ -903,6 +939,19 @@
         object-fit: contain;
         background: #2b2b2b;
       }
+      /* YouTube (ver createYouTubeMedia() en sisop-video-player.js): acá
+         .vid-el es un <div> que la API de YouTube rellena con su propio
+         <iframe> — object-fit de arriba no le hace nada a ese iframe
+         (no es una etiqueta reemplazable como <video>), así que se lo
+         fuerza a ocupar todo el contenedor a mano. En pantalla completa
+         puede no cubrir 100% prolijo -a diferencia de un <video> con
+         object-fit:cover-, limitación de embeber un iframe ajeno. */
+      .vid-yt iframe {
+        width: 100%;
+        height: 100%;
+        display: block;
+        border: 0;
+      }
       /* Formato que el navegador no supo decodificar (ver el listener de
          "error" en sisop-video-player.js): reemplaza el <video> por un
          aviso + descarga, en vez de dejar un reproductor roto. */
@@ -966,6 +1015,15 @@
           inset 2px 2px 0 0 var(--w98-shadow),
           inset -2px -2px 0 0 var(--w98-face-lite);
       }
+      /* Repetir activado (video y audio, ver loopBtn en
+         sisop-video-player.js / openFile() en sisop-user-files.js):
+         glifo salmón con un brillo chico, para que se note de lejos que
+         el loop está prendido. */
+      .vid-loop.active,
+      .uf-audio-loop.active {
+        color: var(--accent);
+        filter: drop-shadow(0 0 3px rgba(241, 146, 128, 0.85));
+      }
       .vid-time {
         font-size: 10px;
         flex-shrink: 0;
@@ -980,15 +1038,9 @@
         width: 50px;
         flex-shrink: 0;
       }
+      .vid-seek,
       .vid-vol {
-        accent-color: var(--w98-selbg);
-      }
-      /* Igual que la barra celeste del ecualizador de audio (ver
-         .uf-audio-viz span más arriba): transparencia real en vez de un
-         celeste sólido, para que se vea el fondo de la barra de
-         controles detrás sin importar el tema del escritorio. */
-      .vid-seek {
-        accent-color: rgba(126, 184, 201, 0.5);
+        accent-color: var(--accent);
       }
       .vid-sep {
         width: 1px;
@@ -1002,19 +1054,24 @@
         display: none;
       }
 
-      /* Miniatura flotante: ancla abajo a la derecha, tamaño ajustable
-         arrastrando la esquina opuesta (arriba-izquierda) para que
-         agrandarla no la empuje fuera de la pantalla. */
+      /* Miniatura flotante: arranca abajo a la derecha, pero se puede
+         arrastrar a cualquier lado de la pantalla (clickeando el video,
+         no los controles) y redimensionar por la esquina opuesta
+         -arriba-izquierda-, ver ensurePipPanel() en
+         sisop-video-player.js. Posición en left/top a mano por JS en
+         vez de right/bottom fijo por CSS: con right/bottom anclado no
+         se puede mover libremente. */
       .vid-pip {
         position: fixed;
-        right: 12px;
-        bottom: calc(var(--taskbar-h) + 12px);
+        left: 0;
+        top: 0;
         width: 260px;
         height: 165px;
         z-index: 9996;
         display: none;
         flex-direction: column;
         background: #2b2b2b;
+        touch-action: none;
         box-shadow:
           inset -1px -1px 0 0 var(--w98-dkshadow),
           inset 1px 1px 0 0 var(--w98-hilite),
@@ -1028,6 +1085,12 @@
       .vid-pip .vid-wrap {
         flex: 1;
         min-height: 0;
+      }
+      .vid-pip .vid-stage {
+        cursor: grab;
+      }
+      .vid-pip.dragging .vid-stage {
+        cursor: grabbing;
       }
       .vid-pip-resize {
         position: absolute;

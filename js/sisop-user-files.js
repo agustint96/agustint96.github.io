@@ -346,6 +346,12 @@
           pickFiles(parentId, onChange);
         },
       },
+      {
+        label: "Agregar video por URL…",
+        onClick: function () {
+          addRemoteVideo(parentId, onChange);
+        },
+      },
     ];
     // "Restaurar" trae de vuelta lo último publicado (ver restorePublished
     // más abajo): es una acción de escritorio, no tiene sentido adentro de
@@ -661,6 +667,108 @@
       });
     });
     input.click();
+  }
+  // Para películas: en vez de subir el archivo entero (que ni entra bajo
+  // MAX_FILE_BYTES ni tendría sentido guardarlo posta en el navegador ni
+  // en el repo), el ítem sólo guarda la URL de donde vive de verdad -un
+  // bucket tipo Cloudflare R2, etc.-. openFile() en este mismo archivo ya
+  // sabe usar item.remoteUrl en vez de un blob si está presente; doPublish
+  // en sisop-publish.js también lo respeta (no intenta subir un blob que
+  // no existe).
+  // Un link de YouTube también cuenta como "video por URL" (ver
+  // createYouTubeMedia en sisop-video-player.js, que lo detecta de
+  // nuevo por su cuenta al abrirlo): acá sólo hace falta para el
+  // nombre/mime del ítem, ya que un watch?v=... no tiene extensión de
+  // la que adivinar nada.
+  var YOUTUBE_HOST_RE = /(^|\.)(youtube\.com|youtu\.be|music\.youtube\.com)$/i;
+  function isYouTubeUrl(url) {
+    try {
+      return YOUTUBE_HOST_RE.test(new URL(url).hostname);
+    } catch (_) {
+      return false;
+    }
+  }
+  var VIDEO_EXT_FALLBACK_RE = /\.([a-z0-9]+)(?:\?.*)?$/i;
+  function guessNameFromUrl(url) {
+    try {
+      var path = new URL(url).pathname;
+      var last = decodeURIComponent(path.split("/").pop() || "");
+      return last || "video";
+    } catch (_) {
+      return "video";
+    }
+  }
+  var PENDING_YT_NAME = "Video de YouTube";
+  function createRemoteVideo(parentId, url, onChange) {
+    var youtube = isYouTubeUrl(url);
+    var name = youtube ? PENDING_YT_NAME : guessNameFromUrl(url);
+    var mime = youtube
+      ? "video/youtube"
+      : "video/" + ((VIDEO_EXT_FALLBACK_RE.exec(name) || [])[1] || "mp4");
+    var item = {
+      id: newId(),
+      parent: parentId,
+      type: "file",
+      name: name,
+      mime: mime,
+      size: 0,
+      remoteUrl: url,
+      createdAt: Date.now(),
+    };
+    itemsById[item.id] = item;
+    dbPut(item).then(function () {
+      if (parentId === "root") addDeskIconFor(item);
+      if (onChange) onChange();
+    });
+    // El título real (para "guardarlo con su título original") se trae
+    // aparte porque YouTube no lo manda en la URL: se pide por oEmbed
+    // (no hace falta API key, es público) apenas se crea el ítem, en
+    // segundo plano. Si el visitante ya lo renombró a mano cuando llega
+    // la respuesta -"uno que elija yo"-, no se lo pisa.
+    if (youtube) fetchYouTubeTitle(item);
+    return item;
+  }
+  function fetchYouTubeTitle(item) {
+    fetch(
+      "https://www.youtube.com/oembed?format=json&url=" +
+        encodeURIComponent(item.remoteUrl),
+    )
+      .then(function (r) {
+        if (!r.ok) throw new Error("oembed " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        var current = itemsById[item.id];
+        if (!current || !data || !data.title) return;
+        if (current.name !== PENDING_YT_NAME) return; // ya lo renombraron a mano
+        current.name = data.title;
+        return dbPut(current).then(function () {
+          if (current.parent === "root") refreshDeskIconLabel(current);
+          refreshOpenFolder(current.parent);
+          var winEl = document.querySelector(
+            '.w98win[data-app="uf:' + current.id + '"] .tb-text',
+          );
+          if (winEl) winEl.textContent = current.name;
+        });
+      })
+      .catch(function () {
+        /* sin conexión, o el oembed falló (video privado/inválido): se
+           queda con el nombre genérico, se puede renombrar a mano */
+      });
+  }
+  function addRemoteVideo(parentId, onChange) {
+    window.sisopDialog
+      .prompt({
+        title: "Agregar video por URL",
+        message:
+          "Pegá la URL de un video: un link directo a un archivo (ej. de Cloudflare R2) o un link de YouTube. No se guarda el archivo, sólo el link.",
+        type: "text",
+        okLabel: "Agregar",
+      })
+      .then(function (url) {
+        if (!url) return;
+        createRemoteVideo(parentId, url, onChange);
+      });
   }
   // Edición inline del nombre: reemplaza la etiqueta del ícono por un
   // <input>, en su mismo lugar (como el explorador de Windows), en vez de
@@ -1038,7 +1146,7 @@
       h: img || video ? 500 : 190,
       transient: true,
       render: function (bd, win) {
-        var url = URL.createObjectURL(item.blob);
+        var url = item.remoteUrl || URL.createObjectURL(item.blob);
         if (img) {
           var v = document.createElement("div");
           v.className = "w98-imgview";
@@ -1062,9 +1170,24 @@
         } else if (audio) {
           var wrap = document.createElement("div");
           wrap.className = "uf-audio";
+          var head = document.createElement("div");
+          head.className = "uf-audio-head";
           var name = document.createElement("p");
           name.className = "uf-audio-name";
           name.textContent = item.name;
+          // Repetir: mismo glifo e interruptor que el del reproductor de
+          // video (ver ICON_LOOP en sisop-video-player.js), pero éste va
+          // aparte porque el <audio controls> nativo no tiene forma de
+          // agregarle un botón propio.
+          var loopBtn = document.createElement("button");
+          loopBtn.type = "button";
+          loopBtn.className = "vid-btn uf-audio-loop";
+          loopBtn.title = "Repetir";
+          loopBtn.setAttribute("aria-label", "Repetir");
+          loopBtn.innerHTML =
+            '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 4.5h5.8a3 3 0 0 1 3 3v1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M6.2 2.4L4.2 4.5l2 2.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.8 11.5H6a3 3 0 0 1-3-3v-1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M9.8 13.6l2-2.1-2-2.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          head.appendChild(name);
+          head.appendChild(loopBtn);
           // Ecualizador decorativo: barras celeste/salmón que animan
           // mientras suena (ver .uf-audio-viz en sisop.html).
           var viz = document.createElement("div");
@@ -1091,7 +1214,11 @@
           player.addEventListener("ended", function () {
             viz.classList.remove("playing");
           });
-          wrap.appendChild(name);
+          loopBtn.addEventListener("click", function () {
+            player.loop = !player.loop;
+            loopBtn.classList.toggle("active", player.loop);
+          });
+          wrap.appendChild(head);
           wrap.appendChild(viz);
           wrap.appendChild(player);
           bd.appendChild(wrap);
@@ -1312,6 +1439,7 @@
       text: it.text,
       mime: it.mime,
       size: it.size,
+      remoteUrl: it.remoteUrl,
       appId: it.appId,
     });
   }
@@ -1349,13 +1477,19 @@
       if (item.type === "file") {
         fresh.mime = item.mime || "";
         fresh.size = item.size || 0;
-        afterBlob = fetch(item.file)
-          .then(function (r) {
-            return r.blob();
-          })
-          .then(function (blob) {
-            fresh.blob = blob;
-          });
+        // Video "por URL" (ver createRemoteVideo): nada que bajar, el
+        // link ya apunta directo al storage externo.
+        if (item.remoteUrl) {
+          fresh.remoteUrl = item.remoteUrl;
+        } else {
+          afterBlob = fetch(item.file)
+            .then(function (r) {
+              return r.blob();
+            })
+            .then(function (blob) {
+              fresh.blob = blob;
+            });
+        }
       }
       return afterBlob.then(function () {
         itemsById[fresh.id] = fresh;
@@ -1385,13 +1519,17 @@
     if (item.type === "file") {
       local.mime = item.mime || "";
       local.size = item.size || 0;
-      afterBlob2 = fetch(item.file)
-        .then(function (r) {
-          return r.blob();
-        })
-        .then(function (blob) {
-          local.blob = blob;
-        });
+      if (item.remoteUrl) {
+        local.remoteUrl = item.remoteUrl;
+      } else {
+        afterBlob2 = fetch(item.file)
+          .then(function (r) {
+            return r.blob();
+          })
+          .then(function (blob) {
+            local.blob = blob;
+          });
+      }
     }
     return afterBlob2.then(function () {
       return dbPut(local).then(function () {

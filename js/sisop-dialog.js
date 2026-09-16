@@ -121,6 +121,10 @@
       root.querySelector(".tb-text").textContent = opts.title || "";
       root.querySelector(".body p").textContent = opts.message || "";
       var input = root.querySelector(".dlg-input");
+      // Por default enmascarado (pensado para tokens/PIN, ver
+      // sisop-publish.js); opts.type:"text" lo deja visible para cosas
+      // como pegar una URL, donde tapar el texto sólo molesta.
+      input.type = opts.type || "password";
       input.value = opts.value || "";
 
       var foot = root.querySelector(".foot");

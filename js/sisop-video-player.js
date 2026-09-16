@@ -33,6 +33,8 @@
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   var ICON_WALLPAPER =
     '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="8.5" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M6 13.5h4M8 11v2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
+  var ICON_LOOP =
+    '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 4.5h5.8a3 3 0 0 1 3 3v1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M6.2 2.4L4.2 4.5l2 2.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.8 11.5H6a3 3 0 0 1-3-3v-1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M9.8 13.6l2-2.1-2-2.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   var MODES = ["window", "pip", "fullscreen", "wallpaper"];
   var MODE_LABEL = {
@@ -60,12 +62,231 @@
   }
 
   // -----------------------------------------------------------------------
+  // YouTube: mismo reproductor (ventana/miniatura/pantalla completa/fondo,
+  // barra de controles, loop) para un video embebido en vez de un archivo
+  // propio. La idea es que el resto de createPlayer() ni se entere de la
+  // diferencia: en vez de un <video> de verdad, "video" pasa a ser un
+  // objeto que imita su misma superficie (currentTime/duration/volume/
+  // muted/loop/play()/pause()/addEventListener()) pero por debajo maneja
+  // un YT.Player. El nodo que realmente se cuelga en .vid-stage es
+  // video.el (un <div> que la API de YouTube reemplaza por su iframe).
+  // -----------------------------------------------------------------------
+  function extractYouTubeId(url) {
+    var u;
+    try {
+      u = new URL(url, window.location.href);
+    } catch (_) {
+      return null;
+    }
+    var host = u.hostname.replace(/^www\.|^m\./, "");
+    if (host === "youtu.be") {
+      return u.pathname.slice(1).split("/")[0] || null;
+    }
+    if (host === "youtube.com" || host === "music.youtube.com") {
+      if (u.pathname === "/watch") return u.searchParams.get("v");
+      var m = u.pathname.match(/^\/(?:embed|shorts|live)\/([^/?]+)/);
+      if (m) return m[1];
+    }
+    return null;
+  }
+
+  var ytApiPromise = null;
+  function loadYouTubeAPI() {
+    if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+    if (ytApiPromise) return ytApiPromise;
+    ytApiPromise = new Promise(function (resolve) {
+      var prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = function () {
+        if (prev) prev();
+        resolve(window.YT);
+      };
+      var s = document.createElement("script");
+      s.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(s);
+    });
+    return ytApiPromise;
+  }
+
+  function createYouTubeMedia(videoId) {
+    var el = document.createElement("div");
+    el.className = "vid-el vid-yt";
+    var listeners = {};
+    var player = null;
+    var state = {
+      paused: true,
+      currentTime: 0,
+      duration: 0,
+      volume: 1,
+      muted: false,
+      loop: false,
+      wantsPlay: false,
+    };
+    var pollTimer = null;
+
+    function emit(type) {
+      (listeners[type] || []).forEach(function (fn) {
+        fn();
+      });
+    }
+    function startPoll() {
+      if (pollTimer) return;
+      pollTimer = setInterval(function () {
+        if (!player || !player.getCurrentTime) return;
+        state.currentTime = player.getCurrentTime() || 0;
+        emit("timeupdate");
+      }, 250);
+    }
+    function stopPoll() {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+
+    loadYouTubeAPI()
+      .then(function (YT) {
+        player = new YT.Player(el, {
+          videoId: videoId,
+          width: "100%",
+          height: "100%",
+          playerVars: {
+            controls: 0,
+            modestbranding: 1,
+            rel: 0,
+            playsinline: 1,
+          },
+          events: {
+            onReady: function () {
+              state.duration = player.getDuration() || 0;
+              state.volume = (player.getVolume() || 100) / 100;
+              state.muted = player.isMuted();
+              emit("loadedmetadata");
+              if (state.wantsPlay) player.playVideo();
+            },
+            onStateChange: function (e) {
+              if (e.data === YT.PlayerState.PLAYING) {
+                state.paused = false;
+                startPoll();
+                emit("play");
+              } else if (e.data === YT.PlayerState.PAUSED) {
+                state.paused = true;
+                stopPoll();
+                emit("pause");
+              } else if (e.data === YT.PlayerState.ENDED) {
+                if (state.loop) {
+                  player.seekTo(0);
+                  player.playVideo();
+                } else {
+                  state.paused = true;
+                  stopPoll();
+                  emit("pause");
+                }
+              }
+            },
+            onError: function () {
+              emit("error");
+            },
+          },
+        });
+      })
+      .catch(function () {
+        emit("error");
+      });
+
+    var media = { el: el };
+    Object.defineProperty(media, "paused", {
+      get: function () {
+        return state.paused;
+      },
+    });
+    Object.defineProperty(media, "duration", {
+      get: function () {
+        return state.duration;
+      },
+    });
+    Object.defineProperty(media, "currentTime", {
+      get: function () {
+        return state.currentTime;
+      },
+      set: function (v) {
+        state.currentTime = v;
+        if (player && player.seekTo) player.seekTo(v, true);
+      },
+    });
+    Object.defineProperty(media, "volume", {
+      get: function () {
+        return state.volume;
+      },
+      set: function (v) {
+        state.volume = v;
+        if (player && player.setVolume) player.setVolume(Math.round(v * 100));
+        emit("volumechange");
+      },
+    });
+    Object.defineProperty(media, "muted", {
+      get: function () {
+        return state.muted;
+      },
+      set: function (v) {
+        state.muted = v;
+        if (player) {
+          if (v) player.mute();
+          else player.unMute();
+        }
+        emit("volumechange");
+      },
+    });
+    Object.defineProperty(media, "loop", {
+      get: function () {
+        return state.loop;
+      },
+      set: function (v) {
+        state.loop = v;
+      },
+    });
+    media.play = function () {
+      if (player && player.playVideo) player.playVideo();
+      else state.wantsPlay = true;
+      return Promise.resolve();
+    };
+    media.pause = function () {
+      state.wantsPlay = false;
+      if (player && player.pauseVideo) player.pauseVideo();
+    };
+    media.addEventListener = function (type, fn) {
+      listeners[type] = listeners[type] || [];
+      listeners[type].push(fn);
+    };
+    media.destroy = function () {
+      stopPoll();
+      if (player && player.destroy) player.destroy();
+    };
+    return media;
+  }
+
+  // -----------------------------------------------------------------------
   // Contenedores singleton: un solo panel de miniatura y una sola capa de
   // fondo para todo el sitio (si dos videos se ponen en el mismo modo, el
   // segundo le saca el lugar al primero, ver claimPip/claimWallpaper).
   // -----------------------------------------------------------------------
   var pipPanel = null;
   var pipOwner = null;
+  function taskbarH() {
+    return (
+      parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--taskbar-h",
+        ),
+        10,
+      ) || 30
+    );
+  }
+  function clampPipPosition() {
+    var maxX = Math.max(0, window.innerWidth - pipPanel.offsetWidth);
+    var maxY = Math.max(0, window.innerHeight - pipPanel.offsetHeight);
+    pipPanel.style.left =
+      Math.max(0, Math.min(pipPanel.offsetLeft, maxX)) + "px";
+    pipPanel.style.top =
+      Math.max(0, Math.min(pipPanel.offsetTop, maxY)) + "px";
+  }
   function ensurePipPanel() {
     if (pipPanel) return pipPanel;
     pipPanel = document.createElement("div");
@@ -76,38 +297,106 @@
     pipPanel.appendChild(grip);
     document.body.appendChild(pipPanel);
 
-    var dragging = false,
-      sx = 0,
-      sy = 0,
+    // Posición inicial abajo a la derecha, igual que antes -pero ahora
+    // en left/top a mano en vez de right/bottom fijo por CSS: el
+    // arrastre de más abajo necesita poder moverlo a cualquier lado, y
+    // con right/bottom anclado no se puede. Se usa el ancho/alto por
+    // default de la CSS (260x165) en vez de offsetWidth/offsetHeight
+    // porque acá el panel todavía está display:none -claimPip() recién
+    // le agrega vid-pip-show después de esto- y offsetWidth/offsetHeight
+    // de un elemento oculto miden 0.
+    pipPanel.style.left = window.innerWidth - 260 - 12 + "px";
+    pipPanel.style.top = window.innerHeight - taskbarH() - 165 - 12 + "px";
+
+    // Arrastre del panel entero (clickeando el video, no los controles
+    // ni el grip de resize) — mismo patrón que el resto del sitio: el
+    // handle de arrastre ignora los elementos interactivos que tiene
+    // adentro (ver makeDraggable() en sisop-sqlconsole.js).
+    var dragMove = false,
+      dmsx = 0,
+      dmsy = 0,
+      dox = 0,
+      doy = 0;
+    pipPanel.addEventListener("pointerdown", function (e) {
+      if (e.target.closest(".vid-bar, .vid-pip-resize")) return;
+      dragMove = true;
+      dmsx = e.clientX;
+      dmsy = e.clientY;
+      dox = pipPanel.offsetLeft;
+      doy = pipPanel.offsetTop;
+      pipPanel.classList.add("dragging");
+      try {
+        pipPanel.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      e.preventDefault();
+    });
+    pipPanel.addEventListener("pointermove", function (e) {
+      if (!dragMove) return;
+      var nx = dox + (e.clientX - dmsx);
+      var ny = doy + (e.clientY - dmsy);
+      var maxX = Math.max(0, window.innerWidth - pipPanel.offsetWidth);
+      var maxY = Math.max(0, window.innerHeight - pipPanel.offsetHeight);
+      pipPanel.style.left = Math.max(0, Math.min(nx, maxX)) + "px";
+      pipPanel.style.top = Math.max(0, Math.min(ny, maxY)) + "px";
+    });
+    pipPanel.addEventListener("pointerup", function (e) {
+      if (!dragMove) return;
+      dragMove = false;
+      pipPanel.classList.remove("dragging");
+      try {
+        pipPanel.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+    });
+
+    // Resize: agranda hacia arriba-izquierda mientras ancla la esquina
+    // inferior-derecha -por eso corrige left/top también, ya no hay un
+    // right/bottom fijo que lo haga solo (ver arriba)-.
+    var resizing = false,
+      rsx = 0,
+      rsy = 0,
       sw = 0,
-      sh = 0;
+      sh = 0,
+      sl = 0,
+      st = 0;
     grip.addEventListener("pointerdown", function (e) {
-      dragging = true;
-      sx = e.clientX;
-      sy = e.clientY;
+      e.stopPropagation();
+      resizing = true;
+      rsx = e.clientX;
+      rsy = e.clientY;
       sw = pipPanel.offsetWidth;
       sh = pipPanel.offsetHeight;
+      sl = pipPanel.offsetLeft;
+      st = pipPanel.offsetTop;
       grip.setPointerCapture(e.pointerId);
       e.preventDefault();
     });
     grip.addEventListener("pointermove", function (e) {
-      if (!dragging) return;
-      var dw = sx - e.clientX; // arrastrar hacia arriba-izquierda agranda
-      var dh = sy - e.clientY;
+      if (!resizing) return;
+      var dw = rsx - e.clientX; // arrastrar hacia arriba-izquierda agranda
+      var dh = rsy - e.clientY;
       var maxW = window.innerWidth * 0.7;
       var maxH = window.innerHeight * 0.7;
       // El piso de ancho no puede ser menor a lo que ocupa la barra de
       // controles en modo compacto (play + seek + mute + 4 botones de
       // modo, sin wrap): si no, esos botones desbordan el panel.
-      pipPanel.style.width = Math.max(220, Math.min(sw + dw, maxW)) + "px";
-      pipPanel.style.height = Math.max(100, Math.min(sh + dh, maxH)) + "px";
+      var newW = Math.max(220, Math.min(sw + dw, maxW));
+      var newH = Math.max(100, Math.min(sh + dh, maxH));
+      pipPanel.style.width = newW + "px";
+      pipPanel.style.height = newH + "px";
+      pipPanel.style.left = sl - (newW - sw) + "px";
+      pipPanel.style.top = st - (newH - sh) + "px";
     });
     grip.addEventListener("pointerup", function (e) {
-      dragging = false;
+      resizing = false;
       try {
         grip.releasePointerCapture(e.pointerId);
       } catch (_) {}
     });
+
+    window.addEventListener("resize", function () {
+      if (pipPanel.classList.contains("vid-pip-show")) clampPipPosition();
+    });
+
     return pipPanel;
   }
 
@@ -129,24 +418,37 @@
     var mode = "window";
     var savedAudio = null; // { muted, volume } antes de silenciar para el fondo
 
-    var video = document.createElement("video");
-    video.className = "vid-el";
-    video.src = opts.url;
-    video.preload = "metadata";
-    video.playsInline = true;
+    // Youtube: "video" pasa a ser el objeto que imita un <video> nativo
+    // -ver createYouTubeMedia() más arriba- en vez del elemento de
+    // verdad. El resto de este archivo (modos, barra, loop) no necesita
+    // saber la diferencia; sólo acá abajo, y en destroy(), hay un par de
+    // detalles propios de cada caso.
+    var youtubeId = extractYouTubeId(opts.url);
+    var video;
+    if (youtubeId) {
+      video = createYouTubeMedia(youtubeId);
+    } else {
+      video = document.createElement("video");
+      video.className = "vid-el";
+      video.src = opts.url;
+      video.preload = "metadata";
+      video.playsInline = true;
+    }
+    var mediaEl = video.el || video;
 
     var stage = document.createElement("div");
     stage.className = "vid-stage";
-    stage.appendChild(video);
+    stage.appendChild(mediaEl);
 
     // No todos los formatos que se detectan como "video" (ver isVideoItem
     // en sisop-user-files.js, que ahora acepta cualquier extensión de
     // video aunque el navegador no le haya asignado mime) tienen un códec
-    // que el navegador sepa decodificar (.avi/.wmv/.flv viejos, etc.). Si
-    // pasa, en vez de dejar un reproductor roto y mudo se ofrece bajar el
-    // archivo original.
+    // que el navegador sepa decodificar (.avi/.wmv/.flv viejos, etc.), o
+    // el video de YouTube puede no existir/estar privado. Si pasa, en vez
+    // de dejar un reproductor roto se ofrece bajar el archivo original
+    // -o abrirlo directo en YouTube, si era un link de ahí-.
     video.addEventListener("error", function () {
-      video.style.display = "none";
+      mediaEl.style.display = "none";
       playBtn.disabled = true;
       seek.disabled = true;
       MODES.forEach(function (m) {
@@ -155,13 +457,21 @@
       var overlay = document.createElement("div");
       overlay.className = "vid-error";
       var p = document.createElement("p");
-      p.textContent =
-        "Este formato de video no se puede reproducir en el navegador.";
+      p.textContent = youtubeId
+        ? "Este video de YouTube no se pudo cargar (privado, borrado o con embeds desactivados)."
+        : "Este formato de video no se puede reproducir en el navegador.";
       var a = document.createElement("a");
       a.className = "btn primary";
-      a.href = opts.url;
-      a.download = opts.name || "";
-      a.textContent = "Descargar archivo";
+      if (youtubeId) {
+        a.href = opts.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = "Abrir en YouTube";
+      } else {
+        a.href = opts.url;
+        a.download = opts.name || "";
+        a.textContent = "Descargar archivo";
+      }
       overlay.appendChild(p);
       overlay.appendChild(a);
       stage.appendChild(overlay);
@@ -175,6 +485,7 @@
     var timeDur = mkSpan("vid-time vid-time-dur", "0:00");
     var muteBtn = mkBtn("vid-mute", ICON_VOLUME, "Silenciar");
     var vol = mkRange("vid-vol", 0, 1, 1, 0.01);
+    var loopBtn = mkBtn("vid-loop", ICON_LOOP, "Repetir");
     var sep = document.createElement("span");
     sep.className = "vid-sep";
     sep.setAttribute("aria-hidden", "true");
@@ -184,6 +495,7 @@
     bar.appendChild(timeDur);
     bar.appendChild(muteBtn);
     bar.appendChild(vol);
+    bar.appendChild(loopBtn);
     bar.appendChild(sep);
     var modeBtns = {};
     MODES.forEach(function (m) {
@@ -271,6 +583,10 @@
     vol.addEventListener("input", function () {
       video.volume = parseFloat(vol.value);
       video.muted = video.volume === 0;
+    });
+    loopBtn.addEventListener("click", function () {
+      video.loop = !video.loop;
+      loopBtn.classList.toggle("active", video.loop);
     });
 
     // ---- modos ----
@@ -423,6 +739,7 @@
           } catch (_) {}
         }
         video.pause();
+        if (video.destroy) video.destroy(); // YouTube: para el polling y el YT.Player
         // Si estaba en miniatura o de fondo, wrap vive en el panel/capa
         // singleton (fuera de esta ventana): sacarlo para no dejar un
         // <video> huérfano ahí adentro.

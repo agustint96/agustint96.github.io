@@ -333,7 +333,11 @@
     if (it.type === "file") {
       out.mime = it.mime || "";
       out.size = it.size || 0;
-      out.file = filePath;
+      // Video "por URL" (ver createRemoteVideo en sisop-user-files.js,
+      // para películas que no tiene sentido subir al repo): no hay blob
+      // que subir, el manifest apunta directo a esa URL externa.
+      if (it.remoteUrl) out.remoteUrl = it.remoteUrl;
+      else out.file = filePath;
     }
     if (it.type === "app") out.appId = it.appId;
     return out;
@@ -347,8 +351,11 @@
   }
   function doPublish(token) {
     var built = buildExport();
+    // Los "video por URL" (remoteUrl) no tienen blob que subir -viven en
+    // un storage externo, ver toManifestItem más abajo-, así que quedan
+    // afuera de este loop de subida.
     var fileItems = built.items.filter(function (it) {
-      return it.type === "file";
+      return it.type === "file" && !it.remoteUrl;
     });
 
     return Promise.all([ghGet(MANIFEST_PATH, token), ghListDir(FILES_DIR, token)])
