@@ -114,7 +114,6 @@ nav {
   justify-content: flex-end;
   gap: 30px;
   padding: 20px 48px;
-  backdrop-filter: blur(0px);
   transition:
     background 0.3s,
     backdrop-filter 0.3s,
@@ -222,33 +221,36 @@ nav.nav-compact {
   pointer-events: none;
 }
 .cv-btn:hover,
-.cv-btn:focus-visible {
+.cv-btn:focus-visible,
+.cv-btn[aria-expanded="true"] {
   color: var(--accent);
   outline: none;
 }
 .cv-menu {
   position: absolute;
   top: calc(100% + 14px);
-  right: -8px;
+  left: 50%;
+  transform: translateX(-50%);
   list-style: none;
   min-width: 120px;
-  background: var(--navy-mid);
-  border: 1px solid var(--card-border);
-  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--muted);
   padding: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(3px) url(#cv-menu-glass);
+  -webkit-backdrop-filter: blur(3px);
   z-index: 210;
 }
 .cv-menu[hidden] {
   display: none;
 }
 .cv-menu a {
+  position: relative;
   display: block;
+  overflow: hidden;
   padding: 6px 10px;
   font-family: "DM Mono", monospace;
   font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--muted);
   text-decoration: none;
   border-radius: 4px;
@@ -257,11 +259,99 @@ nav.nav-compact {
     color 0.2s,
     background 0.2s;
 }
+.cv-menu-label {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cv-menu a svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+.cv-menu a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle 0.6px, var(--accent) 90%, transparent 100%),
+    radial-gradient(circle 0.6px, var(--accent) 90%, transparent 100%),
+    radial-gradient(circle 0.6px, var(--accent) 90%, transparent 100%),
+    radial-gradient(circle 0.6px, var(--accent) 90%, transparent 100%),
+    radial-gradient(circle 0.6px, var(--accent) 90%, transparent 100%),
+    radial-gradient(circle 0.6px, var(--accent) 90%, transparent 100%);
+  background-size:
+    17px 9px,
+    23px 13px,
+    13px 7px,
+    29px 11px,
+    19px 15px,
+    11px 8px;
+  background-position:
+    2px 1px,
+    9px 8px,
+    5px 5px,
+    14px 3px,
+    3px 10px,
+    8px 6px;
+  background-repeat: repeat;
+  filter: url(#cv-menu-glass);
+  opacity: 0;
+  animation: cvMenuParticles 0.9s linear infinite;
+  animation-play-state: paused;
+  transition: opacity 0.2s;
+}
+.cv-menu a::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(241, 146, 128, 0.15);
+  backdrop-filter: blur(8px) url(#cv-menu-glass);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
 .cv-menu a:hover,
 .cv-menu a:focus-visible {
   color: var(--accent);
-  background: rgba(241, 146, 128, 0.1);
   outline: none;
+}
+.cv-menu a:hover::before,
+.cv-menu a:focus-visible::before {
+  opacity: 1;
+}
+.cv-menu a:hover::after,
+.cv-menu a:focus-visible::after {
+  opacity: 0.9;
+  animation-play-state: running;
+}
+@keyframes cvMenuParticles {
+  from {
+    background-position:
+      2px 1px,
+      9px 8px,
+      5px 5px,
+      14px 3px,
+      3px 10px,
+      8px 6px;
+  }
+  to {
+    background-position:
+      -32px 1px,
+      -37px 8px,
+      -21px 5px,
+      -30px 3px,
+      -35px 10px,
+      -14px 6px;
+  }
 }
 
 /* Encendido: parpadeo estilo monitor CRT antes de entrar a la consola */
@@ -366,7 +456,8 @@ nav.nav-compact {
      oscurecer -y todavía más hacia arriba, como si esa zona quedara más
      lejos/perdida- y le suma un brillo muy difuso asomando desde el
      borde inferior. */
-  background-image: radial-gradient(
+  background-image:
+    radial-gradient(
       ellipse 90% 55% at 50% 100%,
       rgba(126, 184, 201, 0.22),
       rgba(126, 184, 201, 0) 70%
@@ -376,11 +467,40 @@ nav.nav-compact {
   background-size: cover;
   background-position: center;
   opacity: 0;
+  transform: scale(1);
   pointer-events: none;
   transition: opacity 0.5s ease;
-  will-change: opacity;
+  will-change: opacity, transform;
 }
 .space-scene.space-visible {
+  opacity: 1;
+  /* El zoom en sí (CAMERA_ZOOM, o 1 si se mantiene M apretada para ver el
+     mapa completo) y el transform-origin que lo ancla sobre la nave se
+     actualizan cuadro a cuadro desde el tick de vuelo en script.js, no acá. */
+}
+/* Segunda capa del mismo "mapa" de la escena de espacio profundo, separada
+   de #space-scene sólo por una razón: el z-index. #space-scene entero
+   compite como una sola unidad (250) contra el de la nave principal (253),
+   así que cualquier hijo suyo -sin importar su propio z-index interno-
+   siempre queda detrás de la nave. Para que el astronauta y el planeta
+   puedan quedar DELANTE de la nave (mientras el fondo/nave-bora en
+   #space-scene siguen detrás), necesitan vivir en un contenedor hermano
+   con su propio z-index más alto (260). script.js les aplica exactamente
+   el mismo transform (scale + transform-origin) que a #space-scene cuadro
+   a cuadro, así ambas capas se mueven/escalan como una sola cámara aunque
+   sean dos elementos distintos. */
+.space-scene-front {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  overflow: hidden;
+  opacity: 0;
+  transform: scale(1);
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  will-change: opacity, transform;
+}
+.space-scene-front.space-visible {
   opacity: 1;
 }
 #space-scene-canvas {
@@ -388,6 +508,152 @@ nav.nav-compact {
   inset: 0;
   width: 100%;
   height: 100%;
+}
+.space-planet {
+  position: absolute;
+  top: 8%;
+  right: 8%;
+  width: 220px;
+  max-width: 26vw;
+  height: auto;
+  /* "Apagado" por defecto -antes arrancaba con más brillo/opacidad, ahora
+     necesita quedar bien oscuro en reposo para que prenderse al interactuar
+     se note como un foquito de verdad-. Estos mismos valores son el 0%/100%
+     de planetBulbBlow abajo, para que no haya salto al entrar/salir de la
+     animación. */
+  opacity: 0.5;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(126, 184, 201, 0.12)) brightness(0.65);
+  animation: floatPlanet 11s ease-in-out infinite;
+}
+@keyframes floatPlanet {
+  0%,
+  100% {
+    transform: translateY(-10px);
+  }
+  50% {
+    transform: translateY(10px);
+  }
+}
+/* Al interactuar (click, o E/botón A, ver triggerAction en script.js): NO
+   prende de golpe -primero parpadea un par de veces como si le costara
+   arrancar (0%-17% de los 3s totales), recién ahí se queda prendida fija
+   ~2s (17%-83%), vuelve a parpadear como si se fuera a fundir (83%-100%) y
+   se apaga, volviendo sola al apagado -nunca se queda prendida-. Se agrega
+   como una segunda animación (no reemplaza floatPlanet, que sigue el
+   flotado normal en paralelo) mientras dura .bulb-blow, ver script.js. */
+@keyframes planetBulbBlow {
+  0%,
+  10%,
+  84%,
+  96%,
+  100% {
+    opacity: 0.5;
+    filter: drop-shadow(0 0 8px rgba(126, 184, 201, 0.12)) brightness(0.65);
+  }
+  5%,
+  15%,
+  90% {
+    /* Blips del parpadeo -al arrancar y al fundirse-, entre el apagado de
+       arriba y el prendido fijo de abajo. */
+    opacity: 1;
+    filter: drop-shadow(0 0 70px rgba(255, 244, 214, 0.9)) brightness(1.9);
+  }
+  17%,
+  83% {
+    /* Prendida fija: estos dos puntos (0.51s y 2.49s de los 3s totales)
+       quedan ~2s completos en este brillo antes de volver a parpadear. */
+    opacity: 1;
+    filter: drop-shadow(0 0 65px rgba(255, 244, 214, 0.95)) brightness(1.7);
+  }
+}
+.space-planet.bulb-blow {
+  animation:
+    floatPlanet 11s ease-in-out infinite,
+    planetBulbBlow 3s ease-in-out;
+}
+@media (max-width: 900px) {
+  .space-planet {
+    width: 150px;
+  }
+}
+.space-rock {
+  position: absolute;
+  bottom: 16%;
+  right: 16%;
+  width: 140px;
+  max-width: 18vw;
+  height: auto;
+  opacity: 0.9;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.4));
+  /* --hit-x/--hit-y: empujón por colisión con la nave (ver script.js, física
+     de resorte simple) sumado al flotado normal, no lo reemplaza. */
+  animation: floatRock 13s ease-in-out infinite;
+}
+@keyframes floatRock {
+  0%,
+  100% {
+    transform: translate(var(--hit-x, 0px), calc(-14px + var(--hit-y, 0px)))
+      rotate(-6deg);
+  }
+  50% {
+    transform: translate(var(--hit-x, 0px), calc(10px + var(--hit-y, 0px)))
+      rotate(6deg);
+  }
+}
+@media (max-width: 900px) {
+  .space-rock {
+    width: 90px;
+  }
+}
+/* Piedra naranja: mismo tamaño/física que .space-rock (ver makeSpaceDrifter
+   en script.js), ubicada cerca de ella pero no pegada. El contenedor es el
+   que recibe --hit-x/--hit-y y la animación de flotado (mismas keyframes,
+   floatRock); adentro, los tres sprites se superponen en el mismo lugar y
+   sólo se cruza la opacidad entre ellos: .is-moving prende/apaga entre
+   "quieta" y "moviéndose", y dentro de "moviéndose" .frame-alt alterna entre
+   los dos cuadros (piedra_naranja_2/3) cada medio segundo -todo controlado
+   desde script.js mirando la velocidad actual del drifter. */
+.space-rock-orange {
+  position: absolute;
+  bottom: 24%;
+  right: 26%;
+  width: 120px;
+  max-width: 15vw;
+  /* Los PNG son 1000x1000: aspect-ratio le da altura real al contenedor
+     -si no, al tener sólo hijos position:absolute (fuera del flujo), su
+     height:auto colapsaría a 0 y arruinaría el cálculo de colisión. */
+  aspect-ratio: 1 / 1;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.4));
+  animation: floatRock 10s ease-in-out infinite;
+}
+.space-rock-orange-sprite {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.9;
+  transition: opacity 0.25s ease;
+}
+.space-rock-orange-move,
+.space-rock-orange-move-alt {
+  opacity: 0;
+}
+.space-rock-orange.is-moving .space-rock-orange-rest {
+  opacity: 0;
+}
+.space-rock-orange.is-moving:not(.frame-alt) .space-rock-orange-move {
+  opacity: 0.9;
+}
+.space-rock-orange.is-moving.frame-alt .space-rock-orange-move-alt {
+  opacity: 0.9;
+}
+@media (max-width: 900px) {
+  .space-rock-orange {
+    width: 78px;
+  }
 }
 .construction-notice {
   position: fixed;
@@ -399,19 +665,44 @@ nav.nav-compact {
   letter-spacing: 0.08em;
   pointer-events: none;
 }
-/* Astronauta flotando en el espacio profundo, en la esquina inferior
-   derecha -mismo rincón donde reaparece la nave al entrar a esta escena
-   (ver script.js). Va fuera de #space-scene y es `position: fixed`, como la
-   nave: ese div tiene su propio z-index (crea contexto de apilamiento
-   propio), así que un z-index puesto adentro nunca se compara contra el de
-   la nave -tiene que vivir al mismo nivel que .starry-cohete-pair para que
-   la nave (z-index 253) quede realmente detrás. La visibilidad la
-   controla script.js con la misma clase "space-visible". */
+.space-empty-notice {
+  position: absolute;
+  /* En píxeles, no en % -a diferencia de los otros elementos del escenario,
+     acá se pidió explícitamente así: #space-scene siempre arranca en (0,0)
+     en la esquina superior izquierda de la pantalla sin importar el
+     viewport, entonces top/left en px es una distancia fija y directa
+     -mover el número mueve el texto esa cantidad de píxeles, sin el lío de
+     "distancia al borde" ni nada relativo al tamaño de pantalla-. Es un
+     objeto más flotando en el espacio (como .space-rock/.space-planet), no
+     algo pegado al astronauta. */
+  top: 460px;
+  left: 10px;
+  margin: 0;
+  color: #3032363c;
+  /* DM Mono no tiene glifos cirílicos (sólo latin/latin-ext); JetBrains
+     Mono sí, y visualmente es una monoespaciada muy parecida -mismo look
+     que el resto de la UI (nav, menú CV) sin que el texto en ruso caiga a
+     una fuente del sistema sin relación. */
+  font-family: "JetBrains Mono", "DM Mono", monospace;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+  transform: rotate(-10deg);
+}
+/* Astronauta flotando en el espacio profundo, a un costado del mapa (no
+   pegado a una esquina de la pantalla). Vive adentro de #space-scene-front
+   junto con el planeta -ver el comentario largo ahí sobre por qué esa capa
+   existe separada de #space-scene- así queda siempre delante de la nave
+   principal en vez de detrás. El zoom/paneo de cámara lo alcanza heredando
+   el transform del contenedor (mismo scale/transform-origin que script.js
+   le aplica a #space-scene cuadro a cuadro). La visibilidad la controla
+   script.js con la misma clase "space-visible". */
 .space-astronaut {
-  position: fixed;
+  position: absolute;
+  right: 78%;
   bottom: 5%;
-  right: 4%;
-  z-index: 265;
   /* Un poco más grande que el alto de parallax 2.png (280px, ver
      #group-256 .gl img). */
   height: 340px;
@@ -448,30 +739,33 @@ nav.nav-compact {
   }
 }
 @media (max-width: 600px) {
-  .space-scene {
+  .space-scene,
+  .space-scene-front {
     display: none;
   }
 }
 /* Nave "Boga net" (referencia: cartel soviético) flotando arriba de la
    escena de espacio profundo, unida por un cordón/cable largo y ondulado
    -todo un mismo sprite- cuya punta cae siempre detrás del astronauta:
-   right/bottom se calculan en base a los mismos 4%/5% + tamaño fijo del
-   astronauta (ver .space-astronaut) para que la punta (a ~45%/84% del
-   alto del sprite) quede sobre su torso, y el z-index (255, por debajo de
-   .space-astronaut en 265 y por encima de la nave principal en 253)
-   asegura que la nave principal pase por detrás. El leve balanceo
-   pivotea cerca de esa misma punta (transform-origin) para que se note
-   el cordón "flotando" sin
-   despegar la punta del astronauta. */
+   right/bottom se calculan en base a los mismos 78%/42% + un offset fijo en
+   px (ver .space-astronaut) para que la punta (a ~45%/84% del alto del
+   sprite) quede sobre su torso -mismo anclaje (right/bottom) y mismos
+   offsets que siempre tuvo, sólo se corrió el punto base para que la
+   pareja flote del lado izquierdo en vez de la esquina inferior derecha; si
+   se cambiara a left/top el cálculo dejaría de valer porque ancla lados
+   opuestos de cada sprite. A diferencia del astronauta, esta vive adentro
+   de #space-scene (el fondo), no de #space-scene-front: así queda detrás
+   de la nave principal en vez de delante -es el contraste que separa las
+   dos capas, ver comentario largo en .space-scene-front-. Al ser hijo de
+   #space-scene también hereda el mismo transform de cámara. */
 .space-bora-nave {
-  position: fixed;
-  right: calc(4% - 36px);
+  position: absolute;
+  right: calc(78% - 36px);
   bottom: calc(5% + 97px);
   height: 750px;
   max-height: 70vh;
   width: auto;
   pointer-events: none;
-  z-index: 255;
   opacity: 0;
   transition: opacity 0.5s ease;
   transform-origin: 45% 84%;
@@ -492,7 +786,7 @@ nav.nav-compact {
 }
 @media (max-width: 900px) {
   .space-bora-nave {
-    right: calc(4% - 25px);
+    right: calc(78% - 25px);
     bottom: calc(5% + 66px);
     height: 508px;
   }

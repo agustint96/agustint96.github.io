@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
     <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
 
@@ -28,6 +28,24 @@
   </head>
 
   <body>
+    <svg style="position: absolute; width: 0; height: 0; overflow: hidden">
+      <filter id="cv-menu-glass">
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.012 0.02"
+          numOctaves="2"
+          seed="7"
+          result="noise"
+        />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="noise"
+          scale="40"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+    </svg>
     <div class="site-content" id="site-content">
       <nav id="main-nav">
       <a
@@ -100,10 +118,50 @@
           </button>
           <ul class="cv-menu" hidden>
             <li>
-              <a href="CV_Agustin_Tardella.pdf" download>Español</a>
+              <a href="CV_Agustin_Tardella.pdf" download>
+                <span class="cv-menu-label">
+                  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path
+                      d="M8 1.5v8.5m0 0L4.75 6.75M8 10l3.25-3.25"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M2.5 12v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V12"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  Español
+                </span>
+              </a>
             </li>
             <li>
-              <a href="CV_Agustin_Tardella_EN.pdf" download>English</a>
+              <a href="CV_Agustin_Tardella_EN.pdf" download>
+                <span class="cv-menu-label">
+                  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path
+                      d="M8 1.5v8.5m0 0L4.75 6.75M8 10l3.25-3.25"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M2.5 12v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V12"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  English
+                </span>
+              </a>
             </li>
           </ul>
         </li>
@@ -208,24 +266,70 @@
 
     <div class="space-scene" id="space-scene" aria-hidden="true">
       <canvas id="space-scene-canvas"></canvas>
+      <img
+        src="parallax/nave bora het.webp"
+        class="space-bora-nave"
+        id="space-bora-nave"
+        alt=""
+        aria-hidden="true"
+      />
+      <img
+        src="parallax/piedra.png"
+        class="space-rock"
+        id="space-rock"
+        alt=""
+        aria-hidden="true"
+      />
+      <!-- Piedra naranja: mismo comportamiento que .space-rock (física de
+      choque en makeSpaceDrifter, ver script.js), pero con tres sprites -uno
+      quieta (piedra_naranja_1) y dos "en movimiento" (piedra_naranja_2/3)
+      que se alternan cada medio segundo mientras está a la deriva. -->
+      <div class="space-rock-orange" id="space-rock-orange">
+        <img
+          src="parallax/piedra_naranja_1.png"
+          class="space-rock-orange-sprite space-rock-orange-rest"
+          alt=""
+          aria-hidden="true"
+        />
+        <img
+          src="parallax/piedra_naranja_2.png"
+          class="space-rock-orange-sprite space-rock-orange-move"
+          alt=""
+          aria-hidden="true"
+        />
+        <img
+          src="parallax/piedra_naranja_3.png"
+          class="space-rock-orange-sprite space-rock-orange-move-alt"
+          alt=""
+          aria-hidden="true"
+        />
+      </div>
       <p class="construction-notice">Sitio en construcción (14/9/2026)</p>
+      <p class="space-empty-notice">БОТА НЕТ!</p>
     </div>
 
-    <img
-      src="parallax/nave bora het.webp"
-      class="space-bora-nave"
-      id="space-bora-nave"
-      alt=""
-      aria-hidden="true"
-    />
-
-    <img
-      src="parallax/Astronauta.webp"
-      class="space-astronaut"
-      id="space-astronaut"
-      alt=""
-      aria-hidden="true"
-    />
+    <!-- Capa "delante de la nave": mismo mapa que #space-scene (recibe el
+    mismo transform de cámara cuadro a cuadro, ver script.js), pero con
+    z-index por encima de la nave principal -así astronauta y planeta
+    quedan siempre delante suyo, a diferencia del fondo/nave-bora que
+    quedan detrás. Ver comentario largo en .space-scene-front (styles.css)
+    para el porqué de este split. -->
+    <div class="space-scene-front" id="space-scene-front" aria-hidden="true">
+      <img
+        src="parallax/everyone planeta.png"
+        class="space-planet"
+        id="space-planet"
+        alt=""
+        aria-hidden="true"
+      />
+      <img
+        src="parallax/Astronauta.webp"
+        class="space-astronaut"
+        id="space-astronaut"
+        alt=""
+        aria-hidden="true"
+      />
+    </div>
 
     <div class="starry-cohete-pair" id="starry-cohete-pair">
       <img

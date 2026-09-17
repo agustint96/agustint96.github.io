@@ -1,10 +1,35 @@
 const nav = document.getElementById("main-nav");
-const navLinks = nav ? nav.querySelectorAll("a") : [];
+const navLinks = nav
+  ? Array.from(nav.querySelectorAll("a")).filter((a) => !a.closest(".cv-menu"))
+  : [];
 
-// Zonas del parallax que la nave puede "tocar": cada una sabe cómo calcular
-// su rectángulo actual y cómo reproducir su sonido (reusado por click de mouse
-// y por el botón A/X del joystick cuando la nave está encima).
-const parallaxZones = [];
+// Registro de escenarios: cada uno es un nodo de un mapa. Sus 4 bordes
+// (arriba/abajo/izq/der) pueden llevar a otro escenario
+// (edges[borde] = {to, enter, requiresDesktop}); un borde sin entrada ahí
+// simplemente clampea, como ya pasa hoy en cualquier borde sin escenario del
+// otro lado. El resto de la config (parallaxZones, camera, speedMult,
+// heightScale, shipClass, light, setVisible) es opcional -un escenario
+// simple, sin cámara propia ni objetos interactuables, no necesita declarar
+// nada de eso, el tick de vuelo usa valores por defecto razonables-. Ver el
+// tick de vuelo (más abajo, junto a #starry-cohete-pair) para cómo se arma
+// scenes.main/scenes.space, con un ejemplo de cómo sumar un escenario nuevo.
+const scenes = {};
+function registerScene(id, config) {
+  scenes[id] = Object.assign(
+    { edges: {}, parallaxZones: [], camera: null, speedMult: 1 },
+    config,
+    { id },
+  );
+  return scenes[id];
+}
+let currentSceneId = "main";
+
+// Zonas del parallax que la nave puede "tocar" en el escenario principal:
+// cada una sabe cómo calcular su rectángulo actual y cómo reproducir su
+// sonido (reusado por click de mouse y por el botón A/X del joystick / tecla
+// E cuando la nave está encima). Misma referencia que scenes.main.parallaxZones,
+// así los registros de guitarra/satélite/bajo (más abajo) no necesitan tocarse.
+const parallaxZones = registerScene("main", {}).parallaxZones;
 // Prende/apaga la luz de la nave; se asigna más abajo y la reusa el botón Y del joystick.
 let toggleShipLight = null;
 
@@ -691,6 +716,106 @@ function drawStars() {
     if (!t) return;
     const siteContent = document.getElementById("site-content");
     const spaceScene = document.getElementById("space-scene");
+    // Capa hermana con el mismo "mapa" pero z-index por encima de la nave
+    // (astronauta + planeta, ver comentario largo en .space-scene-front en
+    // styles.css): recibe el mismo transform de cámara que spaceScene cuadro
+    // a cuadro para que ambas se muevan/escalen como una sola cosa.
+    const spaceSceneFront = document.getElementById("space-scene-front");
+    const spaceRock = document.getElementById("space-rock");
+    // "Debris" espacial reutilizable: un elemento flotando en el vacío que,
+    // al chocar con la nave, recibe un impulso (más fuerte cuanto más rápido
+    // venía la nave) y sigue de largo en esa dirección -no vuelve a su lugar
+    // de reposo, sólo va perdiendo velocidad muy despacio (roce altísimo)
+    // hasta quedarse flotando en otro punto. Usa --hit-x/--hit-y (sumadas al
+    // flotado propio del elemento en sus @keyframes, ver .space-rock en
+    // styles.css) para no pisar la animación existente. visibleRatio ajusta
+    // el radio de colisión al dibujo real del sprite, sin el margen
+    // transparente de su caja (distinto para cada PNG/WEBP).
+    //
+    // Para sumar un elemento nuevo: agregarle "--hit-x"/"--hit-y" a su
+    // transform en @keyframes (ver ejemplo en floatRock) y una línea acá:
+    //   spaceDrifters.push(makeSpaceDrifter(elemento, visibleRatio));
+    // onSpeed (opcional) se llama cada frame con la velocidad actual -lo usa
+    // la piedra naranja para saber cuándo mostrarse "en movimiento".
+    const SHIP_VISIBLE_RATIO = 0.4; // margen transparente alrededor del sprite de la nave
+    function makeSpaceDrifter(el, visibleRatio, onSpeed) {
+      let x = 0,
+        y = 0,
+        vx = 0,
+        vy = 0,
+        hadHit = false;
+      const DRIFT_DAMPING = 0.985;
+      return function update(shipRect, shipVX, shipVY) {
+        if (el && shipRect) {
+          const elRect = el.getBoundingClientRect();
+          const dx =
+            elRect.left +
+            elRect.width / 2 -
+            (shipRect.left + shipRect.width / 2);
+          const dy =
+            elRect.top +
+            elRect.height / 2 -
+            (shipRect.top + shipRect.height / 2);
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const shipRadius = (shipRect.width * SHIP_VISIBLE_RATIO) / 2;
+          const elRadius = (elRect.width * visibleRatio) / 2;
+          const hitRadius = shipRadius + elRadius;
+          if (dist < hitRadius) {
+            if (!hadHit) {
+              hadHit = true;
+              const nx = dist > 0.01 ? dx / dist : 1;
+              const ny = dist > 0.01 ? dy / dist : 0;
+              const shipSpeed = Math.sqrt(shipVX * shipVX + shipVY * shipVY);
+              const impulse = 0.6 + shipSpeed * 0.4;
+              vx += nx * impulse;
+              vy += ny * impulse;
+            }
+          } else {
+            hadHit = false;
+          }
+        }
+        vx *= DRIFT_DAMPING;
+        vy *= DRIFT_DAMPING;
+        x += vx;
+        y += vy;
+        if (el) {
+          el.style.setProperty("--hit-x", `${x.toFixed(2)}px`);
+          el.style.setProperty("--hit-y", `${y.toFixed(2)}px`);
+        }
+        if (onSpeed) onSpeed(Math.sqrt(vx * vx + vy * vy));
+      };
+    }
+    const spaceDrifters = [];
+    if (spaceRock) spaceDrifters.push(makeSpaceDrifter(spaceRock, 0.35));
+    const spaceRockOrange = document.getElementById("space-rock-orange");
+    if (spaceRockOrange) {
+      // Umbral chico para que el cruce de sprites se sienta enseguida al
+      // golpearla, pero no parpadee por ruido cuando ya casi se detuvo.
+      const MOVING_SPEED_THRESHOLD = 0.05;
+      const FRAME_MS = 1000; // cada cuadro (piedra_naranja_2/3) dura 1s mientras se mueve
+      let wasMoving = false;
+      let frameToggleInterval = null;
+      spaceDrifters.push(
+        makeSpaceDrifter(spaceRockOrange, 0.35, (speed) => {
+          const isMoving = speed > MOVING_SPEED_THRESHOLD;
+          spaceRockOrange.classList.toggle("is-moving", isMoving);
+          if (isMoving && !wasMoving) {
+            // Recién empieza a moverse: arranca el flip entre los dos
+            // cuadros "en movimiento", 1s cada uno, hasta que pare.
+            spaceRockOrange.classList.remove("frame-alt");
+            frameToggleInterval = setInterval(() => {
+              spaceRockOrange.classList.toggle("frame-alt");
+            }, FRAME_MS);
+          } else if (!isMoving && wasMoving) {
+            // Se frenó: corta el intervalo y vuelve al cuadro quieto.
+            clearInterval(frameToggleInterval);
+            frameToggleInterval = null;
+            spaceRockOrange.classList.remove("frame-alt");
+          }
+          wasMoving = isMoving;
+        }),
+      );
+    }
     const FLIGHT_MARGIN = 100; // cuánto puede salirse la nave del viewport, en px
     const FLIGHT_MARGIN_TOP = 160; // arriba necesita más margen: al rotar, la nave (130px) sobresale de su caja
     // Solo en desktop: al llegar la nave al borde superior, se corta a la
@@ -707,7 +832,96 @@ function drawStars() {
     // como un salto.
     const SHIP_SPACE_SCALE_NEAR = 0.55;
     const SHIP_SPACE_SCALE_FAR = 0.49;
+    // Zoom de cámara: escala el fondo completo de la escena (y la nave, para
+    // que quede a la misma escala) anclado en la posición actual de la nave
+    // -no en el centro fijo- así se siente que la cámara se acercó al objeto
+    // en vez de simplemente agrandar el sprite. El fondo se re-ancla cuadro
+    // a cuadro (ver spaceScene.style.transformOrigin en el tick) para que al
+    // navegar el fondo "pase" por debajo, como recorriendo el mapa de antes
+    // pero de cerca.
+    const CAMERA_ZOOM = 2.2;
+    // El astronauta y la nave-bora ya no tienen su propio zoom separado: al
+    // ser hijos de #space-scene/#space-scene-front heredan cameraZoom del
+    // contenedor automáticamente, igual que el planeta -antes se les
+    // aplicaba además un ENV_CAMERA_ZOOM propio (más chico) para que no
+    // quedaran gigantes, pero compensarlo aparte hacía que se vieran
+    // "achicarse" en relación al resto del mapa mientras la cámara hacía
+    // zoom, porque crecían mucho menos que todo lo demás alrededor.
+    // Mantener M (o LT del joystick) apretado muestra el mapa completo sin
+    // zoom (para ubicarse), como el mapa de un juego: mientras está activo,
+    // el multiplicador de cámara baja a 1 cuadro a cuadro y se restaura solo
+    // al soltar. LT se lee cada frame junto al resto del gamepad (más abajo,
+    // en el tick), por eso son dos flags separadas combinadas con ||.
+    let keyMapView = false;
+    // WASD mueve la nave como el stick/D-pad del joystick, Shift cumple el
+    // rol de RB (boost) y Espacio el de LT (mapa completo) -ver más abajo,
+    // se combinan con el resto del teclado/joystick en el tick.
+    let keyUp = false,
+      keyDown = false,
+      keyLeft = false,
+      keyRight = false,
+      keyBoost = false;
+    // Valor analógico del gatillo (0..1), no un booleano: LT es un botón
+    // analógico y el navegador decide su ".pressed" digital con un umbral
+    // interno -si no se lo presiona a fondo, ese booleano puede parpadear
+    // entre true/false por ruido cerca del umbral, haciendo que el target
+    // del zoom salte cada frame y nunca converja (se ve como un temblor
+    // "atascado" en vez de llegar al mapa completo). Usando el valor
+    // continuo en vez de is­Pressed() se evita ese cruce de umbral.
+    let gamepadMapViewT = 0;
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "m" || ev.key === "M" || ev.code === "Space")
+        keyMapView = true;
+      switch (ev.code) {
+        case "KeyW":
+          keyUp = true;
+          break;
+        case "KeyS":
+          keyDown = true;
+          break;
+        case "KeyA":
+          keyLeft = true;
+          break;
+        case "KeyD":
+          keyRight = true;
+          break;
+        case "ShiftLeft":
+        case "ShiftRight":
+          keyBoost = true;
+          break;
+      }
+    });
+    document.addEventListener("keyup", (ev) => {
+      if (ev.key === "m" || ev.key === "M" || ev.code === "Space")
+        keyMapView = false;
+      switch (ev.code) {
+        case "KeyW":
+          keyUp = false;
+          break;
+        case "KeyS":
+          keyDown = false;
+          break;
+        case "KeyA":
+          keyLeft = false;
+          break;
+        case "KeyD":
+          keyRight = false;
+          break;
+        case "ShiftLeft":
+        case "ShiftRight":
+          keyBoost = false;
+          break;
+      }
+    });
     let shipScale = 1;
+    // Factor de cámara (CAMERA_ZOOM, u 1 con M apretada) y factor de altura
+    // (achique por volar alto, ver SHIP_SPACE_SCALE_*) se suavizan por
+    // separado y en el mismo ritmo que el fondo, para que subir o bajar el
+    // zoom se sienta como una cámara alejándose/acercándose de toda la
+    // escena junta -nave incluida- y no como si la nave sola se achicara en
+    // el lugar.
+    let cameraZoom = 1;
+    let shipHeightScale = 1;
     const SHIP_SPACE_SPEED_MULT = 0.35; // velocidad muy reducida en la escena de espacio profundo
     const spaceAstronaut = document.getElementById("space-astronaut");
     const spaceBoraNave = document.getElementById("space-bora-nave");
@@ -716,7 +930,98 @@ function drawStars() {
     // borde de la escena de espacio, y así la luz -si ya estaba prendida-
     // se ajuste sin esperar a que el usuario la vuelva a tocar.
     let applyLightFilter = null;
-    let inSpaceScene = false;
+
+    // --- Registro de escenarios ------------------------------------
+    // scenes.main ya existe (registrado al inicio del archivo, arranca
+    // visible) y sólo necesita declarar a dónde lleva su borde de arriba.
+    // Para sumar un escenario nuevo más adelante: armar sus capas en
+    // index.html/styles.css (mismo patrón que space-scene/space-scene-front,
+    // toggleadas por una clase tipo "visible"), llamar acá a
+    // registerScene("id", {...}) con sólo la config que necesite -todo lo
+    // demás tiene default razonable, ver el registro global al inicio del
+    // archivo- y agregar un edges.<borde> en el escenario desde el que se
+    // entra, apuntando al id nuevo.
+    Object.assign(scenes.main, {
+      setVisible: (visible) =>
+        siteContent && siteContent.classList.toggle("space-hidden", !visible),
+      edges: {
+        top: {
+          to: "space",
+          requiresDesktop: true,
+          enter: (w, h) => ({ x: w * 0.38 - 65, y: h - 150 }),
+        },
+      },
+    });
+    registerScene("space", {
+      setVisible: (visible) => {
+        [spaceScene, spaceSceneFront, spaceAstronaut, spaceBoraNave].forEach(
+          (el) => el && el.classList.toggle("space-visible", visible),
+        );
+      },
+      shipClass: "in-space",
+      speedMult: SHIP_SPACE_SPEED_MULT,
+      heightScale: { near: SHIP_SPACE_SCALE_NEAR, far: SHIP_SPACE_SCALE_FAR },
+      camera: { zoom: CAMERA_ZOOM, elements: [spaceScene, spaceSceneFront] },
+      light: {
+        filter:
+          "drop-shadow(0 2px 14px rgba(255, 159, 154, 0.85)) drop-shadow(0 0 70px rgba(255, 159, 154, 0.7))",
+        volume: 0.2,
+      },
+      edges: {
+        bottom: {
+          to: "main",
+          enter: () => ({ x: 40, y: -FLIGHT_MARGIN_TOP + 50 }),
+        },
+      },
+    });
+
+    // Planeta de la escena de espacio: arranca "apagado" (más oscuro que su
+    // brillo normal de antes, ver base de .space-planet en styles.css) y al
+    // interactuar -click, o E/botón A del joystick igual que las zonas de la
+    // escena principal, ver triggerAction() más abajo- prende como un
+    // foquito, parpadea un par de veces como si se fuera a fundir y vuelve
+    // sola al apagado (no se queda prendida). Cada interacción repite la
+    // animación desde cero -la animación completa vive en
+    // .space-planet.bulb-blow, styles.css-.
+    const spacePlanet = document.getElementById("space-planet");
+    if (spacePlanet) {
+      // A diferencia de otros objetos (guitarra, satélite, nave), acá no
+      // conviene el test de pixel opaco: el PNG tiene mucho margen
+      // transparente alrededor del dibujo y hacía muy difícil acertarle.
+      // Todo el rectángulo de la imagen cuenta como zona interactuable.
+      const hitPlanet = (x, y) =>
+        pointInRect(x, y, spacePlanet.getBoundingClientRect());
+      const planetAudio = new Audio("audio/Esc2/everyone.m4a");
+      planetAudio.preload = "none"; // sólo se baja si interactúan con el planeta, no en cada carga
+      planetAudio.volume = 0.5;
+      const triggerPlanetGlow = () => {
+        spacePlanet.classList.remove("bulb-blow");
+        spacePlanet.offsetWidth; // reinicia la animación si ya estaba corriendo
+        spacePlanet.classList.add("bulb-blow");
+        planetAudio.currentTime = 0;
+        planetAudio.play().catch(() => {});
+      };
+      spacePlanet.addEventListener("animationend", (ev) => {
+        if (ev.animationName === "planetBulbBlow")
+          spacePlanet.classList.remove("bulb-blow");
+      });
+      // Click de mouse, igual que el resto de los objetos interactuables:
+      // el planeta tiene pointer-events:none (como toda la escena de
+      // espacio, para no interferir con el vuelo con mouse), así que el
+      // click se escucha en document y se valida a mano contra su
+      // rectángulo/pixel real -sólo cuenta mientras esta escena está
+      // visible, si no cualquier click en esas coordenadas en la escena
+      // principal lo dispararía igual, aunque esté oculto-.
+      document.addEventListener("click", (ev) => {
+        if (currentSceneId !== "space") return;
+        if (hitPlanet(ev.clientX, ev.clientY)) triggerPlanetGlow();
+      });
+      scenes.space.parallaxZones.push({
+        hitTest: hitPlanet,
+        trigger: triggerPlanetGlow,
+      });
+    }
+
     // Fundido de entrada: la nave arranca fuera de pantalla (e = -FLIGHT_MARGIN)
     // y aparece de a poco al acercarse al borde izquierdo. Una vez que llegó a
     // opacidad 1 la primera vez queda fija ahí -si no, como la opacidad se
@@ -724,11 +1029,9 @@ function drawStars() {
     // transparentaba de nuevo cada vez que el usuario la llevaba de vuelta
     // cerca del borde izquierdo durante el uso normal.
     let introOpacity = 0;
-    // En la escena de espacio profundo la nave se ve casi transparente, como
-    // si quedara detrás de una nebulosa: shipAlpha viaja suavemente hacia
-    // SHIP_SPACE_ALPHA (o de vuelta a 1) en vez de saltar de golpe al cruzar
-    // el borde.
-    const SHIP_SPACE_ALPHA = 0.55; // transparente pero todavía bien visible
+    // La nave se mantiene 100% opaca en cualquier escenario -antes se ponía
+    // semitransparente en el de espacio profundo ("nebulosa"), pero eso se
+    // veía mal al pasar delante de otros objetos (astronauta, planeta).
     let shipAlpha = 1;
     let e = -FLIGHT_MARGIN,
       a = 180,
@@ -747,6 +1050,7 @@ function drawStars() {
     const GAMEPAD_DAMPING = 0.9;
     // Mapeo estándar del Gamepad API
     const BTN_RB = 5;
+    const BTN_LT = 6;
     const BTN_DPAD_UP = 12;
     const BTN_DPAD_DOWN = 13;
     const BTN_DPAD_LEFT = 14;
@@ -808,6 +1112,7 @@ function drawStars() {
           gy = 0,
           boosting = false;
         gamepadActive = false;
+        gamepadMapViewT = 0;
         if (gp) {
           gx = applyDeadzone(gp.axes[0] || 0);
           gy = applyDeadzone(gp.axes[1] || 0);
@@ -818,6 +1123,12 @@ function drawStars() {
           else if (isPressed(gp, BTN_DPAD_DOWN)) gy = 1;
 
           boosting = isPressed(gp, BTN_RB);
+          gamepadMapViewT =
+            gp.buttons[BTN_LT] && typeof gp.buttons[BTN_LT].value === "number"
+              ? gp.buttons[BTN_LT].value
+              : isPressed(gp, BTN_LT)
+                ? 1
+                : 0;
 
           if (gx !== 0 || gy !== 0) {
             gamepadActive = true;
@@ -827,16 +1138,32 @@ function drawStars() {
           }
         }
 
+        // WASD/Shift/Espacio: mismo camino que el D-pad/RB/LT del joystick
+        // de arriba -pisan los ejes analógicos sólo si están apretados, así
+        // no interfieren con el mouse/gamepad cuando no se usa el teclado.
+        if (keyLeft) gx = -1;
+        else if (keyRight) gx = 1;
+        if (keyUp) gy = -1;
+        else if (keyDown) gy = 1;
+        if (keyBoost) boosting = true;
+        if (gx !== 0 || gy !== 0) {
+          gamepadActive = true;
+          i = e + gx * 1000;
+          o = a + gy * 1000;
+          l = true;
+        }
+
         let c, u;
         l && null !== i ? ((c = i), (u = o)) : ((c = e), (u = a));
         const m = c - e,
           h = u - a,
           v = Math.sqrt(m * m + h * h);
 
-        // En la escena de espacio profundo la nave se maneja mucho más
-        // lenta -sensación de ir a la deriva- en vez de a la velocidad
-        // ágil de la escena principal.
-        const speedMult = inSpaceScene ? SHIP_SPACE_SPEED_MULT : 1;
+        // Cada escenario puede pisar su propia velocidad (ver speedMult en
+        // el registro de escenarios) -la de espacio profundo, por ejemplo,
+        // se maneja mucho más lenta, sensación de ir a la deriva-.
+        let scene = scenes[currentSceneId];
+        const speedMult = scene.speedMult;
         if (gamepadActive) {
           const thrust =
             (boosting ? GAMEPAD_THRUST_BOOST : GAMEPAD_THRUST_BASE) * speedMult;
@@ -861,49 +1188,45 @@ function drawStars() {
           maxX = window.innerWidth + FLIGHT_MARGIN,
           minY = -FLIGHT_MARGIN_TOP,
           maxY = window.innerHeight + FLIGHT_MARGIN;
+        let touchedEdge = null;
         if (e < minX) {
           e = minX;
           n = 0;
+          touchedEdge = "left";
         } else if (e > maxX) {
           e = maxX;
           n = 0;
+          touchedEdge = "right";
         }
         if (a < minY) {
           a = minY;
           r = 0;
+          touchedEdge = "top";
         } else if (a > maxY) {
           a = maxY;
           r = 0;
+          touchedEdge = "bottom";
         }
 
-        let enteringOrLeavingSpace = false;
-        if (!inSpaceScene && !isMobileTouch() && a <= minY) {
-          inSpaceScene = true;
-          // Reaparece por abajo, al medio tirando a la izquierda -no en la
-          // esquina- para que se sienta perdida en el espacio profundo.
-          e = window.innerWidth * 0.38 - 65;
-          a = window.innerHeight - 150;
-          enteringOrLeavingSpace = true;
-        } else if (inSpaceScene && a >= maxY) {
-          // Desde la segunda pantalla se vuelve a la principal yendo hacia
-          // abajo (borde inferior), no repitiendo el borde superior.
-          inSpaceScene = false;
-          e = 40;
-          a = minY + 50;
-          enteringOrLeavingSpace = true;
-        }
-        if (enteringOrLeavingSpace) {
+        // Escenarios como un mapa: si el borde tocado tiene una entrada
+        // definida en scenes[currentSceneId].edges (ver registro de
+        // escenarios), cruza a ese escenario; si no, el clamp de arriba ya
+        // alcanza -es un borde sin escenario del otro lado, como hoy son
+        // left/right en la principal y en la de espacio-.
+        const edge = touchedEdge && scene.edges[touchedEdge];
+        if (edge && !(edge.requiresDesktop && isMobileTouch())) {
+          const prevScene = scene;
+          currentSceneId = edge.to;
+          scene = scenes[currentSceneId];
+          const pos = edge.enter(window.innerWidth, window.innerHeight);
+          e = pos.x;
+          a = pos.y;
           n = 0;
           r = 0;
-          if (siteContent)
-            siteContent.classList.toggle("space-hidden", inSpaceScene);
-          if (spaceScene)
-            spaceScene.classList.toggle("space-visible", inSpaceScene);
-          if (spaceAstronaut)
-            spaceAstronaut.classList.toggle("space-visible", inSpaceScene);
-          if (spaceBoraNave)
-            spaceBoraNave.classList.toggle("space-visible", inSpaceScene);
-          t.classList.toggle("in-space", inSpaceScene);
+          if (prevScene.setVisible) prevScene.setVisible(false);
+          if (scene.setVisible) scene.setVisible(true);
+          if (prevScene.shipClass) t.classList.remove(prevScene.shipClass);
+          if (scene.shipClass) t.classList.add(scene.shipClass);
           if (applyLightFilter) applyLightFilter();
         }
 
@@ -928,19 +1251,69 @@ function drawStars() {
             Math.max(0, Math.min(1, (e + FLIGHT_MARGIN) / 80)),
           );
         }
-        shipAlpha += ((inSpaceScene ? SHIP_SPACE_ALPHA : 1) - shipAlpha) * 0.05;
+        shipAlpha += (1 - shipAlpha) * 0.05;
         const f = introOpacity * shipAlpha;
         // 1 recién entrando por abajo (maxY) -> 0 arriba del todo (minY):
         // cuanto más arriba vuela la nave en esta escena, más chica se
-        // pone, en vez de un tamaño fijo.
-        const spaceT = inSpaceScene
+        // pone, en vez de un tamaño fijo. Sólo aplica si el escenario
+        // declaró heightScale (ver registro de escenarios); si no, se queda
+        // en el tamaño normal siempre.
+        const spaceT = scene.heightScale
           ? Math.max(0, Math.min(1, (a - minY) / (maxY - minY)))
           : 1;
-        const targetScale = inSpaceScene
-          ? SHIP_SPACE_SCALE_FAR +
-            (SHIP_SPACE_SCALE_NEAR - SHIP_SPACE_SCALE_FAR) * spaceT
+        // Con M (teclado) o LT (joystick) apretado se ve el mapa completo
+        // sin zoom (multiplicador 1); se restaura solo al soltar ambos.
+        // mapViewT es continuo (0..1, no un booleano) para mezclar de forma
+        // proporcional al valor analógico del gatillo -de ahí no queda
+        // ningún cruce de umbral que pueda parpadear entre dos targets cada
+        // frame-. targetCameraZoom además se suaviza (mismo ritmo 0.05 que
+        // shipScale antes) para que el fondo, la nave y la decoración se
+        // achiquen/agranden todos juntos, como si una cámara se alejara, en
+        // vez de la nave sola encogiéndose. Sólo aplica si el escenario
+        // declaró camera (ver registro de escenarios); si no, no tiene zoom.
+        const mapViewT = Math.max(keyMapView ? 1 : 0, gamepadMapViewT);
+        const targetCameraZoom = scene.camera
+          ? scene.camera.zoom + (1 - scene.camera.zoom) * mapViewT
           : 1;
-        shipScale += (targetScale - shipScale) * 0.05;
+        cameraZoom += (targetCameraZoom - cameraZoom) * 0.05;
+        const targetHeightScale = scene.heightScale
+          ? scene.heightScale.far +
+            (scene.heightScale.near - scene.heightScale.far) * spaceT
+          : 1;
+        shipHeightScale += (targetHeightScale - shipHeightScale) * 0.05;
+        shipScale = shipHeightScale * cameraZoom;
+        if (scene.camera) {
+          // La nave puede volar hasta FLIGHT_MARGIN/FLIGHT_MARGIN_TOP afuera
+          // del viewport (para poder "perderse" contra el negro), pero el
+          // fondo con zoom nunca debe anclarse ahí: si el transform-origin
+          // queda afuera de la pantalla, el lado opuesto del fondo escalado
+          // se despega del borde y deja ver el starry normal del sitio por
+          // detrás. Se clampea a los límites del viewport para que el fondo
+          // siga cubriendo toda la pantalla siempre.
+          const camX = Math.max(0, Math.min(window.innerWidth, e));
+          const camY = Math.max(0, Math.min(window.innerHeight, a));
+          const camOrigin = `${camX}px ${camY}px`;
+          const camTransform = `scale(${cameraZoom})`;
+          // Mismo transform para todos los elementos que declaró la escena
+          // (fondo + capa "delante de la nave" en el caso del espacio
+          // profundo), así se mueven/escalan como una sola cámara aunque
+          // sean elementos distintos (ver comentario largo en
+          // .space-scene-front en styles.css para el porqué de ese split).
+          scene.camera.elements.forEach((el) => {
+            if (!el) return;
+            el.style.transformOrigin = camOrigin;
+            el.style.transform = camTransform;
+          });
+        }
+        // getBoundingClientRect ya devuelve la caja en pantalla
+        // post-transform (incluye el zoom/paneo de cámara), así que cada
+        // drifter compara peras con peras sin rehacer a mano la cuenta del
+        // zoom. Se llama siempre (no sólo dentro de la escena, pasando null
+        // como shipRect) para que cualquiera que haya quedado a mitad de
+        // camino termine de asentarse aunque el usuario haya salido.
+        const driftShipRect =
+          currentSceneId === "space" ? t.getBoundingClientRect() : null;
+        spaceDrifters.forEach((update) => update(driftShipRect, n, r));
         ((t.style.opacity = f),
           (t.style.transform = `translate(${e}px, ${a}px) rotate(${s}deg) scale(${shipScale})`),
           requestAnimationFrame(tick));
@@ -951,19 +1324,21 @@ function drawStars() {
       d.style.transition =
         "transform 0.18s cubic-bezier(0.4,0,0.2,1), filter 0.18s ease";
       let lightOn = false;
-      // En la escena de espacio profundo la luz alumbra bastante más lejos
-      // -segunda capa de drop-shadow, más ancha y difusa- que en la escena
-      // principal. Ya no hay overflow/clip-path en la caja de la nave (ver
-      // .starry-cohete-pair en CSS), así que ese brillo grande puede
-      // difuminarse libre sin cortarse en un contorno cuadrado.
+      // Cada escenario puede declarar su propio alcance de luz (filtro CSS
+      // más ancho/difuso y volumen del sonido más bajo, ver scene.light en
+      // el registro de escenarios) -si no declara nada, usa el alcance
+      // "cerca" de la escena principal de siempre. Ya no hay
+      // overflow/clip-path en la caja de la nave (ver .starry-cohete-pair en
+      // CSS), así que un brillo grande puede difuminarse libre sin cortarse
+      // en un contorno cuadrado.
+      const NEAR_LIGHT_FILTER = "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))";
       applyLightFilter = () => {
         if (!lightOn) {
           d.style.filter = "none";
           return;
         }
-        d.style.filter = inSpaceScene
-          ? "drop-shadow(0 2px 14px rgba(255, 159, 154, 0.85)) drop-shadow(0 0 70px rgba(255, 159, 154, 0.7))"
-          : "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))";
+        const light = scenes[currentSceneId].light;
+        d.style.filter = light ? light.filter : NEAR_LIGHT_FILTER;
       };
       const toggleLight = () => {
         lightOn = !lightOn;
@@ -976,7 +1351,8 @@ function drawStars() {
         const snd = new Audio(
           lightOn ? "audio/light_on.mp3" : "audio/light_off.mp3",
         );
-        snd.volume = inSpaceScene ? 0.2 : 1;
+        const light = scenes[currentSceneId].light;
+        snd.volume = light ? light.volume : 1;
         snd.play().catch(() => {});
       };
       toggleShipLight = toggleLight;
@@ -1167,46 +1543,66 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // Joystick: A (Xbox) / X (PlayStation) — botón 0 — reproduce el sonido de la
 // zona del parallax que la nave esté tocando, igual que un click de mouse.
-// Y (Xbox) / Triángulo (PlayStation) — botón 3 — prende/apaga la luz de la nave.
+// Y (Xbox) / Triángulo (PlayStation) — botón 3 — prende/apaga la luz de la
+// nave. En teclado, E cumple el mismo rol que el botón de acción y Q el de
+// la luz.
 (function () {
   const cohetePair = document.getElementById("starry-cohete-pair");
-  if (!cohetePair || !navigator.getGamepads) return;
+  if (!cohetePair) return;
 
-  const BTN_ACTION = 0;
-  const BTN_LIGHT = 3;
-  const prevActionPressed = [];
-  const prevLightPressed = [];
-
-  function pollButtons() {
-    const pads = navigator.getGamepads();
-    for (let idx = 0; idx < pads.length; idx++) {
-      const gp = pads[idx];
-      if (!gp) continue;
-
-      const actionButton = gp.buttons[BTN_ACTION];
-      const actionPressed = !!(actionButton && actionButton.pressed);
-      if (actionPressed && !prevActionPressed[idx]) {
-        const shipRect = cohetePair.getBoundingClientRect();
-        const cx = shipRect.left + shipRect.width / 2;
-        const cy = shipRect.top + shipRect.height / 2;
-        for (const zone of parallaxZones) {
-          if (zone.hitTest(cx, cy)) {
-            zone.trigger(cx, cy);
-          }
-        }
+  function triggerAction() {
+    // Cada escenario tiene su propio parallaxZones (ver registro de
+    // escenarios al inicio del archivo): así la nave sólo dispara los
+    // objetos interactuables del escenario en el que está parada, aunque el
+    // rect de una zona de otro escenario siga "ahí" oculto en el DOM.
+    const scene = scenes[currentSceneId];
+    const shipRect = cohetePair.getBoundingClientRect();
+    const cx = shipRect.left + shipRect.width / 2;
+    const cy = shipRect.top + shipRect.height / 2;
+    for (const zone of scene.parallaxZones) {
+      if (zone.hitTest(cx, cy)) {
+        zone.trigger(cx, cy);
       }
-      prevActionPressed[idx] = actionPressed;
-
-      const lightButton = gp.buttons[BTN_LIGHT];
-      const lightPressed = !!(lightButton && lightButton.pressed);
-      if (lightPressed && !prevLightPressed[idx] && toggleShipLight) {
-        toggleShipLight();
-      }
-      prevLightPressed[idx] = lightPressed;
     }
-    requestAnimationFrame(pollButtons);
   }
-  requestAnimationFrame(pollButtons);
+
+  if (navigator.getGamepads) {
+    const BTN_ACTION = 0;
+    const BTN_LIGHT = 3;
+    const prevActionPressed = [];
+    const prevLightPressed = [];
+
+    (function pollButtons() {
+      const pads = navigator.getGamepads();
+      for (let idx = 0; idx < pads.length; idx++) {
+        const gp = pads[idx];
+        if (!gp) continue;
+
+        const actionButton = gp.buttons[BTN_ACTION];
+        const actionPressed = !!(actionButton && actionButton.pressed);
+        if (actionPressed && !prevActionPressed[idx]) triggerAction();
+        prevActionPressed[idx] = actionPressed;
+
+        const lightButton = gp.buttons[BTN_LIGHT];
+        const lightPressed = !!(lightButton && lightButton.pressed);
+        if (lightPressed && !prevLightPressed[idx] && toggleShipLight) {
+          toggleShipLight();
+        }
+        prevLightPressed[idx] = lightPressed;
+      }
+      requestAnimationFrame(pollButtons);
+    })();
+  }
+
+  // ev.repeat descarta el auto-repeat del navegador al mantener la tecla
+  // apretada -si no, dispararía la acción/luz muchas veces por segundo en
+  // vez de una sola vez por tecla apretada, como sí hace el chequeo de
+  // flanco (prevActionPressed/prevLightPressed) del lado del joystick.
+  document.addEventListener("keydown", (ev) => {
+    if (ev.repeat) return;
+    if (ev.code === "KeyE") triggerAction();
+    else if (ev.code === "KeyQ" && toggleShipLight) toggleShipLight();
+  });
 })();
 
 // CV: elegir idioma — el ícono del nav ya no descarga directo, abre un
@@ -1226,8 +1622,14 @@ document.addEventListener("DOMContentLoaded", function () {
     btn.setAttribute("aria-expanded", "false");
   }
 
+  btn.addEventListener("pointerenter", () => {
+    if (!btn.matches(":hover")) return;
+    playBeep();
+  });
+
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
+    playBeep();
     if (menu.hidden) open();
     else close();
   });
