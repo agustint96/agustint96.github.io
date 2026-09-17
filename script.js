@@ -1030,7 +1030,7 @@ function drawStars() {
     })();
   })());
 
-// Bass audio + notas musicales
+// Bass audio + notas del lick real, animadas en el orden de la frase
 (function () {
   const bassGroup = document.getElementById("group-256");
   if (!bassGroup) return;
@@ -1043,77 +1043,99 @@ function drawStars() {
   bassAudio.preload = "none"; // sólo se baja si tocan esa nota, no en cada carga
   bassAudio.volume = 0.6;
 
-  const NOTE_CHARS = ["♩", "♪", "♫", "♬"];
+  // Notas y ritmo reales del lick, confirmados: corchea (con silencio de
+  // corchea detrás) - negra, negra, negra - dos corcheas juntas - negra,
+  // negra, negra, negra. Van sobre La, Si, Reb, Re, Solb - Si, Re, Reb, Do,
+  // Si. Las notas aparecen SUELTAS (sin pentagrama dibujado): cada una es un
+  // glifo de duración real (♩ negra / ♪ corchea) con su bemol si corresponde.
+  // "step" es la altura relativa dentro de la frase (a partir de esas notas
+  // reales, medio tono por paso, tomando siempre el salto más cercano para
+  // que la melodía no pegue octavas raras) y sólo sirve para que cada nota
+  // flote más arriba o más abajo según el contorno. "gap" es la pausa hasta
+  // que sale la nota siguiente (incluye el silencio de corchea después de
+  // la anacrusa).
+  const LICK_NOTES = [
+    { text: "♪", step: 4, gap: 420 }, // La — anacrusa + silencio de corchea
+    { text: "♩", step: 5, gap: 420 }, // Si
+    { text: "♭♩", step: 6, gap: 420 }, // Reb
+    { text: "♩", step: 6.5, gap: 420 }, // Re
+    { text: "♭♫", step: 9.75, gap: 420 }, // Solb-Si — las dos corcheas juntas, un solo glifo
+    { text: "♩", step: 12.5, gap: 420 }, // Re
+    { text: "♭♩", step: 12, gap: 420 }, // Reb
+    { text: "♩", step: 11.5, gap: 420 }, // Do
+    { text: "♩", step: 11, gap: 0 }, // Si — nota final
+  ];
 
-  function spawnNotes(x, y) {
-    const count = 4;
-    const spacing = 22;
-    for (let i = 0; i < count; i++) {
-      const el = document.createElement("span");
-      el.textContent =
-        NOTE_CHARS[Math.floor(Math.random() * NOTE_CHARS.length)];
-      const size = 16 + Math.floor(Math.random() * 10);
-      // Notas en fila horizontal hacia la derecha, con pequeño offset vertical alternado
-      const startX = x + i * spacing;
-      const startY = y + (i % 2 === 0 ? 0 : -8);
-      const noteColor = "#f19280";
-      el.style.cssText = `
-        position: fixed;
-        left: ${startX}px;
-        top: ${startY}px;
-        font-size: ${size}px;
-        color: ${noteColor};
-        pointer-events: none;
-        z-index: 99999;
-        user-select: none;
-        line-height: 1;
-        transform-origin: center;
-        opacity: 1;
-      `;
-      document.body.appendChild(el);
+  function spawnNote(note, x, y, index) {
+    const el = document.createElement("span");
+    el.textContent = note.text;
+    const size = note.text.length > 1 ? 21 : 25; // con alteración: achica un poco para que entre
+    // Cada nota arranca un poco más a la derecha que la anterior (además de
+    // ir derivando ella sola), para que la fila quede prolija y no se pisen.
+    const startX = x + index * 34;
+    const startY = y - (note.step - 4) * 8; // más aguda = flota más arriba
+    el.style.cssText = `
+      position: fixed;
+      left: ${startX}px;
+      top: ${startY}px;
+      font-size: ${size}px;
+      color: #f19280;
+      text-shadow: 1px 2px 3px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      z-index: 99999;
+      user-select: none;
+      line-height: 1;
+      opacity: 1;
+    `;
+    document.body.appendChild(el);
 
-      // Velocidad horizontal suave hacia la derecha, sin caída vertical
-      const vx = 0.6 + Math.random() * 0.4;
-      const vy = -0.3 - Math.random() * 0.3;
-      let cx = startX;
-      let cy = startY;
-      let alpha = 1;
-      const holdMs = 3600; // tiempo opaco
-      const fadeDuration = 60; // frames para desvanecer (~1s)
-      let fadeFrame = 0;
-      const startTime = performance.now();
+    // Deriva suave y tranquila hacia la derecha, sin caída vertical: se
+    // mantiene opaca un rato y se desvanece.
+    const vx = 0.35 + Math.random() * 0.25;
+    const vy = -0.18 - Math.random() * 0.18;
+    let cx = startX;
+    let cy = startY;
+    let alpha = 1;
+    const holdMs = 4400; // deja tiempo a que salgan todas antes de que se apague la primera
+    const fadeDuration = 60;
+    let fadeFrame = 0;
+    const startTime = performance.now();
 
-      function animate(now) {
-        cx += vx;
-        cy += vy;
-        el.style.left = cx + "px";
-        el.style.top = cy + "px";
+    function animate(now) {
+      cx += vx;
+      cy += vy;
+      el.style.left = cx + "px";
+      el.style.top = cy + "px";
 
-        const elapsed = now - startTime;
-        if (elapsed < holdMs) {
-          // mantenerse visible
-          el.style.opacity = 1;
-          requestAnimationFrame(animate);
-        } else {
-          // desvanecer suavemente
-          fadeFrame++;
-          alpha = Math.max(0, 1 - fadeFrame / fadeDuration);
-          el.style.opacity = alpha;
-          if (alpha > 0) {
-            requestAnimationFrame(animate);
-          } else {
-            el.remove();
-          }
-        }
+      const elapsed = now - startTime;
+      if (elapsed < holdMs) {
+        el.style.opacity = 1;
+        requestAnimationFrame(animate);
+      } else {
+        fadeFrame++;
+        alpha = Math.max(0, 1 - fadeFrame / fadeDuration);
+        el.style.opacity = alpha;
+        if (alpha > 0) requestAnimationFrame(animate);
+        else el.remove();
       }
-      requestAnimationFrame(animate);
     }
+    requestAnimationFrame(animate);
+  }
+
+  function spawnLick(x, y) {
+    let delay = 0;
+    LICK_NOTES.forEach(function (note, index) {
+      setTimeout(function () {
+        spawnNote(note, x, y, index);
+      }, delay);
+      delay += note.gap;
+    });
   }
 
   const triggerBass = (x, y) => {
     bassAudio.currentTime = 0;
     bassAudio.play().catch(() => {});
-    spawnNotes(x, y);
+    spawnLick(x, y);
   };
   const hitBass = createAlphaHitTester(bassTarget);
 
