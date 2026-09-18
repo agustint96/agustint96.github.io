@@ -503,6 +503,53 @@ nav.nav-compact {
 .space-scene-front.space-visible {
   opacity: 1;
 }
+/* Escenario 3: se entra por el borde inferior del escenario principal (ver
+   edges.bottom de scenes.main, script.js) -lo opuesto a la escena de
+   espacio, que se entra por arriba-. Mismo patrón que .space-scene (fixed,
+   z-index 250, fade por opacity): FONDO.png (paisaje salmón con dos soles,
+   opaca) de fondo -la nave (z-index 253, .in-salmon) pasa por delante-. */
+.salmon-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  overflow: hidden;
+  background-color: var(--accent);
+  background-image: url("parallax/esc3/FONDO.png");
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  will-change: opacity;
+}
+.salmon-scene.salmon-visible {
+  opacity: 1;
+}
+/* "Fondo 2" del escenario 3: mismo trato que .space-scene-front (z-index
+   260, por encima de la nave). Contiene la silueta de cerro en primer
+   plano (FONDO2.png, transparente arriba del cerro) apoyada abajo -ver
+   .salmon-fondo2-; la nave pasa por detrás. */
+.salmon-scene-front {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  will-change: opacity;
+}
+.salmon-scene-front.salmon-visible {
+  opacity: 1;
+}
+.salmon-fondo2 {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+  display: block;
+}
 #space-scene-canvas {
   position: absolute;
   inset: 0;
@@ -613,7 +660,7 @@ nav.nav-compact {
    floatRock); adentro, los tres sprites se superponen en el mismo lugar y
    sólo se cruza la opacidad entre ellos: .is-moving prende/apaga entre
    "quieta" y "moviéndose", y dentro de "moviéndose" .frame-alt alterna entre
-   los dos cuadros (piedra_naranja_2/3) cada medio segundo -todo controlado
+   los dos cuadros (piedra_naranja_2/3) cada 2 segundos -todo controlado
    desde script.js mirando la velocidad actual del drifter. */
 .space-rock-orange {
   position: absolute;
@@ -654,6 +701,89 @@ nav.nav-compact {
   .space-rock-orange {
     width: 78px;
   }
+}
+/* Planeta violeta: 100px arriba de la piedra naranja (mismo anclaje
+   bottom/right, sólo corrido hacia arriba), muy transparente (10% de
+   opacidad, apenas se ve) y sólo con el flotado suave de floatPlanet
+   -a propósito no pasa por makeSpaceDrifter en script.js, así que no tiene
+   física de choque ni se corre de su lugar-. La nave pasa por delante sola:
+   #space-scene tiene z-index 250 y .starry-cohete-pair.in-space 253. */
+.space-planet-violeta {
+  position: absolute;
+  bottom: calc(24% + 100px);
+  right: 26%;
+  width: 140px;
+  max-width: 18vw;
+  height: auto;
+  opacity: 0.1;
+  pointer-events: none;
+  filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.3));
+  animation: floatPlanet 13s ease-in-out infinite;
+}
+@media (max-width: 900px) {
+  .space-planet-violeta {
+    width: 95px;
+  }
+}
+/* Piedra 2: misma física/flotado que .space-rock (ver makeSpaceDrifter en
+   script.js), ubicada del lado del astronauta para repartir el "debris" por
+   la escena en vez de amontonarlo del lado de la nave. */
+.space-rock-2 {
+  position: absolute;
+  top: 74%;
+  left: 61%;
+  width: 130px;
+  max-width: 13vw;
+  height: auto;
+  opacity: 0.9;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.4));
+  animation: floatRock 15s ease-in-out infinite;
+}
+@media (max-width: 900px) {
+  .space-rock-2 {
+    width: 65px;
+  }
+}
+/* Texto de arranque tipo BIOS: sólo el texto (sin pantalla negra propia)
+   flotando sobre el fondo estrellado de la escena de espacio profundo,
+   centrado y compacto -cada bloque (título, CPU, memoria, IDE) es un
+   hijo propio, separados por "gap" fijo en vez de space-between, para
+   que no se estiren a lo largo de toda la altura disponible-. */
+.space-bios {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 1.4em;
+  width: min(720px, 92vw);
+  font-family: "JetBrains Mono", "DM Mono", monospace;
+  font-size: clamp(0.95rem, 2.2vh, 1.4rem);
+  line-height: 1.5;
+  color: #d7ded2;
+  text-shadow:
+    0 0 6px rgba(215, 222, 210, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
+}
+@media (max-width: 900px) {
+  .space-bios {
+    width: 94vw;
+    font-size: clamp(0.75rem, 2vh, 1.05rem);
+  }
+}
+/* Cada carácter del texto BIOS es su propio <span> (ver script.js) para
+   poder moverlo individualmente con el "campo de repulsión" de la nave.
+   inline-block es necesario para que el transform (translate) tenga
+   efecto -en un span inline normal el navegador lo ignora-. white-space:
+   pre evita que un espacio, al quedar solo dentro de su propio inline-block
+   (en vez de ser texto plano entre otros elementos), colapse a ancho 0 -sin
+   esto, las palabras quedaban todas pegadas-. */
+.space-bios .bios-letter {
+  display: inline-block;
+  white-space: pre;
 }
 .construction-notice {
   position: fixed;
@@ -820,6 +950,12 @@ nav.nav-compact {
   max-width: 130px;
 }
 .starry-cohete-pair.in-space {
+  z-index: 253;
+}
+/* Mismo trato que .in-space (ver arriba) pero para el escenario 3 -su
+   propia clase, aunque sea idéntica, para no atar el nombre "in-space" a
+   una escena que no es la de espacio profundo. */
+.starry-cohete-pair.in-salmon {
   z-index: 253;
 }
 .starry-cohete {

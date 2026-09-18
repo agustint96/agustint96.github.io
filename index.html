@@ -283,7 +283,7 @@
       <!-- Piedra naranja: mismo comportamiento que .space-rock (física de
       choque en makeSpaceDrifter, ver script.js), pero con tres sprites -uno
       quieta (piedra_naranja_1) y dos "en movimiento" (piedra_naranja_2/3)
-      que se alternan cada medio segundo mientras está a la deriva. -->
+      que se alternan cada 2 segundos mientras está a la deriva. -->
       <div class="space-rock-orange" id="space-rock-orange">
         <img
           src="parallax/piedra_naranja_1.png"
@@ -303,6 +303,47 @@
           alt=""
           aria-hidden="true"
         />
+      </div>
+      <!-- Planeta violeta: sólo flota en el lugar (floatPlanet, igual que
+      .space-planet), 100px arriba de la piedra naranja -no es un drifter
+      en script.js: no choca con la nave ni se mueve de su lugar-. La nave
+      pasa por delante sola, sin código extra: #space-scene tiene z-index
+      250 y la nave (.in-space) 253, ver styles.css. -->
+      <img
+        src="parallax/planetavioleta.png"
+        class="space-planet-violeta"
+        id="space-planet-violeta"
+        alt=""
+        aria-hidden="true"
+      />
+      <img
+        src="parallax/piedra_2.png"
+        class="space-rock-2"
+        id="space-rock-2"
+        alt=""
+        aria-hidden="true"
+      />
+      <!-- Texto tipo BIOS de PC vieja: sólo el texto, sobre el fondo
+      estrellado que ya tiene la escena (nada de pantalla negra propia).
+      Cada <p> es un bloque separado para que el flex de .space-bios
+      (justify-content: space-between) los reparta a lo largo de casi
+      toda la altura, como si fueran las distintas líneas que va tirando
+      el POST al arrancar. -->
+      <div class="space-bios" id="space-bios" aria-hidden="true">
+        <p>
+          Award Modular Bios v4.51, An Energy Star Ally,<br />
+          Copyright (C) 1984-1994, Award Software, Inc.
+        </p>
+        <p>i486-DX2 CPU at 50 mhz</p>
+        <p>Memory Test: 3277 OK</p>
+        <p>
+          Award Plug and Play BIOS Extension v1.0<br />
+          Copyright (C) 1994, Award Software, Inc.<br />
+          &nbsp;&nbsp;&nbsp;&nbsp;Detecting IDE Primary Master ... WDC-20<br />
+          &nbsp;&nbsp;&nbsp;&nbsp;Detecting IDE Primary Slave ... None<br />
+          &nbsp;&nbsp;&nbsp;&nbsp;Detecting IDE Secondary Master ... Generic
+          CD-ROM
+        </p>
       </div>
       <p class="construction-notice">Sitio en construcción (14/9/2026)</p>
       <p class="space-empty-notice">БОТА НЕТ!</p>
@@ -326,6 +367,26 @@
         src="parallax/Astronauta.webp"
         class="space-astronaut"
         id="space-astronaut"
+        alt=""
+        aria-hidden="true"
+      />
+    </div>
+
+    <!-- Escenario 3: se entra volando hacia abajo desde el borde inferior
+    del escenario principal (ver edges.bottom en scenes.main, script.js), lo
+    opuesto al escenario 2 (espacio profundo) que se entra por arriba.
+    "Fondo" (FONDO.png, paisaje salmón con dos soles): detrás de la nave,
+    mismo z-index que #space-scene (250). -->
+    <div class="salmon-scene" id="salmon-scene" aria-hidden="true"></div>
+
+    <!-- "Fondo 2": delante de la nave, mismo patrón que #space-scene-front
+    (z-index 260, ver comentario largo ahí). FONDO2.png es la silueta de
+    cerro en primer plano, transparente arriba del cerro -la nave se ve por
+    ahí y desaparece detrás de la parte opaca-. -->
+    <div class="salmon-scene-front" id="salmon-scene-front" aria-hidden="true">
+      <img
+        src="parallax/esc3/FONDO2.png"
+        class="salmon-fondo2"
         alt=""
         aria-hidden="true"
       />

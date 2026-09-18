@@ -721,6 +721,13 @@ function drawStars() {
     // styles.css): recibe el mismo transform de cámara que spaceScene cuadro
     // a cuadro para que ambas se muevan/escalen como una sola cosa.
     const spaceSceneFront = document.getElementById("space-scene-front");
+    // Escenario 3: se entra por el borde inferior del principal (ver
+    // edges.bottom de scenes.main más abajo). Mismo split que
+    // space-scene/space-scene-front: salmonScene (el fondo, detrás de la
+    // nave) y salmonSceneFront (delante de la nave, por ahora vacío, ver
+    // .salmon-scene-front en styles.css).
+    const salmonScene = document.getElementById("salmon-scene");
+    const salmonSceneFront = document.getElementById("salmon-scene-front");
     const spaceRock = document.getElementById("space-rock");
     // "Debris" espacial reutilizable: un elemento flotando en el vacío que,
     // al chocar con la nave, recibe un impulso (más fuerte cuanto más rápido
@@ -787,12 +794,14 @@ function drawStars() {
     }
     const spaceDrifters = [];
     if (spaceRock) spaceDrifters.push(makeSpaceDrifter(spaceRock, 0.35));
+    const spaceRock2 = document.getElementById("space-rock-2");
+    if (spaceRock2) spaceDrifters.push(makeSpaceDrifter(spaceRock2, 0.35));
     const spaceRockOrange = document.getElementById("space-rock-orange");
     if (spaceRockOrange) {
       // Umbral chico para que el cruce de sprites se sienta enseguida al
       // golpearla, pero no parpadee por ruido cuando ya casi se detuvo.
       const MOVING_SPEED_THRESHOLD = 0.05;
-      const FRAME_MS = 1000; // cada cuadro (piedra_naranja_2/3) dura 1s mientras se mueve
+      const FRAME_MS = 1000; // cada cuadro (piedra_naranja_2/3) dura 2s mientras se mueve
       let wasMoving = false;
       let frameToggleInterval = null;
       spaceDrifters.push(
@@ -801,7 +810,7 @@ function drawStars() {
           spaceRockOrange.classList.toggle("is-moving", isMoving);
           if (isMoving && !wasMoving) {
             // Recién empieza a moverse: arranca el flip entre los dos
-            // cuadros "en movimiento", 1s cada uno, hasta que pare.
+            // cuadros "en movimiento", 2s cada uno, hasta que pare.
             spaceRockOrange.classList.remove("frame-alt");
             frameToggleInterval = setInterval(() => {
               spaceRockOrange.classList.toggle("frame-alt");
@@ -815,6 +824,81 @@ function drawStars() {
           wasMoving = isMoving;
         }),
       );
+    }
+    // Texto BIOS (ver .space-bios en index.html/styles.css): cada letra
+    // tiene un mini resorte propio (posición x/y + velocidad, igual
+    // espíritu que makeSpaceDrifter) que la empuja lejos de la nave cuando
+    // está cerca -"campo de repulsión"- y, a diferencia de las piedras, una
+    // fuerza de vuelta a (0,0) que la trae sola de nuevo a su lugar en
+    // cuanto la nave se aleja. Envuelve cada carácter en su propio <span>
+    // una sola vez acá: después sólo se le toca el transform en cada
+    // cuadro, nunca el texto/DOM de nuevo.
+    const spaceBios = document.getElementById("space-bios");
+    let updateBiosRepel = null;
+    if (spaceBios) {
+      const bioLetters = [];
+      spaceBios.querySelectorAll("p").forEach((p) => {
+        Array.from(p.childNodes).forEach((node) => {
+          if (node.nodeType !== Node.TEXT_NODE) return;
+          // Colapsa saltos de línea/indentación del HTML (no el   de
+          // los &nbsp; de indentación real del texto, que no matchea esta
+          // clase) igual que haría el navegador al renderizar texto normal
+          // -si no, cada espacio/salto de línea del source se volvería un
+          // <span> propio y separaría las palabras de más.
+          const text = node.textContent.replace(/[ \t\r\n]+/g, " ");
+          if (!text) {
+            node.remove();
+            return;
+          }
+          const frag = document.createDocumentFragment();
+          for (const ch of text) {
+            const span = document.createElement("span");
+            span.className = "bios-letter";
+            span.textContent = ch;
+            frag.appendChild(span);
+            bioLetters.push({ el: span, x: 0, y: 0, vx: 0, vy: 0 });
+          }
+          node.replaceWith(frag);
+        });
+      });
+      const BIOS_REPEL_RADIUS_RATIO = 1.4; // radio de empuje relativo al ancho de la nave
+      const BIOS_REPEL_STRENGTH = 3.2;
+      const BIOS_SPRING_K = 0.02; // qué tan fuerte "tira" cada letra de vuelta a su lugar
+      const BIOS_DAMPING = 0.82; // alto roce: nada de rebote, se asienta rápido
+      updateBiosRepel = (shipRect) => {
+        let shipCx = null,
+          shipCy = null,
+          radius = 0;
+        if (shipRect) {
+          shipCx = shipRect.left + shipRect.width / 2;
+          shipCy = shipRect.top + shipRect.height / 2;
+          radius = shipRect.width * BIOS_REPEL_RADIUS_RATIO;
+        }
+        bioLetters.forEach((l) => {
+          if (shipCx !== null) {
+            const rect = l.el.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const dx = cx - shipCx;
+            const dy = cy - shipCy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < radius) {
+              const force = (1 - dist / radius) * BIOS_REPEL_STRENGTH;
+              const nx = dist > 0.01 ? dx / dist : 1;
+              const ny = dist > 0.01 ? dy / dist : 0;
+              l.vx += nx * force;
+              l.vy += ny * force;
+            }
+          }
+          l.vx += -l.x * BIOS_SPRING_K;
+          l.vy += -l.y * BIOS_SPRING_K;
+          l.vx *= BIOS_DAMPING;
+          l.vy *= BIOS_DAMPING;
+          l.x += l.vx;
+          l.y += l.vy;
+          l.el.style.transform = `translate(${l.x.toFixed(2)}px, ${l.y.toFixed(2)}px)`;
+        });
+      };
     }
     const FLIGHT_MARGIN = 100; // cuánto puede salirse la nave del viewport, en px
     const FLIGHT_MARGIN_TOP = 160; // arriba necesita más margen: al rotar, la nave (130px) sobresale de su caja
@@ -833,12 +917,14 @@ function drawStars() {
     const SHIP_SPACE_SCALE_NEAR = 0.55;
     const SHIP_SPACE_SCALE_FAR = 0.49;
     // Zoom de cámara: escala el fondo completo de la escena (y la nave, para
-    // que quede a la misma escala) anclado en la posición actual de la nave
-    // -no en el centro fijo- así se siente que la cámara se acercó al objeto
-    // en vez de simplemente agrandar el sprite. El fondo se re-ancla cuadro
-    // a cuadro (ver spaceScene.style.transformOrigin en el tick) para que al
-    // navegar el fondo "pase" por debajo, como recorriendo el mapa de antes
-    // pero de cerca.
+    // que quede a la misma escala, ver shipScale más abajo -la nave "vive"
+    // en este mismo espacio, aunque técnicamente no sea hija del contenedor)
+    // anclado en la posición actual de la nave -no en el centro fijo- así
+    // se siente que la cámara se acercó al objeto en vez de simplemente
+    // agrandar el sprite. El fondo se re-ancla cuadro a cuadro (ver
+    // spaceScene.style.transformOrigin en el tick) para que al navegar el
+    // fondo "pase" por debajo, como recorriendo el mapa de antes pero de
+    // cerca.
     const CAMERA_ZOOM = 2.2;
     // El astronauta y la nave-bora ya no tienen su propio zoom separado: al
     // ser hijos de #space-scene/#space-scene-front heredan cameraZoom del
@@ -918,8 +1004,11 @@ function drawStars() {
     // (achique por volar alto, ver SHIP_SPACE_SCALE_*) se suavizan por
     // separado y en el mismo ritmo que el fondo, para que subir o bajar el
     // zoom se sienta como una cámara alejándose/acercándose de toda la
-    // escena junta -nave incluida- y no como si la nave sola se achicara en
-    // el lugar.
+    // escena junta -nave incluida, la nave "vive" en ese mismo espacio- y
+    // no como si la nave sola se achicara en el lugar mientras el fondo
+    // alrededor crece o encoge distinto. El tamaño "real" de la nave
+    // (shipHeightScale solo, sin cameraZoom) es el que se ve con M/Espacio
+    // apretado, cuando cameraZoom baja a 1.
     let cameraZoom = 1;
     let shipHeightScale = 1;
     const SHIP_SPACE_SPEED_MULT = 0.35; // velocidad muy reducida en la escena de espacio profundo
@@ -950,6 +1039,10 @@ function drawStars() {
           requiresDesktop: true,
           enter: (w, h) => ({ x: w * 0.38 - 65, y: h - 150 }),
         },
+        bottom: {
+          to: "salmon",
+          enter: (w) => ({ x: w * 0.6 - 65, y: -FLIGHT_MARGIN_TOP + 50 }),
+        },
       },
     });
     registerScene("space", {
@@ -971,6 +1064,20 @@ function drawStars() {
         bottom: {
           to: "main",
           enter: () => ({ x: 40, y: -FLIGHT_MARGIN_TOP + 50 }),
+        },
+      },
+    });
+    registerScene("salmon", {
+      setVisible: (visible) => {
+        [salmonScene, salmonSceneFront].forEach(
+          (el) => el && el.classList.toggle("salmon-visible", visible),
+        );
+      },
+      shipClass: "in-salmon",
+      edges: {
+        top: {
+          to: "main",
+          enter: (w, h) => ({ x: w * 0.6 - 65, y: h - 150 }),
         },
       },
     });
@@ -1042,7 +1149,10 @@ function drawStars() {
       o = null,
       l = !1,
       gamepadActive = false,
-      wasGamepadActive = false;
+      wasGamepadActive = false,
+      // Click izquierdo mantenido: mismo rol que RB en el joystick, para el
+      // seguimiento por mouse (no aplica a touch, que no dispara mousedown).
+      mouseBoost = false;
     const isMobileTouch = () => window.innerWidth <= 600;
     const GAMEPAD_DEADZONE = 0.2;
     const GAMEPAD_THRUST_BASE = 0.3; // velocidad normal del stick/flechitas
@@ -1071,6 +1181,12 @@ function drawStars() {
     (document.addEventListener("mousemove", (t) => {
       ((i = t.clientX), (o = t.clientY), (l = !0));
     }),
+      document.addEventListener("mousedown", (t) => {
+        if (t.button === 0) mouseBoost = true;
+      }),
+      document.addEventListener("mouseup", () => {
+        mouseBoost = false;
+      }),
       document.addEventListener(
         "touchstart",
         (t) => {
@@ -1105,6 +1221,7 @@ function drawStars() {
       ),
       document.addEventListener("mouseleave", () => {
         l = !1;
+        mouseBoost = false;
       }),
       requestAnimationFrame(function tick() {
         const gp = getFirstGamepad();
@@ -1170,11 +1287,23 @@ function drawStars() {
           n += gx * thrust;
           r += gy * thrust;
         } else {
-          const followThreshold = l ? (isMobileTouch() ? 120 : 220) : 0;
+          // Con el click izquierdo mantenido, la nave se acerca más rápido y
+          // más cerca del cursor -mismo boost que RB en el joystick (2x),
+          // más un umbral de seguimiento menor para que llegue más cerca-.
+          const boostMult = mouseBoost
+            ? GAMEPAD_THRUST_BOOST / GAMEPAD_THRUST_BASE
+            : 1;
+          const followThreshold = l
+            ? mouseBoost
+              ? 40
+              : isMobileTouch()
+                ? 120
+                : 220
+            : 0;
           if (v > followThreshold + 1) {
             const t = l ? (v - followThreshold) / v : 1;
-            ((n += m * t * 0.022 * speedMult),
-              (r += h * t * 0.022 * speedMult));
+            ((n += m * t * 0.022 * speedMult * boostMult),
+              (r += h * t * 0.022 * speedMult * boostMult));
           }
         }
 
@@ -1281,6 +1410,15 @@ function drawStars() {
             (scene.heightScale.near - scene.heightScale.far) * spaceT
           : 1;
         shipHeightScale += (targetHeightScale - shipHeightScale) * 0.05;
+        // La nave "vive" en el mismo espacio que el fondo: se multiplica
+        // por cameraZoom igual que rocas/planeta (que sí son hijos de
+        // #space-scene y lo heredan solos) para escalar junto con todo lo
+        // demás en vez de quedar de un tamaño fijo mientras el resto crece
+        // o encoge alrededor -si no, en la vista normal (cameraZoom alto)
+        // el fondo se agranda pero la nave se queda del mismo porte y
+        // termina viéndose chiquita en comparación. El tamaño "real" de la
+        // nave (shipHeightScale solo) es el que se ve en la vista de mapa
+        // completo (M/Espacio apretado), donde cameraZoom baja a 1.
         shipScale = shipHeightScale * cameraZoom;
         if (scene.camera) {
           // La nave puede volar hasta FLIGHT_MARGIN/FLIGHT_MARGIN_TOP afuera
@@ -1289,9 +1427,14 @@ function drawStars() {
           // queda afuera de la pantalla, el lado opuesto del fondo escalado
           // se despega del borde y deja ver el starry normal del sitio por
           // detrás. Se clampea a los límites del viewport para que el fondo
-          // siga cubriendo toda la pantalla siempre.
-          const camX = Math.max(0, Math.min(window.innerWidth, e));
-          const camY = Math.max(0, Math.min(window.innerHeight, a));
+          // siga cubriendo toda la pantalla siempre. Usa shipCenterX/Y (el
+          // centro real del sprite, +65 sobre e/a) y no e/a directo -e/a es
+          // la esquina superior-izquierda de la caja de 130x130, ancorar
+          // ahí en vez del centro corría el fondo ~65px de la nave en cada
+          // zoom, así el mapa completo (M/Espacio) no quedaba centrado en
+          // su posición real.
+          const camX = Math.max(0, Math.min(window.innerWidth, shipCenterX));
+          const camY = Math.max(0, Math.min(window.innerHeight, shipCenterY));
           const camOrigin = `${camX}px ${camY}px`;
           const camTransform = `scale(${cameraZoom})`;
           // Mismo transform para todos los elementos que declaró la escena
@@ -1314,6 +1457,7 @@ function drawStars() {
         const driftShipRect =
           currentSceneId === "space" ? t.getBoundingClientRect() : null;
         spaceDrifters.forEach((update) => update(driftShipRect, n, r));
+        if (updateBiosRepel) updateBiosRepel(driftShipRect);
         ((t.style.opacity = f),
           (t.style.transform = `translate(${e}px, ${a}px) rotate(${s}deg) scale(${shipScale})`),
           requestAnimationFrame(tick));
@@ -1331,7 +1475,8 @@ function drawStars() {
       // overflow/clip-path en la caja de la nave (ver .starry-cohete-pair en
       // CSS), así que un brillo grande puede difuminarse libre sin cortarse
       // en un contorno cuadrado.
-      const NEAR_LIGHT_FILTER = "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))";
+      const NEAR_LIGHT_FILTER =
+        "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))";
       applyLightFilter = () => {
         if (!lightOn) {
           d.style.filter = "none";
