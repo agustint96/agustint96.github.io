@@ -569,6 +569,31 @@ nav.nav-compact {
 .game-scene.game-visible {
   opacity: 1;
 }
+/* Fondo starry azul del escenario 4. En la intro está a pleno (game-intro): al
+   ponerse la clase es instantáneo (transition: none) y cuando esc4-game.js se
+   la saca (ya se fueron las navecitas) se funde a negro con la transición de
+   abajo. Después vuelve de a poco: --fondo-color (0 a 1) lo va subiendo
+   esc4-game.js a medida que la nave se colorea, así todo el escenario pasa de
+   blanco y negro al azul starry. El cambio de valor va por escalones y esta
+   misma transición los suaviza (solo cambia el opacity: no repinta nada). */
+.game-scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--navy);
+  background-image: url("parallax/fondo-estrellado.webp");
+  background-size: cover;
+  background-position: center;
+  opacity: var(--fondo-color, 0);
+  pointer-events: none;
+  transition: opacity 1s ease;
+  will-change: opacity;
+}
+.game-scene.game-intro::before {
+  opacity: 1;
+  transition: none;
+}
 .game-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -583,7 +608,6 @@ nav.nav-compact {
   width: 40vmin;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
-  background: #000;
   display: grid;
   place-items: center;
 }
@@ -1015,6 +1039,31 @@ nav.nav-compact {
    la nave) el gris se levanta y la sombra interna es suave. */
 .starry-cohete-pair.in-game.luz-on .starry-cohete-top {
   filter: url(#nave-sombra-interna-luz);
+}
+/* Intro del escenario 4: la nave llega a color y con la luz apagada, y sigue
+   a color mientras la pantalla negra (.game-tapa) cae encima; esc4-game.js le
+   saca game-color cuando ya está toda negra y ella no se ve, así reaparece en
+   blanco y negro cuando prende la luz. Va al final para ganarle a las reglas de arriba, y con !important
+   el sprite de atrás porque script.js le escribe el gris en línea. */
+.starry-cohete-pair.in-game.game-color .starry-cohete-top,
+.starry-cohete-pair.in-game.game-color .starry-cohete-fondo {
+  filter: none !important;
+}
+/* Pantalla negra del escenario 4: al terminar la intro cae (clase "cae",
+   esc4-game.js) por encima de todo, la nave incluida, así que se oscurece
+   junto con el fondo. Se levanta, de a poco, cuando la nave prende la luz. */
+.game-tapa {
+  position: fixed;
+  inset: 0;
+  z-index: 254;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+.game-tapa.cae {
+  opacity: 1;
+  transition: opacity 1s ease;
 }
 .starry-cohete {
   position: absolute;

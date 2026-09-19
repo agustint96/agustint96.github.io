@@ -291,9 +291,18 @@ function resizeBurst() {
 }
 (resizeBurst(), window.addEventListener("resize", resizeBurst));
 let burstParticles = [];
+let burstDirty = false; // quedó algo dibujado que hay que borrar
 function drawBurst() {
+  // Sin partículas y con el canvas ya limpio no hay nada que hacer: limpiar un
+  // canvas a pantalla completa en cada cuadro tiene su costo (y el juego se
+  // nota).
+  if (!burstParticles.length && !burstDirty) {
+    requestAnimationFrame(drawBurst);
+    return;
+  }
   (bctx.clearRect(0, 0, burstCanvas.width, burstCanvas.height),
     (burstParticles = burstParticles.filter((t) => t.alpha > 0.01)));
+  burstDirty = burstParticles.length > 0;
   for (const t of burstParticles)
     ((bctx.globalAlpha = t.alpha),
       (bctx.fillStyle = "#f19280"),
@@ -401,7 +410,7 @@ if (p4el) {
 const p7Img = p7el ? p7el.querySelector("img") : null;
 const getP7DangerRect = p7Img ? createOpaqueBoundsTracker(p7Img) : null;
 const P7_DANGER_MARGIN = 70; // px de colchón: si la nave entra acá, huye
-const P7_SAFE_MARGIN = 550; // px: recién si la nave sale de acá, puede volver
+const P7_SAFE_MARGIN = 90; // px: recién si la nave sale de acá, puede volver
 const P7_FLEE_SPEED = 18; // px por frame que se corre hacia la izquierda al huir
 const P7_SHRINK_RATE = 0.018; // cuánto se achica por frame al huir
 const P7_RETURN_SPEED = 3; // px por frame que recupera al volver (de a poco)
@@ -447,17 +456,22 @@ function updateP7Flee() {
 }
 
 function tick() {
-  (updateP7Flee(),
-    (currentX = lerp(currentX, targetX, 0.04)),
-    group256 &&
-      (group256.style.transform = `translateX(${MAX_PX * currentX * DEPTH_256 * 100}px)`),
-    p3el &&
-      (p3el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P3 * 100}px)`),
-    p7el &&
-      (p7el.style.transform = `translateX(${MAX_PX * currentX * DEPTH_P7 * 100 + p7FleeOffsetX}px) scale(${p7FleeScale})`),
-    p8el &&
-      (p8el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P8 * 100}px)`),
-    requestAnimationFrame(tick));
+  // El parallax solo se mueve cuando la escena principal es la que se ve; en el
+  // resto de los escenarios (la principal queda oculta) no tiene sentido tocar
+  // los estilos de todas esas capas cuadro a cuadro.
+  if (currentSceneId === "main") {
+    (updateP7Flee(),
+      (currentX = lerp(currentX, targetX, 0.04)),
+      group256 &&
+        (group256.style.transform = `translateX(${MAX_PX * currentX * DEPTH_256 * 100}px)`),
+      p3el &&
+        (p3el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P3 * 100}px)`),
+      p7el &&
+        (p7el.style.transform = `translateX(${MAX_PX * currentX * DEPTH_P7 * 100 + p7FleeOffsetX}px) scale(${p7FleeScale})`),
+      p8el &&
+        (p8el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P8 * 100}px)`));
+  }
+  requestAnimationFrame(tick);
 }
 (document.addEventListener("mousemove", (t) => {
   if (window.innerWidth <= 600) return;
@@ -508,6 +522,11 @@ function drawStarSparkle(x, y, r, rot) {
   ctx.restore();
 }
 function drawStars() {
+  // Solo en la principal (en los demás escenarios este canvas está oculto).
+  if (currentSceneId !== "main") {
+    requestAnimationFrame(drawStars);
+    return;
+  }
   (ctx.clearRect(0, 0, starCanvas.width, starCanvas.height),
     (stars = stars.filter((t) => t.alpha > 0.01)));
   for (const t of stars)
@@ -639,6 +658,12 @@ function drawStars() {
       ctx.restore();
     }
     function drawSpaceStars() {
+      // Son ~185 destellos (con save/rotate/curvas cada uno) más un clear a
+      // pantalla completa: solo se dibujan cuando el escenario de espacio se ve.
+      if (!isSpaceVisible()) {
+        requestAnimationFrame(drawSpaceStars);
+        return;
+      }
       ctx2.clearRect(0, 0, canvas.width, canvas.height);
       for (const s of spaceStars) {
         let alpha = s.baseAlpha;
@@ -868,10 +893,16 @@ function drawStars() {
       const BIOS_REPEL_STRENGTH = 3.2;
       const BIOS_SPRING_K = 0.02; // qué tan fuerte "tira" cada letra de vuelta a su lugar
       const BIOS_DAMPING = 0.82; // alto roce: nada de rebote, se asienta rápido
+      // Cuando ninguna letra se está moviendo y la nave no está cerca, no hay nada
+      // que calcular ni que escribirle al DOM (esto corría cuadro a cuadro en
+      // todos los escenarios).
+      let biosEnReposo = false;
       updateBiosRepel = (shipRect) => {
+        if (!shipRect && biosEnReposo) return;
         let shipCx = null,
           shipCy = null,
           radius = 0;
+        let hayMovimiento = false;
         if (shipRect) {
           shipCx = shipRect.left + shipRect.width / 2;
           shipCy = shipRect.top + shipRect.height / 2;
@@ -899,8 +930,16 @@ function drawStars() {
           l.vy *= BIOS_DAMPING;
           l.x += l.vx;
           l.y += l.vy;
+          if (
+            Math.abs(l.x) > 0.01 ||
+            Math.abs(l.y) > 0.01 ||
+            Math.abs(l.vx) > 0.01 ||
+            Math.abs(l.vy) > 0.01
+          )
+            hayMovimiento = true;
           l.el.style.transform = `translate(${l.x.toFixed(2)}px, ${l.y.toFixed(2)}px)`;
         });
+        biosEnReposo = !shipRect && !hayMovimiento;
       };
     }
     const FLIGHT_MARGIN = 100; // cuánto puede salirse la nave del viewport, en px
@@ -919,11 +958,6 @@ function drawStars() {
     // como un salto.
     const SHIP_SPACE_SCALE_NEAR = 0.55;
     const SHIP_SPACE_SCALE_FAR = 0.49;
-    // Zoom de cámara del escenario 4 (mismo criterio que CAMERA_ZOOM más
-    // abajo); en pantallas chicas el mundo del juego ya es angosto, así que
-    // se acerca menos.
-    const GAME_CAMERA_ZOOM = 1.5;
-    const GAME_CAMERA_ZOOM_MOBILE = 1.25;
     // Zoom de cámara: escala el fondo completo de la escena (y la nave, para
     // que quede a la misma escala, ver shipScale más abajo -la nave "vive"
     // en este mismo espacio, aunque técnicamente no sea hija del contenedor)
@@ -933,7 +967,19 @@ function drawStars() {
     // spaceScene.style.transformOrigin en el tick) para que al navegar el
     // fondo "pase" por debajo, como recorriendo el mapa de antes pero de
     // cerca.
-    const CAMERA_ZOOM = 2.2;
+    // El escenario 4 usa este mismo zoom (GAME_CAMERA_ZOOM): si se cambia acá,
+    // cambian los dos.
+    const CAMERA_ZOOM = 1.5;
+    // En pantallas chicas el mundo del escenario 4 ya es angosto, así que se
+    // acerca menos. (El escenario 2 solo se entra en escritorio.)
+    const GAME_CAMERA_ZOOM = CAMERA_ZOOM;
+    const GAME_CAMERA_ZOOM_MOBILE = 1.25;
+    // Velocidad de la nave en el escenario 4 (multiplica el empuje del teclado,
+    // el joystick y el seguimiento del mouse). Antes compensaba el zoom
+    // (1 / zoom = 0,67, más lenta que en el resto) y con los polígonos cayendo
+    // cada vez más rápido no alcanzaba para esquivar: se subió a 2,5, pero
+    // quedó demasiado rápida; ahora va a 1,5 (más del doble que al principio).
+    const GAME_SHIP_SPEED = 1.2;
     // El astronauta y la nave-bora ya no tienen su propio zoom separado: al
     // ser hijos de #space-scene/#space-scene-front heredan cameraZoom del
     // contenedor automáticamente, igual que el planeta -antes se les
@@ -1087,8 +1133,8 @@ function drawStars() {
     // se ajuste sin esperar a que el usuario la vuelva a tocar.
     let applyLightFilter = null;
     // Igual que applyLightFilter, se asigna junto con la luz de la nave: fuerza
-    // prendida/apagada (sin sonido) y devuelve el estado anterior. La usa el
-    // escenario 4, donde la nave siempre entra con la luz prendida.
+    // prendida/apagada (sin sonido, salvo que se pida) y devuelve el estado
+    // anterior. La usa el escenario 4.
     let forceShipLight = null;
 
     // --- Registro de escenarios ------------------------------------
@@ -1177,10 +1223,11 @@ function drawStars() {
       setVisible: (visible) => {
         if (gameScene) gameScene.classList.toggle("game-visible", visible);
         if (window.esc4Game) window.esc4Game.setActive(visible);
-        // La nave entra con la luz prendida (es lo que ilumina el fondo) y al
+        // La nave entra con la luz apagada (la intro es a color; la prende
+        // esc4-game.js cuando se van las navecitas, ver shipLightSet) y al
         // salir vuelve a como estaba.
         if (forceShipLight) {
-          if (visible) gameLightBefore = forceShipLight(true);
+          if (visible) gameLightBefore = forceShipLight(false);
           else if (gameLightBefore !== null) {
             forceShipLight(gameLightBefore);
             gameLightBefore = null;
@@ -1188,9 +1235,9 @@ function drawStars() {
         }
       },
       shipClass: "in-game",
-      // Como el fondo con zoom recorre la nave más rápido, se compensa igual
-      // que en el escenario 2 (ver speedMult ahí).
-      speedMult: 1 / gameZoom,
+      // Velocidad de la nave, ver GAME_SHIP_SPEED (no se compensa el zoom como en
+      // el escenario 2: acá el juego necesita una nave ágil).
+      speedMult: GAME_SHIP_SPEED,
       heightScale: { near: SHIP_SPACE_SCALE_NEAR, far: SHIP_SPACE_SCALE_NEAR },
       camera: {
         zoom: gameZoom,
@@ -1206,12 +1253,21 @@ function drawStars() {
       light: {
         off: "grayscale(1)",
         filter:
-          "grayscale(1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.75)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.5)) drop-shadow(0 0 130px rgba(255, 255, 255, 0.35))",
-        volume: 0.2,
+          "grayscale(1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.75)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.5))",
+        // (Sin un tercer resplandor de 130px: es un blur enorme, lo más caro de
+        // pintar, y la luz grande ya la dibuja el juego en su canvas.)
+        // Más fuerte que en los otros escenarios: el sonido de luz on marca el
+        // momento en que empieza el juego y tiene que oírse bien.
+        volume: 0.9,
       },
       edges: {
         right: {
           to: "main",
+          // Irse a la derecha tiene que ser una decisión: la nave se tiene que
+          // salir 450 px de la pantalla (el resto de los bordes piden 100). Con
+          // el juego esquivando, si no, se sale casi sin querer. Ver
+          // progresoSalida() en js/esc4-game.js, que avisa mientras se acerca.
+          margin: 450,
           enter: (w, h) => ({ x: 40, y: h / 2 - 65 }),
         },
       },
@@ -1294,8 +1350,8 @@ function drawStars() {
     // un instante, el tick ignora mouse/teclado/joystick (si no, la nave
     // volvería al mouse en pleno golpe). shipPlace(x, y)
     // pone el centro de la nave en ese punto de la pantalla y la deja quieta
-    // mientras se lo siga llamando, mirando para arriba (rotación 0): así
-    // arranca cada partida abajo, al medio. Mientras está sostenida tampoco
+    // mientras se lo siga llamando, mirando para arriba (rotación 0, salvo que
+    // se pida conservarGiro): así arranca cada partida abajo, al medio. Mientras está sostenida tampoco
     // gira hacia el mouse.
     // shipFace(grados) hace girar la nave (suave) hacia esa rotación mientras se
     // lo siga llamando, sin que el mouse la gire: la intro la usa para que mire
@@ -1313,6 +1369,13 @@ function drawStars() {
       s += giro;
       lockShip();
     };
+    // shipLeave(borde) hace cruzar a la nave por ese borde ("left", "right", "top"
+    // o "bottom") como si lo hubiera tocado: lo usa el escenario 4 cuando termina
+    // el nivel (la nave completó su color) para volver al escenario principal.
+    let forcedEdge = null;
+    window.shipLeave = (side) => {
+      forcedEdge = side;
+    };
     window.shipFace = (deg) => {
       let d = deg - s;
       for (; d > 180; ) d -= 360;
@@ -1320,10 +1383,10 @@ function drawStars() {
       s += 0.15 * d;
       shipFaceUntil = performance.now() + 100;
     };
-    window.shipPlace = (x, y) => {
+    window.shipPlace = (x, y, conservarGiro) => {
       e = x - 65;
       a = y - 65;
-      s = 0;
+      if (!conservarGiro) s = 0;
       lockShip();
     };
     const isMobileTouch = () => window.innerWidth <= 600;
@@ -1489,10 +1552,15 @@ function drawStars() {
         e += n;
         a += r;
 
-        const minX = -FLIGHT_MARGIN,
-          maxX = window.innerWidth + FLIGHT_MARGIN,
-          minY = -FLIGHT_MARGIN_TOP,
-          maxY = window.innerHeight + FLIGHT_MARGIN;
+        // Cada borde de un escenario puede pedir su propio margen (edges.<borde>.margin):
+        // cuánto tiene que salirse la nave del viewport para cruzar al escenario del
+        // otro lado. Un margen grande hace que irse sea una decisión, no un roce.
+        const edgeMargin = (side, dflt) =>
+          (scene.edges[side] && scene.edges[side].margin) || dflt;
+        const minX = -edgeMargin("left", FLIGHT_MARGIN),
+          maxX = window.innerWidth + edgeMargin("right", FLIGHT_MARGIN),
+          minY = -edgeMargin("top", FLIGHT_MARGIN_TOP),
+          maxY = window.innerHeight + edgeMargin("bottom", FLIGHT_MARGIN);
         let touchedEdge = null;
         if (e < minX) {
           e = minX;
@@ -1518,6 +1586,10 @@ function drawStars() {
         // escenarios), cruza a ese escenario; si no, el clamp de arriba ya
         // alcanza -es un borde sin escenario del otro lado, como hoy son
         // left/right en la principal y en la de espacio-.
+        if (forcedEdge) {
+          touchedEdge = forcedEdge;
+          forcedEdge = null;
+        }
         const edge = touchedEdge && scene.edges[touchedEdge];
         if (edge && !(edge.requiresDesktop && isMobileTouch())) {
           const prevScene = scene;
@@ -1635,7 +1707,8 @@ function drawStars() {
             el.style.transformOrigin = camOrigin;
             el.style.transform = camTransform;
           });
-          if (scene.camera.onFrame) scene.camera.onFrame(cameraZoom, camX, camY);
+          if (scene.camera.onFrame)
+            scene.camera.onFrame(cameraZoom, camX, camY);
         }
         // getBoundingClientRect ya devuelve la caja en pantalla
         // post-transform (incluye el zoom/paneo de cámara), así que cada
@@ -1695,11 +1768,13 @@ function drawStars() {
       };
       const toggleLight = () => setLight(!lightOn);
       toggleShipLight = toggleLight;
-      forceShipLight = (on) => {
+      forceShipLight = (on, silent = true) => {
         const before = lightOn;
-        if (before !== on) setLight(on, true);
+        if (before !== on) setLight(on, silent);
         return before;
       };
+      // Prende/apaga la luz con su sonido (la usa el escenario 4).
+      window.shipLightSet = (on) => forceShipLight(on, false);
       // La caja de la nave (130x130) es casi toda transparente y sigue al
       // mouse: si aceptara clicks en todo su rectángulo (pointer-events:auto
       // en CSS), terminaba tapando los clicks a la guitarra/bajo/satélite de

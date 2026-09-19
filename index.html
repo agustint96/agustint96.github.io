@@ -57,13 +57,23 @@
         height="100%"
         color-interpolation-filters="sRGB"
       >
-        <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="gris" />
+        <feColorMatrix
+          in="SourceGraphic"
+          type="saturate"
+          values="0"
+          result="gris"
+        />
         <feComponentTransfer in="SourceAlpha" result="afuera">
           <feFuncA type="table" tableValues="1 0" />
         </feComponentTransfer>
         <feGaussianBlur in="afuera" stdDeviation="4.5" result="difusa" />
         <feOffset in="difusa" dx="2" dy="4" result="corrida" />
-        <feComposite in="corrida" in2="SourceAlpha" operator="in" result="sombra" />
+        <feComposite
+          in="corrida"
+          in2="SourceAlpha"
+          operator="in"
+          result="sombra"
+        />
         <feColorMatrix
           in="sombra"
           type="matrix"
@@ -86,7 +96,12 @@
         height="100%"
         color-interpolation-filters="sRGB"
       >
-        <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="gris0" />
+        <feColorMatrix
+          in="SourceGraphic"
+          type="saturate"
+          values="0"
+          result="gris0"
+        />
         <feComponentTransfer in="gris0" result="gris">
           <feFuncR type="linear" slope="1.4" intercept="0.1" />
           <feFuncG type="linear" slope="1.4" intercept="0.1" />
@@ -97,7 +112,12 @@
         </feComponentTransfer>
         <feGaussianBlur in="afuera" stdDeviation="2.5" result="difusa" />
         <feOffset in="difusa" dx="1" dy="2.5" result="corrida" />
-        <feComposite in="corrida" in2="SourceAlpha" operator="in" result="sombra" />
+        <feComposite
+          in="corrida"
+          in2="SourceAlpha"
+          operator="in"
+          result="sombra"
+        />
         <feColorMatrix
           in="sombra"
           type="matrix"
@@ -112,220 +132,224 @@
     </svg>
     <div class="site-content" id="site-content">
       <nav id="main-nav">
-      <a
-        class="power-btn"
-        href="sisop.html"
-        aria-label="Encender la PC — Consola SQL"
-        title="Encender SISOP"
-      >
-        <svg viewBox="0 3.6 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M12 3.4v8.2"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-          />
-          <path
-            d="M6.7 7.3a8 8 0 1 0 10.6 0"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-          />
-        </svg>
-      </a>
+        <a
+          class="power-btn"
+          href="sisop.html"
+          aria-label="Encender la PC — Consola SQL"
+          title="Encender SISOP"
+        >
+          <svg viewBox="0 3.6 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M12 3.4v8.2"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M6.7 7.3a8 8 0 1 0 10.6 0"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </a>
 
-      <ul class="nav-links">
-        <li>
-          <a
-            href="https://github.com/agustint96"
-            aria-label="Github"
-            title="Github"
-          >
-            <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path
-                fill-rule="evenodd"
-                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-              />
-            </svg>
-          </a>
-        </li>
+        <ul class="nav-links">
+          <li>
+            <a
+              href="https://github.com/agustint96"
+              aria-label="Github"
+              title="Github"
+            >
+              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path
+                  fill-rule="evenodd"
+                  d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+                />
+              </svg>
+            </a>
+          </li>
 
-        <li class="cv-picker" id="cvPicker">
-          <button
-            type="button"
-            class="cv-btn"
-            aria-haspopup="true"
-            aria-expanded="false"
-            aria-label="CV"
-            title="CV"
-          >
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M6 2.75h8l4 4v13.5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3.75a1 1 0 0 1 1-1z"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M14 2.75v4h4"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M8.5 12.5h7M8.5 15.5h7M8.5 18.5h4"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-              />
-            </svg>
-          </button>
-          <ul class="cv-menu" hidden>
-            <li>
-              <a href="CV_Agustin_Tardella.pdf" download>
-                <span class="cv-menu-label">
-                  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path
-                      d="M8 1.5v8.5m0 0L4.75 6.75M8 10l3.25-3.25"
-                      stroke="currentColor"
-                      stroke-width="1.4"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M2.5 12v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V12"
-                      stroke="currentColor"
-                      stroke-width="1.4"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Español
-                </span>
-              </a>
-            </li>
-            <li>
-              <a href="CV_Agustin_Tardella_EN.pdf" download>
-                <span class="cv-menu-label">
-                  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path
-                      d="M8 1.5v8.5m0 0L4.75 6.75M8 10l3.25-3.25"
-                      stroke="currentColor"
-                      stroke-width="1.4"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M2.5 12v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V12"
-                      stroke="currentColor"
-                      stroke-width="1.4"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  English
-                </span>
-              </a>
-            </li>
-          </ul>
-        </li>
+          <li class="cv-picker" id="cvPicker">
+            <button
+              type="button"
+              class="cv-btn"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-label="CV"
+              title="CV"
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M6 2.75h8l4 4v13.5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3.75a1 1 0 0 1 1-1z"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M14 2.75v4h4"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M8.5 12.5h7M8.5 15.5h7M8.5 18.5h4"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <ul class="cv-menu" hidden>
+              <li>
+                <a href="CV_Agustin_Tardella.pdf" download>
+                  <span class="cv-menu-label">
+                    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path
+                        d="M8 1.5v8.5m0 0L4.75 6.75M8 10l3.25-3.25"
+                        stroke="currentColor"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M2.5 12v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V12"
+                        stroke="currentColor"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    Español
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a href="CV_Agustin_Tardella_EN.pdf" download>
+                  <span class="cv-menu-label">
+                    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path
+                        d="M8 1.5v8.5m0 0L4.75 6.75M8 10l3.25-3.25"
+                        stroke="currentColor"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M2.5 12v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V12"
+                        stroke="currentColor"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    English
+                  </span>
+                </a>
+              </li>
+            </ul>
+          </li>
 
-        <li>
-          <a
-            href="https://mail.google.com/mail/?view=cm&fs=1&to=agustintardella7@gmail.com"
-            aria-label="Contacto"
-            title="Contacto"
-          >
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <rect
-                x="2.5"
-                y="5"
-                width="19"
-                height="14"
-                rx="2"
-                stroke="currentColor"
-                stroke-width="1.6"
-              />
-              <path
-                d="M3.5 6.5l8.5 7 8.5-7"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </a>
-        </li>
-      </ul>
-    </nav>
+          <li>
+            <a
+              href="https://mail.google.com/mail/?view=cm&fs=1&to=agustintardella7@gmail.com"
+              aria-label="Contacto"
+              title="Contacto"
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect
+                  x="2.5"
+                  y="5"
+                  width="19"
+                  height="14"
+                  rx="2"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                />
+                <path
+                  d="M3.5 6.5l8.5 7 8.5-7"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </a>
+          </li>
+        </ul>
+      </nav>
 
-    <main id="main-content">
-    <div class="starry-bg">
-      <canvas id="star-canvas"></canvas>
+      <main id="main-content">
+        <div class="starry-bg">
+          <canvas id="star-canvas"></canvas>
 
-      <div class="starry-p9-wrap">
-        <img src="parallax/parallax 9.webp" class="starry-p9" alt="" />
-      </div>
+          <div class="starry-p9-wrap">
+            <img src="parallax/parallax 9.webp" class="starry-p9" alt="" />
+          </div>
 
-      <div class="footer-col-left">
-        <span class="name">AGUSTIN TARDELLA</span>
+          <div class="footer-col-left">
+            <span class="name">AGUSTIN TARDELLA</span>
 
-        <span class="role"> Analista de Sistemas Informáticos </span>
+            <span class="role"> Analista de Sistemas Informáticos </span>
 
-        <span class="role"> Desarrollador Full Stack </span>
+            <span class="role"> Desarrollador Full Stack </span>
 
-        <span class="year"> © <span id="typed-year"></span> </span>
-      </div>
-    </div>
-
-    <div class="parallax-footer">
-      <div id="p1"></div>
-
-      <div class="layer" id="p8">
-        <img src="parallax/parallax 8.webp" alt="" />
-      </div>
-
-      <div class="layer" id="p3">
-        <img src="parallax/parallax 3.webp" alt="" />
-      </div>
-
-      <div class="layer" id="p4">
-        <img src="parallax/parallax 4.webp" alt="" />
-        <img src="parallax/parallax 4 luz sola.webp" class="p4-luz" alt="" />
-        <div class="p4-glow" aria-hidden="true"></div>
-      </div>
-
-      <div class="layer" id="group-256">
-        <div class="gl">
-          <img src="parallax/parallax 2.webp" alt="" />
+            <span class="year"> © <span id="typed-year"></span> </span>
+          </div>
         </div>
 
-        <div class="gl">
-          <img src="parallax/parallax 5.webp" alt="" />
-        </div>
+        <div class="parallax-footer">
+          <div id="p1"></div>
 
-        <div class="gl">
-          <img src="parallax/parallax 6.webp" alt="" />
-        </div>
-      </div>
+          <div class="layer" id="p8">
+            <img src="parallax/parallax 8.webp" alt="" />
+          </div>
 
-      <div class="layer" id="p7">
-        <img src="parallax/parallax 7.webp" alt="" />
-      </div>
+          <div class="layer" id="p3">
+            <img src="parallax/parallax 3.webp" alt="" />
+          </div>
 
-      <div class="footer-text">
-        <div class="footer-col-right">
-          <p>
-            «Animula, vagula, blandula<br />
-            Hospes comesque corporis<br />
-            Quae nunc abibis in loca<br />
-            Pallidula, rigida, nudula,<br />
-            Nec, ut soles, dabis iocos…»
-          </p>
+          <div class="layer" id="p4">
+            <img src="parallax/parallax 4.webp" alt="" />
+            <img
+              src="parallax/parallax 4 luz sola.webp"
+              class="p4-luz"
+              alt=""
+            />
+            <div class="p4-glow" aria-hidden="true"></div>
+          </div>
+
+          <div class="layer" id="group-256">
+            <div class="gl">
+              <img src="parallax/parallax 2.webp" alt="" />
+            </div>
+
+            <div class="gl">
+              <img src="parallax/parallax 5.webp" alt="" />
+            </div>
+
+            <div class="gl">
+              <img src="parallax/parallax 6.webp" alt="" />
+            </div>
+          </div>
+
+          <div class="layer" id="p7">
+            <img src="parallax/parallax 7.webp" alt="" />
+          </div>
+
+          <div class="footer-text">
+            <div class="footer-col-right">
+              <p>
+                «Animula, vagula, blandula<br />
+                Hospes comesque corporis<br />
+                Quae nunc abibis in loca<br />
+                Pallidula, rigida, nudula,<br />
+                Nec, ut soles, dabis iocos…»
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-    </main>
+      </main>
     </div>
 
     <div class="space-scene" id="space-scene" aria-hidden="true">
@@ -487,6 +511,10 @@
         alt=""
       />
     </div>
+
+    <!-- Pantalla negra del escenario 4 (ver .game-tapa en styles.css): va por
+         encima de todo, nave incluida. -->
+    <div class="game-tapa" id="game-tapa" aria-hidden="true"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
     <script src="js/esc4-game.js"></script>
