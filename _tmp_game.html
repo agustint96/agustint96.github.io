@@ -491,5 +491,21 @@
     <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
     <script src="js/esc4-game.js"></script>
     <script src="script.js"></script>
-  </body>
+  <script>
+window.__log=[];
+const T=()=>Math.round(performance.now()-(window.__t0||0));
+const _start=AudioBufferSourceNode.prototype.start;
+AudioBufferSourceNode.prototype.start=function(...a){window.__log.push(["start",this.loop?"musica":"perder",T()]);return _start.apply(this,a)};
+const _stop=AudioBufferSourceNode.prototype.stop;
+AudioBufferSourceNode.prototype.stop=function(...a){window.__log.push(["stop",T()]);return _stop.apply(this,a)};
+window.addEventListener("load",()=>setTimeout(()=>{
+const ship=document.getElementById("starry-cohete-pair");
+window.__t0=performance.now();
+scenes.main.setVisible(false); currentSceneId="game"; scenes.game.setVisible(true);
+ship.classList.add("in-game");
+window.shipPlace(innerWidth/2, innerHeight*0.6);
+const tm=document.getElementById("game-timer");
+let prev="";
+setInterval(()=>{const v=tm.style.visibility||"visible"; if(v!==prev){window.__log.push(["timer",v,T()]);prev=v;}},50);
+},300))</script></body>
 </html>

@@ -728,6 +728,9 @@ function drawStars() {
     // .salmon-scene-front en styles.css).
     const salmonScene = document.getElementById("salmon-scene");
     const salmonSceneFront = document.getElementById("salmon-scene-front");
+    // Escenario 4 (juego de esquivar polígonos, ver js/esc4-game.js): se
+    // entra por el borde izquierdo del principal (edges.left de scenes.main).
+    const gameScene = document.getElementById("game-scene");
     const spaceRock = document.getElementById("space-rock");
     // "Debris" espacial reutilizable: un elemento flotando en el vacío que,
     // al chocar con la nave, recibe un impulso (más fuerte cuanto más rápido
@@ -916,6 +919,11 @@ function drawStars() {
     // como un salto.
     const SHIP_SPACE_SCALE_NEAR = 0.55;
     const SHIP_SPACE_SCALE_FAR = 0.49;
+    // Zoom de cámara del escenario 4 (mismo criterio que CAMERA_ZOOM más
+    // abajo); en pantallas chicas el mundo del juego ya es angosto, así que
+    // se acerca menos.
+    const GAME_CAMERA_ZOOM = 1.5;
+    const GAME_CAMERA_ZOOM_MOBILE = 1.25;
     // Zoom de cámara: escala el fondo completo de la escena (y la nave, para
     // que quede a la misma escala, ver shipScale más abajo -la nave "vive"
     // en este mismo espacio, aunque técnicamente no sea hija del contenedor)
@@ -947,6 +955,12 @@ function drawStars() {
       keyLeft = false,
       keyRight = false,
       keyBoost = false;
+    // Las flechitas hacen lo mismo que WASD; van en flags aparte para que
+    // soltar una de las dos no corte a la otra si se aprietan juntas.
+    let arrowUp = false,
+      arrowDown = false,
+      arrowLeft = false,
+      arrowRight = false;
     // Valor analógico del gatillo (0..1), no un booleano: LT es un botón
     // analógico y el navegador decide su ".pressed" digital con un umbral
     // interno -si no se lo presiona a fondo, ese booleano puede parpadear
@@ -955,10 +969,52 @@ function drawStars() {
     // "atascado" en vez de llegar al mapa completo). Usando el valor
     // continuo en vez de is­Pressed() se evita ese cruce de umbral.
     let gamepadMapViewT = 0;
+    // Ruedita del mouse: hacia abajo aleja la cámara (zoom out), hacia arriba
+    // la vuelve a acercar. Es un valor continuo 0..1 que se acumula con cada
+    // notch, y se combina con M/LT como un tercer origen de mapViewT. Sólo
+    // aplica en escenarios con cámara (ver scene.camera); en el resto la
+    // ruedita se comporta como siempre.
+    let wheelMapViewT = 0;
+    let wheelExpireAt = 0;
+    const WHEEL_ZOOM_RANGE = 600; // px de rueda para ir de zoom normal a mapa completo
+    const WHEEL_ZOOM_HOLD_MS = 3000; // el zoom out dura esto tras el último movimiento de la rueda
+    document.addEventListener(
+      "wheel",
+      (ev) => {
+        if (!scenes[currentSceneId].camera) return;
+        ev.preventDefault();
+        const delta = ev.deltaMode === 1 ? ev.deltaY * 33 : ev.deltaY;
+        wheelMapViewT = Math.max(
+          0,
+          Math.min(1, wheelMapViewT + delta / WHEEL_ZOOM_RANGE),
+        );
+        wheelExpireAt = performance.now() + WHEEL_ZOOM_HOLD_MS;
+      },
+      { passive: false },
+    );
     document.addEventListener("keydown", (ev) => {
       if (ev.key === "m" || ev.key === "M" || ev.code === "Space")
         keyMapView = true;
+      // Las flechitas también scrollean la página: mientras se pilotea no
+      // (salvo que se esté escribiendo en un campo de texto).
+      if (
+        (ev.code || "").startsWith("Arrow") &&
+        !ev.target.closest?.("input, textarea, select, [contenteditable]")
+      )
+        ev.preventDefault();
       switch (ev.code) {
+        case "ArrowUp":
+          arrowUp = true;
+          break;
+        case "ArrowDown":
+          arrowDown = true;
+          break;
+        case "ArrowLeft":
+          arrowLeft = true;
+          break;
+        case "ArrowRight":
+          arrowRight = true;
+          break;
         case "KeyW":
           keyUp = true;
           break;
@@ -981,6 +1037,18 @@ function drawStars() {
       if (ev.key === "m" || ev.key === "M" || ev.code === "Space")
         keyMapView = false;
       switch (ev.code) {
+        case "ArrowUp":
+          arrowUp = false;
+          break;
+        case "ArrowDown":
+          arrowDown = false;
+          break;
+        case "ArrowLeft":
+          arrowLeft = false;
+          break;
+        case "ArrowRight":
+          arrowRight = false;
+          break;
         case "KeyW":
           keyUp = false;
           break;
@@ -1011,7 +1079,6 @@ function drawStars() {
     // apretado, cuando cameraZoom baja a 1.
     let cameraZoom = 1;
     let shipHeightScale = 1;
-    const SHIP_SPACE_SPEED_MULT = 0.35; // velocidad muy reducida en la escena de espacio profundo
     const spaceAstronaut = document.getElementById("space-astronaut");
     const spaceBoraNave = document.getElementById("space-bora-nave");
     // Se define más abajo, junto con la luz de la nave: la referencia queda
@@ -1019,6 +1086,10 @@ function drawStars() {
     // borde de la escena de espacio, y así la luz -si ya estaba prendida-
     // se ajuste sin esperar a que el usuario la vuelva a tocar.
     let applyLightFilter = null;
+    // Igual que applyLightFilter, se asigna junto con la luz de la nave: fuerza
+    // prendida/apagada (sin sonido) y devuelve el estado anterior. La usa el
+    // escenario 4, donde la nave siempre entra con la luz prendida.
+    let forceShipLight = null;
 
     // --- Registro de escenarios ------------------------------------
     // scenes.main ya existe (registrado al inicio del archivo, arranca
@@ -1043,6 +1114,10 @@ function drawStars() {
           to: "salmon",
           enter: (w) => ({ x: w * 0.6 - 65, y: -FLIGHT_MARGIN_TOP + 50 }),
         },
+        left: {
+          to: "game",
+          enter: (w, h) => ({ x: w - 150, y: h * 0.75 - 65 }),
+        },
       },
     });
     registerScene("space", {
@@ -1052,7 +1127,12 @@ function drawStars() {
         );
       },
       shipClass: "in-space",
-      speedMult: SHIP_SPACE_SPEED_MULT,
+      // El fondo de esta escena vive detrás de una cámara con zoom
+      // (CAMERA_ZOOM más abajo): a igual velocidad "cruda" en píxeles, la
+      // nave recorre ese fondo ampliado más rápido que en escenario 1. Se
+      // compensa con el inverso del zoom para que la velocidad percibida
+      // contra el fondo sea la misma en las dos escenas.
+      speedMult: 1 / CAMERA_ZOOM,
       heightScale: { near: SHIP_SPACE_SCALE_NEAR, far: SHIP_SPACE_SCALE_FAR },
       camera: { zoom: CAMERA_ZOOM, elements: [spaceScene, spaceSceneFront] },
       light: {
@@ -1078,6 +1158,61 @@ function drawStars() {
         top: {
           to: "main",
           enter: (w, h) => ({ x: w * 0.6 - 65, y: h - 150 }),
+        },
+      },
+    });
+    // Escenario 4: juego de esquivar polígonos (js/esc4-game.js). El juego
+    // solo corre mientras la escena está visible: setActive arranca/frena su
+    // requestAnimationFrame.
+    //
+    // Misma cámara con zoom que el escenario 2 (nave chica en el mapa
+    // completo, zoom encima de ella; M/Espacio/LT/rueda alejan). La diferencia
+    // es que acá no hay elementos que escalar por CSS: el juego dibuja en un
+    // canvas y aplicar scale() al canvas lo pixelaría, así que recibe el zoom
+    // y el origen por camera.onFrame (ver el tick) y se dibuja ya ampliado.
+    const gameZoom =
+      window.innerWidth <= 600 ? GAME_CAMERA_ZOOM_MOBILE : GAME_CAMERA_ZOOM;
+    let gameLightBefore = null;
+    registerScene("game", {
+      setVisible: (visible) => {
+        if (gameScene) gameScene.classList.toggle("game-visible", visible);
+        if (window.esc4Game) window.esc4Game.setActive(visible);
+        // La nave entra con la luz prendida (es lo que ilumina el fondo) y al
+        // salir vuelve a como estaba.
+        if (forceShipLight) {
+          if (visible) gameLightBefore = forceShipLight(true);
+          else if (gameLightBefore !== null) {
+            forceShipLight(gameLightBefore);
+            gameLightBefore = null;
+          }
+        }
+      },
+      shipClass: "in-game",
+      // Como el fondo con zoom recorre la nave más rápido, se compensa igual
+      // que en el escenario 2 (ver speedMult ahí).
+      speedMult: 1 / gameZoom,
+      heightScale: { near: SHIP_SPACE_SCALE_NEAR, far: SHIP_SPACE_SCALE_NEAR },
+      camera: {
+        zoom: gameZoom,
+        elements: [],
+        onFrame: (zoom, x, y) => {
+          if (window.esc4Game) window.esc4Game.setCamera(zoom, x, y);
+        },
+      },
+      // La nave es blanco y negro acá (grayscale en el sprite de atrás, apagada
+      // o prendida) y su luz es blanca, suave pero mucho más grande que la de
+      // los otros escenarios; el resto del brillo, el que ilumina el fondo, lo
+      // dibuja el juego en su canvas (setLight).
+      light: {
+        off: "grayscale(1)",
+        filter:
+          "grayscale(1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.75)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.5)) drop-shadow(0 0 130px rgba(255, 255, 255, 0.35))",
+        volume: 0.2,
+      },
+      edges: {
+        right: {
+          to: "main",
+          enter: (w, h) => ({ x: 40, y: h / 2 - 65 }),
         },
       },
     });
@@ -1153,6 +1288,44 @@ function drawStars() {
       // Click izquierdo mantenido: mismo rol que RB en el joystick, para el
       // seguimiento por mouse (no aplica a touch, que no dispara mousedown).
       mouseBoost = false;
+    // Escenario 4: la piedra que choca a la nave la golpea y la nave cae.
+    // js/esc4-game.js llama a shipMove(dx, dy, giro) cada cuadro mientras dura
+    // el choque: mueve la nave esa distancia y la gira esos grados y, durante
+    // un instante, el tick ignora mouse/teclado/joystick (si no, la nave
+    // volvería al mouse en pleno golpe). shipPlace(x, y)
+    // pone el centro de la nave en ese punto de la pantalla y la deja quieta
+    // mientras se lo siga llamando, mirando para arriba (rotación 0): así
+    // arranca cada partida abajo, al medio. Mientras está sostenida tampoco
+    // gira hacia el mouse.
+    // shipFace(grados) hace girar la nave (suave) hacia esa rotación mientras se
+    // lo siga llamando, sin que el mouse la gire: la intro la usa para que mire
+    // a las navecitas.
+    let shipCarriedUntil = 0;
+    let shipFaceUntil = 0;
+    const lockShip = () => {
+      n = 0;
+      r = 0;
+      shipCarriedUntil = performance.now() + 100;
+    };
+    window.shipMove = (dx, dy, giro = 0) => {
+      e += dx;
+      a += dy;
+      s += giro;
+      lockShip();
+    };
+    window.shipFace = (deg) => {
+      let d = deg - s;
+      for (; d > 180; ) d -= 360;
+      for (; d < -180; ) d += 360;
+      s += 0.15 * d;
+      shipFaceUntil = performance.now() + 100;
+    };
+    window.shipPlace = (x, y) => {
+      e = x - 65;
+      a = y - 65;
+      s = 0;
+      lockShip();
+    };
     const isMobileTouch = () => window.innerWidth <= 600;
     const GAMEPAD_DEADZONE = 0.2;
     const GAMEPAD_THRUST_BASE = 0.3; // velocidad normal del stick/flechitas
@@ -1255,13 +1428,13 @@ function drawStars() {
           }
         }
 
-        // WASD/Shift/Espacio: mismo camino que el D-pad/RB/LT del joystick
+        // WASD/flechitas/Shift/Espacio: mismo camino que el D-pad/RB/LT del joystick
         // de arriba -pisan los ejes analógicos sólo si están apretados, así
         // no interfieren con el mouse/gamepad cuando no se usa el teclado.
-        if (keyLeft) gx = -1;
-        else if (keyRight) gx = 1;
-        if (keyUp) gy = -1;
-        else if (keyDown) gy = 1;
+        if (keyLeft || arrowLeft) gx = -1;
+        else if (keyRight || arrowRight) gx = 1;
+        if (keyUp || arrowUp) gy = -1;
+        else if (keyDown || arrowDown) gy = 1;
         if (keyBoost) boosting = true;
         if (gx !== 0 || gy !== 0) {
           gamepadActive = true;
@@ -1277,8 +1450,7 @@ function drawStars() {
           v = Math.sqrt(m * m + h * h);
 
         // Cada escenario puede pisar su propia velocidad (ver speedMult en
-        // el registro de escenarios) -la de espacio profundo, por ejemplo,
-        // se maneja mucho más lenta, sensación de ir a la deriva-.
+        // el registro de escenarios); por default todos usan la misma.
         let scene = scenes[currentSceneId];
         const speedMult = scene.speedMult;
         if (gamepadActive) {
@@ -1310,6 +1482,10 @@ function drawStars() {
         const p = gamepadActive ? GAMEPAD_DAMPING : l ? 0.15 : 0.995;
         n *= p;
         r *= p;
+        if (performance.now() < shipCarriedUntil) {
+          n = 0;
+          r = 0;
+        }
         e += n;
         a += r;
 
@@ -1352,6 +1528,7 @@ function drawStars() {
           a = pos.y;
           n = 0;
           r = 0;
+          wheelMapViewT = 0;
           if (prevScene.setVisible) prevScene.setVisible(false);
           if (scene.setVisible) scene.setVisible(true);
           if (prevScene.shipClass) t.classList.remove(prevScene.shipClass);
@@ -1359,7 +1536,12 @@ function drawStars() {
           if (applyLightFilter) applyLightFilter();
         }
 
-        if (l && null !== i) {
+        if (
+          l &&
+          null !== i &&
+          performance.now() >= shipCarriedUntil &&
+          performance.now() >= shipFaceUntil
+        ) {
           const toX = i - e,
             toY = o - a;
           let angle = Math.atan2(toY, toX) * (180 / Math.PI) + 90 - s;
@@ -1400,7 +1582,13 @@ function drawStars() {
         // achiquen/agranden todos juntos, como si una cámara se alejara, en
         // vez de la nave sola encogiéndose. Sólo aplica si el escenario
         // declaró camera (ver registro de escenarios); si no, no tiene zoom.
-        const mapViewT = Math.max(keyMapView ? 1 : 0, gamepadMapViewT);
+        if (wheelMapViewT > 0 && performance.now() > wheelExpireAt)
+          wheelMapViewT = 0;
+        const mapViewT = Math.max(
+          keyMapView ? 1 : 0,
+          gamepadMapViewT,
+          wheelMapViewT,
+        );
         const targetCameraZoom = scene.camera
           ? scene.camera.zoom + (1 - scene.camera.zoom) * mapViewT
           : 1;
@@ -1447,6 +1635,7 @@ function drawStars() {
             el.style.transformOrigin = camOrigin;
             el.style.transform = camTransform;
           });
+          if (scene.camera.onFrame) scene.camera.onFrame(cameraZoom, camX, camY);
         }
         // getBoundingClientRect ya devuelve la caja en pantalla
         // post-transform (incluye el zoom/paneo de cámara), así que cada
@@ -1478,21 +1667,25 @@ function drawStars() {
       const NEAR_LIGHT_FILTER =
         "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))";
       applyLightFilter = () => {
+        // El escenario 4 dibuja además la luz sobre su fondo (canvas).
+        if (window.esc4Game) window.esc4Game.setLight(lightOn);
+        const light = scenes[currentSceneId].light;
         if (!lightOn) {
-          d.style.filter = "none";
+          d.style.filter = (light && light.off) || "none";
           return;
         }
-        const light = scenes[currentSceneId].light;
         d.style.filter = light ? light.filter : NEAR_LIGHT_FILTER;
       };
-      const toggleLight = () => {
-        lightOn = !lightOn;
+      const setLight = (on, silent) => {
+        lightOn = on;
+        t.classList.toggle("luz-on", lightOn); // el escenario 4 ajusta la sombra de la nave según la luz
         d.style.transform = lightOn ? "translate(1px, 0px)" : "translate(0, 0)";
         applyLightFilter();
         if (cohetteTop)
           cohetteTop.src = lightOn
             ? "parallax/cohete_on.webp"
             : "parallax/cohete.webp";
+        if (silent) return;
         const snd = new Audio(
           lightOn ? "audio/light_on.mp3" : "audio/light_off.mp3",
         );
@@ -1500,7 +1693,13 @@ function drawStars() {
         snd.volume = light ? light.volume : 1;
         snd.play().catch(() => {});
       };
+      const toggleLight = () => setLight(!lightOn);
       toggleShipLight = toggleLight;
+      forceShipLight = (on) => {
+        const before = lightOn;
+        if (before !== on) setLight(on, true);
+        return before;
+      };
       // La caja de la nave (130x130) es casi toda transparente y sigue al
       // mouse: si aceptara clicks en todo su rectángulo (pointer-events:auto
       // en CSS), terminaba tapando los clicks a la guitarra/bajo/satélite de
@@ -1587,7 +1786,7 @@ function drawStars() {
     { text: "♩", step: 11, gap: 0 }, // Si — nota final
   ];
 
-  function spawnNote(note, x, y, index) {
+  function spawnNote(note, x, y, index, sceneId) {
     const el = document.createElement("span");
     el.textContent = note.text;
     const size = note.text.length > 1 ? 21 : 25; // con alteración: achica un poco para que entre
@@ -1623,6 +1822,10 @@ function drawStars() {
     const startTime = performance.now();
 
     function animate(now) {
+      if (currentSceneId !== sceneId) {
+        el.remove();
+        return;
+      }
       cx += vx;
       cy += vy;
       el.style.left = cx + "px";
@@ -1645,9 +1848,11 @@ function drawStars() {
 
   function spawnLick(x, y) {
     let delay = 0;
+    const sceneId = currentSceneId;
     LICK_NOTES.forEach(function (note, index) {
       setTimeout(function () {
-        spawnNote(note, x, y, index);
+        if (currentSceneId !== sceneId) return;
+        spawnNote(note, x, y, index, sceneId);
       }, delay);
       delay += note.gap;
     });

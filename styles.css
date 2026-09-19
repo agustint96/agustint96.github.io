@@ -506,7 +506,7 @@ nav.nav-compact {
 /* Escenario 3: se entra por el borde inferior del escenario principal (ver
    edges.bottom de scenes.main, script.js) -lo opuesto a la escena de
    espacio, que se entra por arriba-. Mismo patrón que .space-scene (fixed,
-   z-index 250, fade por opacity): FONDO.png (paisaje salmón con dos soles,
+   z-index 250, fade por opacity): FONDO.webp (paisaje salmón con dos soles,
    opaca) de fondo -la nave (z-index 253, .in-salmon) pasa por delante-. */
 .salmon-scene {
   position: fixed;
@@ -514,7 +514,7 @@ nav.nav-compact {
   z-index: 250;
   overflow: hidden;
   background-color: var(--accent);
-  background-image: url("parallax/esc3/FONDO.png");
+  background-image: url("parallax/esc3/FONDO.webp");
   background-size: cover;
   background-position: center;
   opacity: 0;
@@ -527,7 +527,7 @@ nav.nav-compact {
 }
 /* "Fondo 2" del escenario 3: mismo trato que .space-scene-front (z-index
    260, por encima de la nave). Contiene la silueta de cerro en primer
-   plano (FONDO2.png, transparente arriba del cerro) apoyada abajo -ver
+   plano (FONDO2.webp, transparente arriba del cerro) apoyada abajo -ver
    .salmon-fondo2-; la nave pasa por detrás. */
 .salmon-scene-front {
   position: fixed;
@@ -549,6 +549,56 @@ nav.nav-compact {
   width: 100%;
   height: auto;
   display: block;
+}
+/* Escenario 4 (juego): se entra por el borde izquierdo del escenario
+   principal (ver edges.left de scenes.main, script.js). Mismo patrón que
+   .salmon-scene (fixed, z-index 250, fade por opacity); la nave (z-index 253,
+   .in-game) pasa por delante de los polígonos. Los polígonos los dibuja
+   js/esc4-game.js en #game-canvas. */
+.game-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  overflow: hidden;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  will-change: opacity;
+}
+.game-scene.game-visible {
+  opacity: 1;
+}
+.game-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  width: 100%;
+  height: 100%;
+}
+.game-cuadrado {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40vmin;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: #000;
+  display: grid;
+  place-items: center;
+}
+.game-timer {
+  font-family: Spaceport, ui-monospace, Consolas, monospace;
+  font-size: clamp(1rem, 4.5vmin, 2.75rem);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+#game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
 }
 #space-scene-canvas {
   position: absolute;
@@ -785,16 +835,6 @@ nav.nav-compact {
   display: inline-block;
   white-space: pre;
 }
-.construction-notice {
-  position: fixed;
-  top: 20px;
-  left: 24px;
-  margin: 0;
-  color: var(--accent);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  pointer-events: none;
-}
 .space-empty-notice {
   position: absolute;
   /* En píxeles, no en % -a diferencia de los otros elementos del escenario,
@@ -957,6 +997,24 @@ nav.nav-compact {
    una escena que no es la de espacio profundo. */
 .starry-cohete-pair.in-salmon {
   z-index: 253;
+}
+/* Escenario 4 (juego): igual que las otras escenas, por encima del fondo
+   (250). */
+.starry-cohete-pair.in-game {
+  z-index: 253;
+}
+/* Acá la nave es blanco y negro (con sombra interna, ver el filtro
+   #nave-sombra-interna en index.html) y su luz es blanca. Por eso el filtro va
+   en cada sprite y no en la caja: uno en la caja también volvería gris el
+   resplandor. El de .starry-cohete-fondo lo pone script.js junto con el
+   drop-shadow (ver scenes.game.light). */
+.starry-cohete-pair.in-game .starry-cohete-top {
+  filter: url(#nave-sombra-interna);
+}
+/* Solo apagada se ve oscura: con la luz prendida (script.js le pone luz-on a
+   la nave) el gris se levanta y la sombra interna es suave. */
+.starry-cohete-pair.in-game.luz-on .starry-cohete-top {
+  filter: url(#nave-sombra-interna-luz);
 }
 .starry-cohete {
   position: absolute;
