@@ -12,8 +12,8 @@
 // blanco y negro: empieza el juego (aparece el segundero, suena la música y,
 // un momento después, caen los polígonos).
 //
-// Estrellas: en el fondo negro se ven algunas estrellas blancas (solo
-// decoración, no se chocan). En distintos puntos del mapa aparecen agujeros de
+// Estrellas: se ven algunas estrellas blancas sobre el fondo, también en la
+// intro y en el final (solo decoración, no se chocan). En distintos puntos del mapa aparecen agujeros de
 // gusano de a pares: un circulito de estrellas con brillo girando muy rápido,
 // con el centro negro. Al entrar en uno la nave sale por el otro, y cada pasaje
 // la va pintando de color (sube la saturación de su filtro, ver
@@ -30,9 +30,14 @@
 // Todo el escenario acompaña a la nave: a medida que se colorea, el fondo negro
 // va pasando al azul starry (--fondo-color en styles.css).
 //
-// Cuando la nave termina de colorearse, aparecen alrededor unos parallax 7 en
-// blanco y negro (con sombra interna, como la nave) y salen huyendo; al terminar
-// esa animación se vuelve al escenario principal (el nivel está completo).
+// Cuando la nave cruza el último agujero (victoria) el final tiene dos partes:
+// primero un zoom a la nave del jugador, ya toda de color (se van los polígonos,
+// los cúmulos y el segundero), y después cae la pantalla negra y se repite la
+// animación de la intro pero con los parallax 7 en blanco y negro (con sombra
+// interna), juntándose en otro lugar, con un zoom hacia ellos mientras llegan y
+// se escapan. Ahí queda solo el fondo starry con las naves (la nave del jugador
+// no se ve). Cuando se van, se vuelve al escenario principal (el nivel está
+// completo).
 //
 // Música (audio/nivel4.m4a): arranca 2 s después de que la nave prende la luz
 // (así se oye el sonido de luz on) y suena en bucle mientras dura la partida,
@@ -89,6 +94,10 @@
   const MUSICA_ACEL_MAX = 0.1;
   const PERDER_URL = "audio/stopgame.mp3";
   const PERDER_VOLUMEN = 0.8;
+  // Al entrar al último agujero de gusano (el que completa el color de la nave)
+  // suena esta nota, una sola vez.
+  const NOTA_URL = "audio/mimayor.m4a";
+  const NOTA_VOLUMEN = 0.8;
   const P7_ANCHO = 40; // px del mundo: ancho de la nave (chica, como la de la escena; ver ESCALA_MUNDO)
   // Posición de la nave que ya está ahí, relativa al ancho del mundo, y a
   // qué distancia del piso está: la misma altura a la que aparece el
@@ -126,11 +135,13 @@
   // --- Mundo y luz ----------------------------------------------------------
   const ESCALA_MUNDO = 0.55; // tamaño/velocidad del mundo respecto del juego "sin zoom"
   const MARGEN_SPAWN = 60; // px del mundo: los polígonos nacen un poco más allá de lo visible
-  const LUZ_RADIO = 520; // px del mundo: alcance de la luz de la nave
+  const LUZ_RADIO = 280; // px del mundo: alcance de la luz de la nave
   const LUZ_INTENSIDAD = 0.32; // opacidad del blanco en el centro de la luz
 
   // --- Estrellas y cúmulos ---------------------------------------------------
   const ESTRELLAS_FONDO = 90; // estrellas blancas del fondo (decoración)
+  const ESTRELLA_SALMON = "#f19280"; // salmón del sitio (--accent en styles.css)
+  const GRUPOS_SALMON = [1, 3]; // qué grupos de estrellas (ver GRUPOS_ESTRELLAS) son salmón en la intro y en el final
   // Los agujeros de gusano (cúmulos) arrancan blancos y terminan naranja (el
   // predominante del parallax 7) a medida que se colorea la nave.
   const CUMULO_COLOR_INICIO = "#ffffff";
@@ -148,14 +159,29 @@
   const CUMULO_PRIMERO = 2.5; // segundos hasta el primer par
   const CUMULO_INTERVALO = [3, 6]; // segundos entre un par y el siguiente (al azar)
   const CUMULO_DISTANCIA_MIN = 160; // px del mundo: no aparecen encima de la nave
-  // Huida de los parallax 7 (en blanco y negro) al terminar de colorearse la nave.
-  const HUIDA_NAVES = 6; // cuántos huyen
-  const HUIDA_DURACION = 2.4; // segundos que dura la animación
-  const HUIDA_ACEL = 300; // px/s² del mundo: aceleran mientras se alejan
-  const HUIDA_RADIO = [45, 90]; // px del mundo: a qué distancia de la nave aparecen
+  // Final (victoria): la intro otra vez, con los parallax 7 en blanco y negro,
+  // sin la nave del jugador y con un zoom hacia ellos. Los tiempos son los de la
+  // intro (INTRO_LLEGADA, INTRO_ESPERA, INTRO_SALIDA...).
+  const FINAL_PUNTO = { x: 0.6, y: 0.45 }; // dónde se juntan, como fracción de lo que se ve (0 = arriba a la izquierda)
+  const FINAL_NAVE_DUR = 2.6; // fase 1: segundos de zoom a la nave del jugador, ya a color (después cae la pantalla negra)
+  const FINAL_ZOOM_NAVE = 1.25; // zoom de esa fase, encima del de la cámara del juego (que es el de la intro; 1 = igual que la intro)
+  const FINAL_COLOR_SUAVIZADO = 3; // 1/s: en el final la nave termina de teñirse rápido (COLOR_SUAVIZADO es el del juego)
+  const FINAL_ZOOM = 1.25; // fase 2: zoom que se acerca al punto donde se juntan las naves, encima del de la cámara del juego (1 = igual que la intro)
+  const FINAL_ZOOM_FONDO = 0.5; // el fondo starry se acerca menos (fracción del zoom de las naves), así hay paralaje
+  const FINAL_COLA = 0.3; // segundos entre que se va la última nave y se vuelve al escenario principal
+  // Cada nave: desde dónde entra (siempre afuera de lo que se ve, p = punto de
+  // encuentro, v = vista) y dónde se acomoda, relativo al punto (px del mundo).
+  const FINAL_NAVES = [
+    { desde: (p, v) => ({ x: p.x - 60, y: v.y - 100 }), a: { x: -6, y: -4 } },
+    { desde: (p, v) => ({ x: v.x - 100, y: p.y + 120 }), a: { x: -56, y: 30 } },
+    { desde: (p, v) => ({ x: v.x + v.w + 100, y: p.y - 200 }), a: { x: 50, y: -30 } },
+    { desde: (p, v) => ({ x: p.x + 240, y: v.y + v.h + 100 }), a: { x: 14, y: -50 } },
+  ];
   const COLOR_PASOS = 40; // escalones en que se actualiza el filtro de color de la nave (0 a 1)
-  const COLOR_SUAVIZADO = 0.5; // 1/s: cuánto tarda la nave en alcanzar el color nuevo (más bajo = más lento)
-  const CUMULOS_PARA_COLOR = 16; // cuántos pasajes hacen falta para que la nave quede con todo su color (cada uno la pinta apenas: 1/16)
+  const COLOR_SUAVIZADO = 0.8; // 1/s: cuánto tarda la nave en alcanzar el color nuevo (más bajo = más lento)
+  const CUMULOS_PARA_COLOR = 10; // cuántos pasajes hacen falta para que la nave quede con todo su color (cada uno la pinta 1/10)
+  const TIMER_COLOR_FIN = "#f19280"; // salmón del sitio (--accent en styles.css): el segundero pasa del blanco a este a medida que se colorea la nave
+  const POLIGONO_COLOR_FIN = "#0d1b2e"; // azul starry (--navy en styles.css): el relleno de los polígonos pasa del negro a este a medida que se colorea la nave
 
   const scene = document.getElementById("game-scene");
   const canvas = document.getElementById("game-canvas");
@@ -197,6 +223,10 @@
   let perderGain = null;
   let perderBuffer = null; // audio/stopgame.mp3 decodificado
   let perderFuente = null; // fuente sonando ahora (o null)
+  let notaGain = null;
+  let notaBuffer = null; // audio/mimayor.m4a decodificado
+  let notaFuente = null; // fuente sonando ahora (o null)
+  let nota = null; // <audio> de respaldo
   let perder = null; // <audio> de respaldo
   let musicaFuente = null; // fuente sonando ahora (o null)
   let musicaEspera = null; // segundos que faltan para que arranque la música (o null)
@@ -204,8 +234,8 @@
   let musica = null; // <audio> de respaldo si falla Web Audio
   let spriteP7 = null; // imagen del parallax 7, se carga al entrar por primera vez
   let spriteP7BN = null; // el parallax 7 en blanco y negro con sombra interna (canvas)
-  let huida = null; // animación de los parallax 7 huyendo ({ t, naves }), o null
-  let huidaHecha = false; // ya huyeron en esta partida
+  let final = null; // animación de la victoria ({ t }), o null
+  let ganado = false; // ya se ganó esta partida (empezó el final)
   let oscuro = false; // ya empezó a caer la pantalla negra
   let negro = false; // la pantalla ya está toda negra (fondo y nave ya cambiaron a blanco y negro)
   let miradaGrados = 0; // hacia dónde mira la nave en la intro (queda fija cuando se van las navecitas)
@@ -243,6 +273,14 @@
   const satNave = ["nave-sat-off", "nave-sat-luz"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
+  // Levantado de brillo del filtro de la nave con la luz prendida (index.html):
+  // a color completo tiene que quedar sin tocar (slope 1, intercept 0) para que
+  // se vea como el sprite original, igual que en el index.
+  const luzNave = ["nave-luz-r", "nave-luz-g", "nave-luz-b"]
+    .map((id) => document.getElementById(id))
+    .filter(Boolean);
+  const LUZ_SLOPE_GRIS = 1.4;
+  const LUZ_INTERCEPT_GRIS = 0.1;
   let enCentro = false; // la partida arrancó recolocando la nave: se la sostiene en el medio durante la gracia
   let golpeadora = null; // la piedra que chocó a la nave: sigue de largo
   let naveCae = { x: 0, y: 0, giro: 0 }; // velocidad de la nave golpeada (px/s y grados/s)
@@ -402,8 +440,7 @@
     cumulosTomados = 0;
     colorObjetivo = 0;
     colorNave = 0;
-    huida = null;
-    huidaHecha = false;
+    limpiarFinal();
     colorEscalon = -1; // fuerza a aplicar el 0
     aplicarColorNave();
     enCentro = !!recolocar;
@@ -435,10 +472,16 @@
     if (audioCtx) {
       musicaGain = conGain(MUSICA_VOLUMEN);
       perderGain = conGain(PERDER_VOLUMEN);
+      notaGain = conGain(NOTA_VOLUMEN);
       try {
         musicaBuffer = await decodificar(MUSICA_URL);
       } catch (e) {
         musicaBuffer = null;
+      }
+      try {
+        notaBuffer = await decodificar(NOTA_URL);
+      } catch (e) {
+        notaBuffer = null;
       }
       try {
         perderBuffer = await decodificar(PERDER_URL);
@@ -454,6 +497,24 @@
     if (!perderBuffer) {
       perder = new Audio(PERDER_URL);
       perder.volume = PERDER_VOLUMEN;
+    }
+    if (!notaBuffer) {
+      nota = new Audio(NOTA_URL);
+      nota.volume = NOTA_VOLUMEN;
+    }
+  }
+
+  // La nota del último agujero: suena una vez desde el principio.
+  function sonarNota() {
+    if (notaBuffer) {
+      audioCtx.resume().catch(() => {});
+      notaFuente = audioCtx.createBufferSource();
+      notaFuente.buffer = notaBuffer;
+      notaFuente.connect(notaGain);
+      notaFuente.start();
+    } else if (nota) {
+      nota.currentTime = 0;
+      nota.play().catch(() => {});
     }
   }
 
@@ -520,6 +581,14 @@
       perderFuente = null;
     }
     if (perder) perder.pause();
+    if (notaFuente) {
+      try {
+        notaFuente.stop();
+      } catch (e) {}
+      notaFuente.disconnect();
+      notaFuente = null;
+    }
+    if (nota) nota.pause();
   }
 
   // Sube o baja la pantalla negra; instantáneo = sin fundido (al salir del
@@ -676,42 +745,103 @@
     return nave;
   }
 
-  // Empieza la huida: varios parallax 7 aparecen alrededor de la nave y cada uno
-  // sale disparado para su lado.
-  function iniciarHuida(centro) {
-    if (!centro) return;
-    huida = {
-      t: 0,
-      naves: Array.from({ length: HUIDA_NAVES }, (_, i) => {
-        const ang = ((i + Math.random() * 0.6) / HUIDA_NAVES) * Math.PI * 2;
-        const radio = HUIDA_RADIO[0] + Math.random() * (HUIDA_RADIO[1] - HUIDA_RADIO[0]);
-        return {
-          x: centro.x + Math.cos(ang) * radio,
-          y: centro.y + Math.sin(ang) * radio,
-          dx: Math.cos(ang),
-          dy: Math.sin(ang),
-          retraso: Math.random() * 0.25,
-        };
-      }),
-    };
+  // Final (victoria), en dos fases (final.fase):
+  // 1. Zoom a la nave del jugador, que termina de teñirse y se ve toda de color
+  //    (sobre su propio centro: la escala de la nave, window.shipZoom, y todo el
+  //    resto acercándose a ella). Se van los cúmulos, los polígonos y el
+  //    segundero. Después cae la pantalla negra, como en la intro.
+  // 2. Con la pantalla negra: la nave del jugador ya no se ve (game-final, ver
+  //    styles.css), queda solo el fondo starry con las naves parallax 7 en
+  //    blanco y negro, que llegan con el zoom y se escapan.
+  function iniciarFinal() {
+    ganado = true;
+    final = { t: 0, fase: 1, tapa: false };
+    cumulos = [];
+    particulas = [];
+    poligonos = [];
+    colorObjetivo = 1;
+    timerEl.style.visibility = "hidden";
+    ship.classList.add("game-luz-index"); // con la luz prendida, como en el index
   }
 
-  function dibujarHuida() {
-    if (!huida || !spriteP7BN) return;
+  // Pasa de la fase 1 a la 2 (con la pantalla ya toda negra, no se nota el corte).
+  function pasarAFaseNaves() {
+    final.fase = 2;
+    final.t = 0;
+    colorNave = 1;
+    aplicarColorNave();
+    window.shipZoom = 1;
+    ship.classList.add("game-final");
+    levantarTapa(false);
+  }
+
+  // Vuelve todo a como estaba antes del final (al empezar una partida y al salir
+  // del escenario: la nave tiene que volver a verse en el resto de los escenarios).
+  function limpiarFinal() {
+    final = null;
+    ganado = false;
+    window.shipZoom = 1;
+    ship.classList.remove("game-final", "game-luz-index");
+    scene.style.removeProperty("--fondo-zoom");
+    scene.style.removeProperty("--fondo-origen");
+  }
+
+  // Fase 1: zoom a la nave, suave, hasta FINAL_ZOOM_NAVE.
+  function zoomNave() {
+    const u = Math.min(1, final.t / FINAL_NAVE_DUR);
+    return 1 + (FINAL_ZOOM_NAVE - 1) * u * u * (3 - 2 * u);
+  }
+
+  // Punto del mundo donde se juntan las naves del final: una posición fija de lo
+  // que se ve (no depende de dónde terminó la nave del jugador).
+  function puntoFinal() {
+    const v = vista();
+    return { x: v.x + v.w * FINAL_PUNTO.x, y: v.y + v.h * FINAL_PUNTO.y };
+  }
+
+  // Zoom (1 = ninguno): crece suave mientras llegan las naves y se queda cuando
+  // empiezan a irse.
+  function zoomFinal() {
+    const u = Math.min(1, final.t / (INTRO_INICIO + 0.5));
+    return 1 + (FINAL_ZOOM - 1) * u * u * (3 - 2 * u);
+  }
+
+  // Igual que navesIntro (mismos tiempos y la misma salida hacia arriba a la
+  // izquierda), pero con otros orígenes y otro lugar de encuentro.
+  function navesFinal(t) {
+    if (t > INTRO_FUERA) return [];
+    const v = vista();
+    const p = puntoFinal();
+    const u = Math.min(1, t / INTRO_LLEGADA);
+    const suave = 1 - Math.pow(1 - u, 3);
+    return FINAL_NAVES.map((n, i) => {
+      const d0 = n.desde(p, v);
+      let x = d0.x + (p.x + n.a.x - d0.x) * suave;
+      let y = d0.y + (p.y + n.a.y - d0.y) * suave;
+      y += Math.sin(t * 3 + i * 1.7) * 3; // flotan un poco
+      let esc = 1;
+      const ts = t - INTRO_INICIO - i * INTRO_ESCALONADO;
+      if (ts > 0) {
+        const d = 0.5 * INTRO_ACELERACION * ts * ts;
+        x += INTRO_DIR.x * d;
+        y += INTRO_DIR.y * d;
+        esc = 1 - 0.5 * Math.min(1, ts / INTRO_SALIDA);
+      }
+      return { x, y, esc };
+    });
+  }
+
+  function dibujarFinal() {
+    if (!final || final.fase !== 2 || !spriteP7BN) return;
     const ancho = (P7_ANCHO * (P7_RECORTE.w + P7_MARGEN * 2)) / P7_RECORTE.w;
     const alto = (ancho * spriteP7BN.height) / spriteP7BN.width;
-    for (const n of huida.naves) {
-      const t = huida.t - n.retraso;
-      if (t < 0) continue;
-      const d = 0.5 * HUIDA_ACEL * t * t;
-      // Aparecen de golpe y se van achicando mientras se alejan.
-      const esc = Math.min(1, t / 0.15) * (1 - 0.5 * Math.min(1, t / HUIDA_DURACION));
+    for (const n of navesFinal(final.t)) {
       ctx.drawImage(
         spriteP7BN,
-        n.x + n.dx * d - (ancho * esc) / 2,
-        n.y + n.dy * d - (alto * esc) / 2,
-        ancho * esc,
-        alto * esc,
+        n.x - (ancho * n.esc) / 2,
+        n.y - (alto * n.esc) / 2,
+        ancho * n.esc,
+        alto * n.esc,
       );
     }
   }
@@ -754,9 +884,19 @@
     colorEscalon = escalon;
     const valor = (escalon / COLOR_PASOS).toFixed(3);
     for (const el of satNave) el.setAttribute("values", valor);
+    const gris = 1 - escalon / COLOR_PASOS;
+    for (const el of luzNave) {
+      el.setAttribute("slope", (1 + (LUZ_SLOPE_GRIS - 1) * gris).toFixed(3));
+      el.setAttribute("intercept", (LUZ_INTERCEPT_GRIS * gris).toFixed(3));
+    }
+    // El sprite de atrás (el resplandor) también: su gris lo lee de esta variable
+    // (ver scenes.game.light en script.js).
+    ship.style.setProperty("--nave-gris", (1 - escalon / COLOR_PASOS).toFixed(3));
     // El fondo starry sube con el color de la nave (la transición del CSS suaviza
     // el salto de un escalón al siguiente).
     scene.style.setProperty("--fondo-color", valor);
+    // Y el segundero pasa del blanco al salmón del sitio.
+    timerEl.style.color = mezclarColores("#ffffff", TIMER_COLOR_FIN, escalon / COLOR_PASOS);
   }
 
   // Un agujero de gusano nuevo en un punto al azar de lo que se ve, lejos de la
@@ -811,7 +951,7 @@
   // si no entran. Al entrar en uno la nave sale por el otro y gana color.
   function actualizarCumulos(dt, circulos) {
     acumCumulo += dt;
-    if (cumulos.length === 0 && !huidaHecha && acumCumulo >= proxCumulo) {
+    if (cumulos.length === 0 && !ganado && acumCumulo >= proxCumulo) {
       acumCumulo = 0;
       proxCumulo =
         CUMULO_INTERVALO[0] +
@@ -836,6 +976,14 @@
       cumulos = cumulos.filter((c) => c !== entrado && c !== salida);
       cumulosTomados++;
       colorObjetivo = Math.min(1, cumulosTomados / CUMULOS_PARA_COLOR);
+      if (cumulosTomados >= CUMULOS_PARA_COLOR) {
+        // El último: suena la nota y empieza el final enseguida (no hay que
+        // esperar a que termine de teñirse ni cruzar otro; el color sigue subiendo
+        // durante la animación). La música del juego se corta y queda solo la nota.
+        frenarMusica();
+        sonarNota();
+        iniciarFinal();
+      }
     }
     for (const p of particulas) {
       p.t += dt;
@@ -848,9 +996,9 @@
   }
 
   function actualizar(dt, circulos) {
-    tiempo += dt;
+    if (!ganado) tiempo += dt; // al ganar el segundero queda parado
 
-    if (tiempo > gracia && !huidaHecha) {
+    if (tiempo > gracia && !ganado) {
       acumSpawn += dt;
       const intervalo = Math.max(SPAWN_MIN, SPAWN_INICIAL - tiempo * SPAWN_RAMPA);
       if (acumSpawn >= intervalo) {
@@ -895,7 +1043,7 @@
     poligonos.length = quedan;
 
     // Durante el final (ya completó el color) no se choca: el nivel está ganado.
-    for (const p of huidaHecha ? [] : poligonos) {
+    for (const p of ganado ? [] : poligonos) {
       // Descarte rápido: si el círculo está más lejos que el radio del polígono
       // (todos sus vértices caen dentro de p.radio del centro) no hace falta
       // probar borde por borde.
@@ -926,16 +1074,17 @@
     mostrarTiempo();
   }
 
-  // Estrellas blancas del fondo (decoración, no se chocan). Solo cuando ya es
-  // el fondo negro: durante la intro el fondo es el starry con sus propias
-  // estrellas. 4 fills en total (uno por grupo, cada grupo con su titilar).
+  // Estrellas del fondo (decoración, no se chocan). Se ven siempre: en el juego,
+  // en la intro y en el final, sobre el fondo negro o el starry. Son blancas, y
+  // en la intro y en el final algunas (ciertos grupos) son salmón. 4 fills en
+  // total (uno por grupo, cada grupo con su titilar).
   function dibujarEstrellas() {
-    if (!negro) return;
     const w = window.innerWidth;
     const h = window.innerHeight;
-    ctx.fillStyle = "#fff";
+    const conSalmon = !negro || ganado; // intro y final
     for (let g = 0; g < GRUPOS_ESTRELLAS.length; g++) {
       const grupo = GRUPOS_ESTRELLAS[g];
+      ctx.fillStyle = conSalmon && GRUPOS_SALMON.includes(g) ? ESTRELLA_SALMON : "#fff";
       ctx.globalAlpha = 0.3 + 0.6 * (0.5 + 0.5 * Math.sin(reloj * grupo.vel + grupo.fase));
       ctx.beginPath();
       for (const e of estrellasPorGrupo[g]) {
@@ -1014,11 +1163,15 @@
 
   // Color intermedio entre el de inicio y el de fin de los agujeros (para las
   // chispas, que se dibujan directo).
-  function mezclaAgujeros(k) {
-    const a = parseInt(CUMULO_COLOR_INICIO.slice(1), 16);
-    const b = parseInt(CUMULO_COLOR_FIN.slice(1), 16);
+  function mezclarColores(desde, hasta, k) {
+    const a = parseInt(desde.slice(1), 16);
+    const b = parseInt(hasta.slice(1), 16);
     const canal = (sh) => Math.round(((a >> sh) & 255) * (1 - k) + ((b >> sh) & 255) * k);
     return "rgb(" + canal(16) + "," + canal(8) + "," + canal(0) + ")";
+  }
+
+  function mezclaAgujeros(k) {
+    return mezclarColores(CUMULO_COLOR_INICIO, CUMULO_COLOR_FIN, k);
   }
 
   // Agujeros de gusano: un circulito de estrellas con brillo girando muy rápido,
@@ -1097,12 +1250,29 @@
       dpr * cam.ox * (1 - cam.z),
       dpr * cam.oy * (1 - cam.z),
     );
+    if (final) {
+      // Zoom del final (todo lo que sigue se acerca al punto): en la fase 1 a la
+      // nave del jugador y en la 2 al punto donde se juntan las naves. El fondo
+      // starry, que es CSS, acompaña con menos zoom.
+      const p = final.fase === 1 ? { x: cam.ox, y: cam.oy } : puntoFinal();
+      const z = final.fase === 1 ? zoomNave() : zoomFinal();
+      ctx.translate(p.x, p.y);
+      ctx.scale(z, z);
+      ctx.translate(-p.x, -p.y);
+      scene.style.setProperty("--fondo-zoom", (1 + (z - 1) * FINAL_ZOOM_FONDO).toFixed(4));
+      scene.style.setProperty(
+        "--fondo-origen",
+        cam.ox + (p.x - cam.ox) * cam.z + "px " + (cam.oy + (p.y - cam.oy) * cam.z) + "px",
+      );
+    }
 
     dibujarEstrellas();
 
     // La luz de la nave sobre el fondo, debajo de los polígonos: como son
-    // negros y opacos, contra ese resplandor se ven como siluetas.
-    if (luzNivel > 0.01 && centro && luzSprite) {
+    // negros y opacos, contra ese resplandor se ven como siluetas. Solo en el
+    // juego: en la intro y en el final la nave prendida se ve como en el index
+    // (sin esta luz grande; ver game-color y game-luz-index en styles.css).
+    if (luzNivel > 0.01 && centro && luzSprite && negro && !final) {
       ctx.globalAlpha = LUZ_INTENSIDAD * luzNivel;
       ctx.drawImage(
         luzSprite,
@@ -1120,7 +1290,9 @@
     ctx.lineWidth = 1.6; // ~3.5px en pantalla con el zoom normal
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#fff";
-    ctx.fillStyle = "#000";
+    // Relleno: del negro al azul starry a medida que se colorea la nave (igual
+    // que el fondo y los agujeros).
+    ctx.fillStyle = mezclarColores("#000000", POLIGONO_COLOR_FIN, Math.max(0, Math.min(1, colorNave)));
     for (const p of poligonos) {
       ctx.beginPath();
       const pts = p.pts;
@@ -1130,10 +1302,10 @@
       ctx.fill();
       ctx.stroke();
     }
-    dibujarHuida();
+    dibujarFinal();
     // Lo que sigue va en pantalla, sin el zoom de la cámara.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (negro) dibujarSalida();
+    if (negro && !ganado) dibujarSalida();
   }
 
   function cuadro(ahora) {
@@ -1150,21 +1322,29 @@
     // La nave va ganando color de a poco (no de golpe) hacia colorObjetivo, y
     // muy despacio: cada pasaje tarda varios segundos en terminar de teñirla.
     if (Math.abs(colorObjetivo - colorNave) > 0.0005) {
-      colorNave += (colorObjetivo - colorNave) * Math.min(1, dt * COLOR_SUAVIZADO);
+      const suavizado = final ? FINAL_COLOR_SUAVIZADO : COLOR_SUAVIZADO;
+      colorNave += (colorObjetivo - colorNave) * Math.min(1, dt * suavizado);
       aplicarColorNave();
     }
-    // Terminó de colorearse (todos los pasajes y el color ya casi completo):
-    // huyen los parallax 7, una sola vez por partida.
-    if (!huidaHecha && colorObjetivo >= 1 && colorNave >= 0.98) {
-      huidaHecha = true;
-      iniciarHuida(circulos[1]);
-    }
-    if (huida) {
-      huida.t += dt;
-      if (huida.t > HUIDA_DURACION + 0.5) {
+    if (final) {
+      final.t += dt;
+      // Se deja quieta a la nave del jugador donde está (sin control, como en la
+      // intro) para que no salga del escenario sin querer.
+      if (window.shipMove) window.shipMove(0, 0);
+      if (final.fase === 1) {
+        // Zoom a la nave (ya a color); cuando termina cae la pantalla negra y,
+        // ya toda negra, se pasa a la fase de las naves.
+        window.shipZoom = zoomNave();
+        if (!final.tapa && final.t >= FINAL_NAVE_DUR) {
+          final.tapa = true;
+          if (tapa) tapa.classList.add("cae");
+        }
+        if (final.t >= FINAL_NAVE_DUR + INTRO_FUNDIDO) pasarAFaseNaves();
+      } else if (!final.salio && final.t > INTRO_FUERA + FINAL_COLA) {
         // Terminó la animación: el nivel está completo, se vuelve al escenario
-        // principal (por el borde derecho, como al irse a mano).
-        huida = null;
+        // principal (por el borde derecho, como al irse a mano). El zoom se
+        // queda como está hasta que se cierra la escena.
+        final.salio = true;
         if (window.shipLeave) window.shipLeave("right");
       }
     }
@@ -1299,6 +1479,7 @@
       } else {
         cancelAnimationFrame(raf);
         frenarSonidos();
+        limpiarFinal(); // la nave vuelve a verse en el resto de los escenarios
         ship.classList.remove("game-color");
         scene.classList.remove("game-intro");
         levantarTapa(true);

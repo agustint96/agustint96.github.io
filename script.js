@@ -394,6 +394,8 @@ if (p4el) {
       step();
     };
     document.addEventListener("mousemove", (ev) => {
+      // Solo en la principal: en los demás escenarios parallax 4 está oculto.
+      if (currentSceneId !== "main") return;
       if (p4Lit) return;
       if (hitP4(ev.clientX, ev.clientY)) runP4Flicker();
     });
@@ -494,6 +496,10 @@ function resizeCanvas() {
     ((starCanvas.width = t), (starCanvas.height = e));
 }
 function addStars(t, e) {
+  // Solo en la principal: drawStars es lo único que las apaga y no corre en los
+  // demás escenarios, así que si se siguieran agregando (el setInterval de
+  // abajo no para) se acumulaban y al volver aparecían todas juntas, con lag.
+  if (currentSceneId !== "main") return;
   const a = starCanvas.width || window.innerWidth,
     n = starCanvas.height || 300;
   for (let r = 0; r < t; r++)
@@ -1247,13 +1253,15 @@ function drawStars() {
         },
       },
       // La nave es blanco y negro acá (grayscale en el sprite de atrás, apagada
-      // o prendida) y su luz es blanca, suave pero mucho más grande que la de
+      // o prendida) y su luz es blanca y suave, un poco más grande que la de
       // los otros escenarios; el resto del brillo, el que ilumina el fondo, lo
-      // dibuja el juego en su canvas (setLight).
+      // dibuja el juego en su canvas (setLight). El gris va con --nave-gris (1 =
+      // blanco y negro, 0 = a color) en la nave, que esc4-game.js baja a medida
+      // que se colorea.
       light: {
-        off: "grayscale(1)",
+        off: "grayscale(var(--nave-gris, 1))",
         filter:
-          "grayscale(1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.75)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.5))",
+          "grayscale(var(--nave-gris, 1)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 20px rgba(255, 255, 255, 0.35))",
         // (Sin un tercer resplandor de 130px: es un blur enorme, lo más caro de
         // pintar, y la luz grande ya la dibuja el juego en su canvas.)
         // Más fuerte que en los otros escenarios: el sonido de luz on marca el
@@ -1721,7 +1729,9 @@ function drawStars() {
         spaceDrifters.forEach((update) => update(driftShipRect, n, r));
         if (updateBiosRepel) updateBiosRepel(driftShipRect);
         ((t.style.opacity = f),
-          (t.style.transform = `translate(${e}px, ${a}px) rotate(${s}deg) scale(${shipScale})`),
+          // window.shipZoom (1 por defecto) agranda la nave sobre su propio centro:
+          // el final del escenario 4 lo usa para el zoom a la nave.
+          (t.style.transform = `translate(${e}px, ${a}px) rotate(${s}deg) scale(${shipScale * (window.shipZoom || 1)})`),
           requestAnimationFrame(tick));
       }));
     const d = t.querySelector(".starry-cohete-fondo");
@@ -1943,6 +1953,10 @@ function drawStars() {
   document.addEventListener(
     "click",
     function (ev) {
+      // Solo en la principal: parallax 2 sigue en el DOM (oculto) en los demás
+      // escenarios y su rectángulo seguía "ahí", así que un click en ese lugar
+      // hacía sonar el bajo aunque no se viera.
+      if (currentSceneId !== "main") return;
       if (!hitBass(ev.clientX, ev.clientY)) return;
       triggerBass(ev.clientX, ev.clientY);
     },

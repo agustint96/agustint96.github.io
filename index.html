@@ -45,12 +45,11 @@
           yChannelSelector="G"
         />
       </filter>
-      <!-- Nave del escenario 4 (ver .in-game en styles.css): blanco y negro
-           con una sombra interna -el alfa invertido, difuminado y corrido
-           hacia abajo/derecha, recortado a la silueta de la nave- que le da
-           volumen. Los valores están en px del sprite (~88x130). -->
+      <!-- Nave del escenario 4 (ver .in-game en styles.css): blanco y negro, sin
+           sombra. La saturación (#nave-sat-off / #nave-sat-luz) arranca en 0 y
+           la sube js/esc4-game.js a medida que la nave se colorea. -->
       <filter
-        id="nave-sombra-interna"
+        id="nave-gris"
         x="0"
         y="0"
         width="100%"
@@ -58,38 +57,18 @@
         color-interpolation-filters="sRGB"
       >
         <feColorMatrix
+          id="nave-sat-off"
           in="SourceGraphic"
           type="saturate"
           values="0"
-          result="gris"
         />
-        <feComponentTransfer in="SourceAlpha" result="afuera">
-          <feFuncA type="table" tableValues="1 0" />
-        </feComponentTransfer>
-        <feGaussianBlur in="afuera" stdDeviation="4.5" result="difusa" />
-        <feOffset in="difusa" dx="2" dy="4" result="corrida" />
-        <feComposite
-          in="corrida"
-          in2="SourceAlpha"
-          operator="in"
-          result="sombra"
-        />
-        <feColorMatrix
-          in="sombra"
-          type="matrix"
-          values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 2.2 0"
-          result="sombraNegra"
-        />
-        <feMerge>
-          <feMergeNode in="gris" />
-          <feMergeNode in="sombraNegra" />
-        </feMerge>
       </filter>
       <!-- Lo mismo con la luz de la nave prendida (.luz-on): el gris se
-           levanta y la sombra interna es mucho más suave -solo apagada se ve
-           oscura-. -->
+           levanta -solo apagada se ve oscura-. Ese levantado (nave-luz-r/g/b)
+           lo va bajando js/esc4-game.js a medida que la nave se colorea, hasta
+           dejarla como el sprite original (igual que en el index). -->
       <filter
-        id="nave-sombra-interna-luz"
+        id="nave-gris-luz"
         x="0"
         y="0"
         width="100%"
@@ -97,37 +76,17 @@
         color-interpolation-filters="sRGB"
       >
         <feColorMatrix
+          id="nave-sat-luz"
           in="SourceGraphic"
           type="saturate"
           values="0"
           result="gris0"
         />
-        <feComponentTransfer in="gris0" result="gris">
-          <feFuncR type="linear" slope="1.4" intercept="0.1" />
-          <feFuncG type="linear" slope="1.4" intercept="0.1" />
-          <feFuncB type="linear" slope="1.4" intercept="0.1" />
+        <feComponentTransfer in="gris0">
+          <feFuncR id="nave-luz-r" type="linear" slope="1.4" intercept="0.1" />
+          <feFuncG id="nave-luz-g" type="linear" slope="1.4" intercept="0.1" />
+          <feFuncB id="nave-luz-b" type="linear" slope="1.4" intercept="0.1" />
         </feComponentTransfer>
-        <feComponentTransfer in="SourceAlpha" result="afuera">
-          <feFuncA type="table" tableValues="1 0" />
-        </feComponentTransfer>
-        <feGaussianBlur in="afuera" stdDeviation="2.5" result="difusa" />
-        <feOffset in="difusa" dx="1" dy="2.5" result="corrida" />
-        <feComposite
-          in="corrida"
-          in2="SourceAlpha"
-          operator="in"
-          result="sombra"
-        />
-        <feColorMatrix
-          in="sombra"
-          type="matrix"
-          values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.2 0"
-          result="sombraNegra"
-        />
-        <feMerge>
-          <feMergeNode in="gris" />
-          <feMergeNode in="sombraNegra" />
-        </feMerge>
       </filter>
     </svg>
     <div class="site-content" id="site-content">
