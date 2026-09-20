@@ -39,7 +39,7 @@
 // no se ve). Cuando se van, se vuelve al escenario principal (el nivel está
 // completo).
 //
-// Música (audio/nivel4.m4a): arranca 2 s después de que la nave prende la luz
+// Música (audio/nivel4.ogg): arranca 2 s después de que la nave prende la luz
 // (así se oye el sonido de luz on) y suena en bucle mientras dura la partida,
 // acelerando de a muy poquito. Se frena al chocar (queda en silencio lo que
 // dura la caída de la nave) y arranca de nuevo desde el principio, a
@@ -84,7 +84,7 @@
   const INTRO_ACELERACION = 380; // px/s² del mundo al irse
   const INTRO_DIR = { x: -0.75, y: -0.66 }; // arriba a la izquierda
   const INTRO_MIRADA_MAX = 75; // grados: lo máximo que gira la nave para mirar a las navecitas
-  const MUSICA_URL = "audio/nivel4.m4a";
+  const MUSICA_URL = "audio/nivel4.ogg";
   const MUSICA_VOLUMEN = 0.1;
   const MUSICA_RETRASO = 2; // segundos entre que la nave prende la luz y arranca la música
   // La música acelera de a muy poquito mientras dura la partida (casi
@@ -226,7 +226,7 @@
   let timerOculto = false;
   let musicaIniciada = false; // ya se pidió cargar la música
   let audioCtx = null; // Web Audio
-  let musicaBuffer = null; // audio/nivel4.m4a decodificado
+  let musicaBuffer = null; // audio/nivel4.ogg decodificado
   let musicaGain = null;
   let perderGain = null;
   let perderBuffer = null; // audio/stopgame.mp3 decodificado
