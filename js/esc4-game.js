@@ -85,7 +85,7 @@
   const INTRO_DIR = { x: -0.75, y: -0.66 }; // arriba a la izquierda
   const INTRO_MIRADA_MAX = 75; // grados: lo máximo que gira la nave para mirar a las navecitas
   const MUSICA_URL = "audio/nivel4.m4a";
-  const MUSICA_VOLUMEN = 0.5;
+  const MUSICA_VOLUMEN = 0.1;
   const MUSICA_RETRASO = 2; // segundos entre que la nave prende la luz y arranca la música
   // La música acelera de a muy poquito mientras dura la partida (casi
   // imperceptible): sube MUSICA_ACEL por segundo hasta MUSICA_ACEL_MAX (0,0004
@@ -93,11 +93,11 @@
   const MUSICA_ACEL = 0.0004;
   const MUSICA_ACEL_MAX = 0.1;
   const PERDER_URL = "audio/stopgame.mp3";
-  const PERDER_VOLUMEN = 0.8;
+  const PERDER_VOLUMEN = 0.2;
   // Al entrar al último agujero de gusano (el que completa el color de la nave)
   // suena esta nota, una sola vez.
   const NOTA_URL = "audio/mimayor.m4a";
-  const NOTA_VOLUMEN = 0.8;
+  const NOTA_VOLUMEN = 0.1;
   const P7_ANCHO = 40; // px del mundo: ancho de la nave (chica, como la de la escena; ver ESCALA_MUNDO)
   // Posición de la nave que ya está ahí, relativa al ancho del mundo, y a
   // qué distancia del piso está: la misma altura a la que aparece el
@@ -136,7 +136,9 @@
   const ESCALA_MUNDO = 0.55; // tamaño/velocidad del mundo respecto del juego "sin zoom"
   const MARGEN_SPAWN = 60; // px del mundo: los polígonos nacen un poco más allá de lo visible
   const LUZ_RADIO = 280; // px del mundo: alcance de la luz de la nave
-  const LUZ_INTENSIDAD = 0.32; // opacidad del blanco en el centro de la luz
+  const LUZ_RGB_INICIO = [255, 255, 255]; // color de la luz con la nave en blanco y negro...
+  const LUZ_RGB_FIN = [255, 159, 154]; // ...y con todo su color (el salmón del sitio, el de siempre)
+  const LUZ_INTENSIDAD = 0.12; // opacidad del salmón en el centro de la luz (la misma que el ::before de la nave en styles.css)
 
   // --- Estrellas y cúmulos ---------------------------------------------------
   const ESTRELLAS_FONDO = 90; // estrellas blancas del fondo (decoración)
@@ -174,8 +176,14 @@
   const FINAL_NAVES = [
     { desde: (p, v) => ({ x: p.x - 60, y: v.y - 100 }), a: { x: -6, y: -4 } },
     { desde: (p, v) => ({ x: v.x - 100, y: p.y + 120 }), a: { x: -56, y: 30 } },
-    { desde: (p, v) => ({ x: v.x + v.w + 100, y: p.y - 200 }), a: { x: 50, y: -30 } },
-    { desde: (p, v) => ({ x: p.x + 240, y: v.y + v.h + 100 }), a: { x: 14, y: -50 } },
+    {
+      desde: (p, v) => ({ x: v.x + v.w + 100, y: p.y - 200 }),
+      a: { x: 50, y: -30 },
+    },
+    {
+      desde: (p, v) => ({ x: p.x + 240, y: v.y + v.h + 100 }),
+      a: { x: 14, y: -50 },
+    },
   ];
   const COLOR_PASOS = 40; // escalones en que se actualiza el filtro de color de la nave (0 a 1)
   const COLOR_SUAVIZADO = 0.8; // 1/s: cuánto tarda la nave en alcanzar el color nuevo (más bajo = más lento)
@@ -260,7 +268,7 @@
     estrellas.filter((e) => e.grupo === g),
   );
   let gusanoSprites = null; // anillos de los agujeros ya dibujados con brillo (ver armarSprites)
-  let luzSprite = null; // la luz de la nave ya dibujada (degradado)
+  let luzSprites = null; // la luz de la nave ya dibujada (degradado), en blanco y en salmón
   let cumulos = []; // cúmulos de estrellas azules en el mapa
   let particulas = []; // chispas de cuando se choca un cúmulo
   let acumCumulo = 0;
@@ -396,7 +404,10 @@
       const dy = b.y - a.y;
       const t = Math.max(
         0,
-        Math.min(1, ((cx - a.x) * dx + (cy - a.y) * dy) / (dx * dx + dy * dy || 1)),
+        Math.min(
+          1,
+          ((cx - a.x) * dx + (cy - a.y) * dy) / (dx * dx + dy * dy || 1),
+        ),
       );
       const ex = a.x + t * dx - cx;
       const ey = a.y + t * dy - cy;
@@ -664,9 +675,14 @@
         y: naves.reduce((a, n) => a + n.y, 0) / naves.length,
       };
       const grados =
-        (Math.atan2(objetivo.y - centro.y, objetivo.x - centro.x) * 180) / Math.PI + 90;
+        (Math.atan2(objetivo.y - centro.y, objetivo.x - centro.x) * 180) /
+          Math.PI +
+        90;
       const norm = ((grados + 540) % 360) - 180;
-      miradaGrados = Math.max(-INTRO_MIRADA_MAX, Math.min(INTRO_MIRADA_MAX, norm));
+      miradaGrados = Math.max(
+        -INTRO_MIRADA_MAX,
+        Math.min(INTRO_MIRADA_MAX, norm),
+      );
     }
     window.shipFace(miradaGrados + Math.sin(introT * 1.3) * NAVE_BALANCEO);
   }
@@ -712,7 +728,17 @@
     const w = (r.w + P7_MARGEN * 2) * k;
     const h = (r.h + P7_MARGEN * 2) * k;
     const recorte = (c) =>
-      c.drawImage(img, r.x - P7_MARGEN, r.y - P7_MARGEN, w / k, h / k, 0, 0, w, h);
+      c.drawImage(
+        img,
+        r.x - P7_MARGEN,
+        r.y - P7_MARGEN,
+        w / k,
+        h / k,
+        0,
+        0,
+        w,
+        h,
+      );
     const nave = document.createElement("canvas");
     nave.width = w;
     nave.height = h;
@@ -891,12 +917,28 @@
     }
     // El sprite de atrás (el resplandor) también: su gris lo lee de esta variable
     // (ver scenes.game.light en script.js).
-    ship.style.setProperty("--nave-gris", (1 - escalon / COLOR_PASOS).toFixed(3));
+    ship.style.setProperty(
+      "--nave-gris",
+      (1 - escalon / COLOR_PASOS).toFixed(3),
+    );
+    // La luz también: empieza blanca y va pasando al salmón (los halos y el
+    // degradado de la nave, ver --luz-rgb en styles.css; el del canvas lo mezcla
+    // dibujar).
+    ship.style.setProperty(
+      "--luz-rgb",
+      LUZ_RGB_INICIO.map((a, i) =>
+        Math.round(a + (LUZ_RGB_FIN[i] - a) * (escalon / COLOR_PASOS)),
+      ).join(","),
+    );
     // El fondo starry sube con el color de la nave (la transición del CSS suaviza
     // el salto de un escalón al siguiente).
     scene.style.setProperty("--fondo-color", valor);
     // Y el segundero pasa del blanco al salmón del sitio.
-    timerEl.style.color = mezclarColores("#ffffff", TIMER_COLOR_FIN, escalon / COLOR_PASOS);
+    timerEl.style.color = mezclarColores(
+      "#ffffff",
+      TIMER_COLOR_FIN,
+      escalon / COLOR_PASOS,
+    );
   }
 
   // Un agujero de gusano nuevo en un punto al azar de lo que se ve, lejos de la
@@ -907,9 +949,13 @@
     for (let intento = 0; intento < 20; intento++) {
       const x = v.x + margen + Math.random() * Math.max(1, v.w - margen * 2);
       const y = v.y + margen + Math.random() * Math.max(1, v.h - margen * 2);
-      if (objetivo && Math.hypot(x - objetivo.x, y - objetivo.y) < CUMULO_DISTANCIA_MIN)
+      if (
+        objetivo &&
+        Math.hypot(x - objetivo.x, y - objetivo.y) < CUMULO_DISTANCIA_MIN
+      )
         continue;
-      if (otro && Math.hypot(x - otro.x, y - otro.y) < CUMULO_DISTANCIA_PAR) continue;
+      if (otro && Math.hypot(x - otro.x, y - otro.y) < CUMULO_DISTANCIA_PAR)
+        continue;
       return {
         x,
         y,
@@ -964,7 +1010,9 @@
     }
     cumulos = cumulos.filter((c) => c.t < CUMULO_VIDA);
     const entrado = cumulos.find((c) =>
-      circulos.some((n) => Math.hypot(n.x - c.x, n.y - c.y) < n.r + CUMULO_RADIO),
+      circulos.some(
+        (n) => Math.hypot(n.x - c.x, n.y - c.y) < n.r + CUMULO_RADIO,
+      ),
     );
     if (entrado) {
       // La nave desaparece por este agujero y aparece por el otro (ambos se
@@ -1000,7 +1048,10 @@
 
     if (tiempo > gracia && !ganado) {
       acumSpawn += dt;
-      const intervalo = Math.max(SPAWN_MIN, SPAWN_INICIAL - tiempo * SPAWN_RAMPA);
+      const intervalo = Math.max(
+        SPAWN_MIN,
+        SPAWN_INICIAL - tiempo * SPAWN_RAMPA,
+      );
       if (acumSpawn >= intervalo) {
         acumSpawn = 0;
         poligonos.push(crearPoligono(circulos[1]));
@@ -1051,7 +1102,10 @@
         const dx = c.x - p.x;
         const dy = c.y - p.y;
         const rr = p.radio + c.r;
-        return dx * dx + dy * dy <= rr * rr && circuloTocaPoligono(c.x, c.y, c.r, p.pts);
+        return (
+          dx * dx + dy * dy <= rr * rr &&
+          circuloTocaPoligono(c.x, c.y, c.r, p.pts)
+        );
       });
       if (tocado) {
         choque = true;
@@ -1084,8 +1138,10 @@
     const conSalmon = !negro || ganado; // intro y final
     for (let g = 0; g < GRUPOS_ESTRELLAS.length; g++) {
       const grupo = GRUPOS_ESTRELLAS[g];
-      ctx.fillStyle = conSalmon && GRUPOS_SALMON.includes(g) ? ESTRELLA_SALMON : "#fff";
-      ctx.globalAlpha = 0.3 + 0.6 * (0.5 + 0.5 * Math.sin(reloj * grupo.vel + grupo.fase));
+      ctx.fillStyle =
+        conSalmon && GRUPOS_SALMON.includes(g) ? ESTRELLA_SALMON : "#fff";
+      ctx.globalAlpha =
+        0.3 + 0.6 * (0.5 + 0.5 * Math.sin(reloj * grupo.vel + grupo.fase));
       ctx.beginPath();
       for (const e of estrellasPorGrupo[g]) {
         const x = e.fx * w;
@@ -1115,7 +1171,13 @@
       // Dos pasadas: el resplandor se refuerza y se nota más.
       for (let k = 0; k < 2; k++) {
         c.beginPath();
-        c.arc(Math.cos(a) * radio * K, Math.sin(a) * radio * K, r * K, 0, Math.PI * 2);
+        c.arc(
+          Math.cos(a) * radio * K,
+          Math.sin(a) * radio * K,
+          r * K,
+          0,
+          Math.PI * 2,
+        );
         c.fill();
       }
     }
@@ -1130,22 +1192,32 @@
         armarAnillo(CUMULO_ANILLO, CUMULO_ESTRELLAS, CUMULO_ESTRELLA_R, color),
       ),
       adentro: [CUMULO_COLOR_INICIO, CUMULO_COLOR_FIN].map((color) =>
-        armarAnillo(CUMULO_ANILLO * 0.55, CUMULO_INTERIOR, CUMULO_ESTRELLA_R * 0.75, color),
+        armarAnillo(
+          CUMULO_ANILLO * 0.55,
+          CUMULO_INTERIOR,
+          CUMULO_ESTRELLA_R * 0.75,
+          color,
+        ),
       ),
     };
-    // La luz de la nave: el degradado blanco de siempre, dibujado una vez;
-    // en cada cuadro solo se estira a su tamaño y se le pone la intensidad.
+    // La luz de la nave: el mismo degradado que el resto de la página (el
+    // ::before de .starry-cohete-pair en styles.css), dibujado una vez en blanco
+    // y una en salmón; en cada cuadro solo se estiran a su tamaño y se mezclan
+    // según el color de la nave, con la intensidad.
     const n = 256;
-    luzSprite = document.createElement("canvas");
-    luzSprite.width = luzSprite.height = n;
-    const c = luzSprite.getContext("2d");
-    const g = c.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
-    g.addColorStop(0, "rgba(255,255,255,1)");
-    g.addColorStop(0.2, "rgba(255,255,255,0.65)");
-    g.addColorStop(0.5, "rgba(255,255,255,0.25)");
-    g.addColorStop(1, "rgba(255,255,255,0)");
-    c.fillStyle = g;
-    c.fillRect(0, 0, n, n);
+    luzSprites = [LUZ_RGB_INICIO, LUZ_RGB_FIN].map((rgb) => {
+      const sprite = document.createElement("canvas");
+      sprite.width = sprite.height = n;
+      const c = sprite.getContext("2d");
+      const g = c.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+      g.addColorStop(0, `rgba(${rgb},1)`);
+      g.addColorStop(0.2, `rgba(${rgb},0.65)`);
+      g.addColorStop(0.5, `rgba(${rgb},0.25)`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      c.fillStyle = g;
+      c.fillRect(0, 0, n, n);
+      return sprite;
+    });
   }
 
   // Dibuja un sprite de anillo rotado. Como los anillos de estrellas son
@@ -1166,7 +1238,8 @@
   function mezclarColores(desde, hasta, k) {
     const a = parseInt(desde.slice(1), 16);
     const b = parseInt(hasta.slice(1), 16);
-    const canal = (sh) => Math.round(((a >> sh) & 255) * (1 - k) + ((b >> sh) & 255) * k);
+    const canal = (sh) =>
+      Math.round(((a >> sh) & 255) * (1 - k) + ((b >> sh) & 255) * k);
     return "rgb(" + canal(16) + "," + canal(8) + "," + canal(0) + ")";
   }
 
@@ -1193,8 +1266,22 @@
       for (let v = 0; v < 2; v++) {
         // v = 0: blanco (se apaga con k); v = 1: naranja (aparece con k).
         const alfa = v === 0 ? 1 - k : k;
-        dibujarAnilloSprite(gusanoSprites.afuera[v], c.x, c.y, c.ang, esc, alfa);
-        dibujarAnilloSprite(gusanoSprites.adentro[v], c.x, c.y, -c.ang * 1.7, esc, alfa);
+        dibujarAnilloSprite(
+          gusanoSprites.afuera[v],
+          c.x,
+          c.y,
+          c.ang,
+          esc,
+          alfa,
+        );
+        dibujarAnilloSprite(
+          gusanoSprites.adentro[v],
+          c.x,
+          c.y,
+          -c.ang * 1.7,
+          esc,
+          alfa,
+        );
       }
     }
     ctx.globalAlpha = 1;
@@ -1259,10 +1346,17 @@
       ctx.translate(p.x, p.y);
       ctx.scale(z, z);
       ctx.translate(-p.x, -p.y);
-      scene.style.setProperty("--fondo-zoom", (1 + (z - 1) * FINAL_ZOOM_FONDO).toFixed(4));
+      scene.style.setProperty(
+        "--fondo-zoom",
+        (1 + (z - 1) * FINAL_ZOOM_FONDO).toFixed(4),
+      );
       scene.style.setProperty(
         "--fondo-origen",
-        cam.ox + (p.x - cam.ox) * cam.z + "px " + (cam.oy + (p.y - cam.oy) * cam.z) + "px",
+        cam.ox +
+          (p.x - cam.ox) * cam.z +
+          "px " +
+          (cam.oy + (p.y - cam.oy) * cam.z) +
+          "px",
       );
     }
 
@@ -1272,15 +1366,20 @@
     // negros y opacos, contra ese resplandor se ven como siluetas. Solo en el
     // juego: en la intro y en el final la nave prendida se ve como en el index
     // (sin esta luz grande; ver game-color y game-luz-index en styles.css).
-    if (luzNivel > 0.01 && centro && luzSprite && negro && !final) {
-      ctx.globalAlpha = LUZ_INTENSIDAD * luzNivel;
-      ctx.drawImage(
-        luzSprite,
-        centro.x - LUZ_RADIO,
-        centro.y - LUZ_RADIO,
-        LUZ_RADIO * 2,
-        LUZ_RADIO * 2,
-      );
+    if (luzNivel > 0.01 && centro && luzSprites && negro && !final) {
+      // Empieza blanca y pasa al salmón con el color de la nave (un fundido
+      // entre los dos sprites, como en los agujeros).
+      const k = Math.max(0, Math.min(1, colorNave));
+      for (let v = 0; v < 2; v++) {
+        ctx.globalAlpha = LUZ_INTENSIDAD * luzNivel * (v === 0 ? 1 - k : k);
+        ctx.drawImage(
+          luzSprites[v],
+          centro.x - LUZ_RADIO,
+          centro.y - LUZ_RADIO,
+          LUZ_RADIO * 2,
+          LUZ_RADIO * 2,
+        );
+      }
       ctx.globalAlpha = 1;
     }
 
@@ -1292,7 +1391,11 @@
     ctx.strokeStyle = "#fff";
     // Relleno: del negro al azul starry a medida que se colorea la nave (igual
     // que el fondo y los agujeros).
-    ctx.fillStyle = mezclarColores("#000000", POLIGONO_COLOR_FIN, Math.max(0, Math.min(1, colorNave)));
+    ctx.fillStyle = mezclarColores(
+      "#000000",
+      POLIGONO_COLOR_FIN,
+      Math.max(0, Math.min(1, colorNave)),
+    );
     for (const p of poligonos) {
       ctx.beginPath();
       const pts = p.pts;
@@ -1411,7 +1514,8 @@
       }
       const centro = circulos[1];
       if (centro && navePrev && dt > 0) {
-        const vel = Math.hypot(centro.x - navePrev.x, centro.y - navePrev.y) / dt;
+        const vel =
+          Math.hypot(centro.x - navePrev.x, centro.y - navePrev.y) / dt;
         tQuieta = vel < QUIETA_MOV ? tQuieta + dt : 0;
       }
       navePrev = centro ? { x: centro.x, y: centro.y } : null;
@@ -1481,6 +1585,7 @@
         frenarSonidos();
         limpiarFinal(); // la nave vuelve a verse en el resto de los escenarios
         ship.classList.remove("game-color");
+        ship.style.removeProperty("--luz-rgb"); // en el resto de los escenarios la luz es la de siempre
         scene.classList.remove("game-intro");
         levantarTapa(true);
       }

@@ -1187,11 +1187,7 @@ function drawStars() {
       speedMult: 1 / CAMERA_ZOOM,
       heightScale: { near: SHIP_SPACE_SCALE_NEAR, far: SHIP_SPACE_SCALE_FAR },
       camera: { zoom: CAMERA_ZOOM, elements: [spaceScene, spaceSceneFront] },
-      light: {
-        filter:
-          "drop-shadow(0 2px 14px rgba(255, 159, 154, 0.85)) drop-shadow(0 0 70px rgba(255, 159, 154, 0.7))",
-        volume: 0.2,
-      },
+      light: { volume: 0.2 },
       edges: {
         bottom: {
           to: "main",
@@ -1253,17 +1249,15 @@ function drawStars() {
         },
       },
       // La nave es blanco y negro acá (grayscale en el sprite de atrás, apagada
-      // o prendida) y su luz es blanca y suave, un poco más grande que la de
-      // los otros escenarios; el resto del brillo, el que ilumina el fondo, lo
-      // dibuja el juego en su canvas (setLight). El gris va con --nave-gris (1 =
-      // blanco y negro, 0 = a color) en la nave, que esc4-game.js baja a medida
-      // que se colorea.
+      // o prendida) pero su luz es la de siempre: los mismos halos salmón
+      // (--nave-luz-halo) y, para iluminar el fondo, el mismo degradado grande,
+      // que acá dibuja el juego en su canvas (setLight) para que las rocas
+      // queden por encima como siluetas. El gris va con --nave-gris (1 = blanco
+      // y negro, 0 = a color) en la nave, que esc4-game.js baja a medida que se
+      // colorea.
       light: {
         off: "grayscale(var(--nave-gris, 1))",
-        filter:
-          "grayscale(var(--nave-gris, 1)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 20px rgba(255, 255, 255, 0.35))",
-        // (Sin un tercer resplandor de 130px: es un blur enorme, lo más caro de
-        // pintar, y la luz grande ya la dibuja el juego en su canvas.)
+        filter: "grayscale(var(--nave-gris, 1)) var(--nave-luz-halo)",
         // Más fuerte que en los otros escenarios: el sonido de luz on marca el
         // momento en que empieza el juego y tiene que oírse bien.
         volume: 0.9,
@@ -1747,8 +1741,11 @@ function drawStars() {
       // overflow/clip-path en la caja de la nave (ver .starry-cohete-pair en
       // CSS), así que un brillo grande puede difuminarse libre sin cortarse
       // en un contorno cuadrado.
-      const NEAR_LIGHT_FILTER =
-        "drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59))";
+      // La luz de la nave es la misma en todos los escenarios: dos halos sobre
+      // el sprite (--nave-luz-halo en styles.css) y, aparte, la luz grande y
+      // suave sobre el fondo (el ::before de .starry-cohete-pair, también en
+      // styles.css; en el escenario 4 la dibuja el canvas).
+      const NEAR_LIGHT_FILTER = "var(--nave-luz-halo)";
       applyLightFilter = () => {
         // El escenario 4 dibuja además la luz sobre su fondo (canvas).
         if (window.esc4Game) window.esc4Game.setLight(lightOn);
@@ -1757,7 +1754,7 @@ function drawStars() {
           d.style.filter = (light && light.off) || "none";
           return;
         }
-        d.style.filter = light ? light.filter : NEAR_LIGHT_FILTER;
+        d.style.filter = (light && light.filter) || NEAR_LIGHT_FILTER;
       };
       const setLight = (on, silent) => {
         lightOn = on;

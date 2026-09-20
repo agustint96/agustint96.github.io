@@ -96,6 +96,13 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+/* Con el escenario principal oculto ningún hijo debe recibir el mouse: parallax
+   2 tiene pointer-events:auto propio (para el sonido del bajo), que le gana a
+   la herencia de arriba, y un click justo donde está (ej. en el escenario 4) le
+   arrastraba la imagen. */
+.site-content.space-hidden * {
+  pointer-events: none !important;
+}
 /* El <main> es sólo un landmark de accesibilidad (nav queda afuera, ver
    index.html): no debe alterar el flex column de .site-content, así que
    sus hijos (.starry-bg, .parallax-footer) siguen siendo los flex items
@@ -1017,6 +1024,51 @@ nav.nav-compact {
   will-change: transform, opacity;
   max-width: 130px;
 }
+/* Luz de la nave, la misma en toda la página: dos halos sobre el sprite (uno
+   cercano y otro más ancho y tenue; script.js pone --nave-luz-halo en el sprite
+   de atrás al prender la luz) y un degradado grande y suave alrededor de la
+   nave (el ::before de abajo). El color es --luz-rgb (salmón por defecto); el
+   escenario 4 lo va cambiando del blanco al salmón a medida que se colorea la
+   nave (esc4-game.js). Se define en la nave y no en :root para que cada nave
+   use el --luz-rgb que tenga. */
+.starry-cohete-pair {
+  --nave-luz-halo: drop-shadow(0 0 8px rgba(var(--luz-rgb, 255, 159, 154), 0.3))
+    drop-shadow(0 0 20px rgba(var(--luz-rgb, 255, 159, 154), 0.15));
+}
+/* Luz de la nave, igual en todos los escenarios: además del resplandor del
+   sprite (--nave-luz-halo), un degradado grande y suave alrededor de la nave (el
+   mismo que dibuja el escenario 4 sobre su fondo, luzSprite en esc4-game.js: 4
+   paradas, opacidad máxima 0,12). Se centra sobre el cuerpo de la nave (el
+   sprite queda pegado a la izquierda de la caja) y aparece con la luz prendida
+   (luz-on, ver setLight en script.js). Va detrás de los sprites. */
+.starry-cohete-pair::before {
+  content: "";
+  position: absolute;
+  left: 44px;
+  top: 58px;
+  width: 560px;
+  height: 560px;
+  margin: -280px 0 0 -280px;
+  background: radial-gradient(
+    circle closest-side,
+    rgba(var(--luz-rgb, 255, 159, 154), 1) 0%,
+    rgba(var(--luz-rgb, 255, 159, 154), 0.65) 20%,
+    rgba(var(--luz-rgb, 255, 159, 154), 0.25) 50%,
+    rgba(var(--luz-rgb, 255, 159, 154), 0) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+.starry-cohete-pair.luz-on::before {
+  opacity: 0.12;
+}
+/* En el juego ese degradado lo dibuja el canvas sobre el fondo y debajo de las
+   rocas (así se ven como siluetas): acá solo va en la intro y en el final. */
+.starry-cohete-pair.in-game:not(.game-color):not(.game-luz-index)::before {
+  display: none;
+}
 .starry-cohete-pair.in-space {
   z-index: 253;
 }
@@ -1031,8 +1083,8 @@ nav.nav-compact {
 .starry-cohete-pair.in-game {
   z-index: 253;
 }
-/* Acá la nave es blanco y negro (ver el filtro #nave-gris en index.html) y su
-   luz es blanca. Por eso el filtro va
+/* Acá la nave es blanco y negro (ver el filtro #nave-gris en index.html) pero su
+   luz es la de siempre (salmón). Por eso el filtro va
    en cada sprite y no en la caja: uno en la caja también volvería gris el
    resplandor. El de .starry-cohete-fondo lo pone script.js junto con el
    drop-shadow (ver scenes.game.light). */
@@ -1053,18 +1105,22 @@ nav.nav-compact {
 .starry-cohete-pair.in-game.game-color .starry-cohete-fondo {
   filter: none !important;
 }
+/* La intro es a color: la luz es salmón aunque todavía no haya color de juego
+   (con !important, porque esc4-game.js escribe --luz-rgb en línea). */
+.starry-cohete-pair.in-game.game-color {
+  --luz-rgb: 255, 159, 154 !important;
+}
 /* Si en la intro el jugador prende la luz de la nave, se ve como en el index: el
    sprite con la luz encendida (script.js cambia a cohete_on) y el mismo
-   resplandor salmón (NEAR_LIGHT_FILTER en script.js). */
+   resplandor salmón (--nave-luz-halo). */
 .starry-cohete-pair.in-game.game-color.luz-on .starry-cohete-fondo {
-  filter: drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59)) !important;
+  filter: var(--nave-luz-halo) !important;
 }
 /* Lo mismo en el zoom a la nave del final (esc4-game.js le pone game-luz-index):
-   con la luz prendida el resplandor es el salmón del index (no el blanco del
-   juego) y, a medida que la nave se colorea, el gris de ese sprite se va. */
+   con la luz prendida el resplandor es el de siempre y, a medida que la nave se
+   colorea, el gris de ese sprite se va. */
 .starry-cohete-pair.in-game.luz-on.game-luz-index .starry-cohete-fondo {
-  filter: grayscale(var(--nave-gris, 0))
-    drop-shadow(0 2px 10px rgba(255, 159, 154, 0.59)) !important;
+  filter: grayscale(var(--nave-gris, 0)) var(--nave-luz-halo) !important;
 }
 /* Final (victoria) del escenario 4: la nave del jugador no se ve (sin
    fundido), la escena es el fondo starry con las naves parallax 7
