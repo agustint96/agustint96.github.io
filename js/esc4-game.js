@@ -9,8 +9,29 @@
 // una pantalla negra por encima de todo (la nave incluida): todo se oscurece a
 // la vez. Con la pantalla toda negra la nave pasa a blanco y negro sin que se
 // vea; recién ahí prende la luz, se levanta la pantalla negra y aparece en
-// blanco y negro: empieza el juego (aparece el segundero, suena la música y,
-// un momento después, caen los polígonos).
+// blanco y negro: arrancan las instrucciones (ver más abajo) y, cuando se
+// terminan, empieza el juego (aparece el segundero, suena la música y, un
+// momento después, caen los polígonos).
+//
+// Instrucciones: con la luz ya prendida, 2 s después (para que se oiga el
+// sonido de luz on) suena game sound/nivel4_intro.m4a en bucle y aparece el primer
+// paso, con la nave ya bajo control del jugador pero sin polígonos, sin
+// agujeros y sin segundero: "Para moverte usa" y las cuatro flechas, que se
+// iluminan mientras se aprietan de verdad (las WASD también valen). Cuando ya
+// se apretó cada una y pasa 1 s el texto se desvanece y aparece el siguiente:
+// "Usa shift para potenciar la velocidad" y por último "Podes usar espacio para
+// ver mas lejos" (la barra espaciadora, o M: lo que aleja la cámara); cada uno
+// se cierra igual, 1 s después de apretar la tecla. Cada paso trae su voz (una
+// al azar de audio/Esc4/1- flechitas, 2- shift o 3- espacio, ver AYUDA_VOCES)
+// y no se desvanece hasta que la voz termina. Tras el último suena un "listo"
+// (4- listo): con él la música de intro se va con un fade out y, cuando termina
+// de decirlo, arranca la del juego y empieza el segundero (y, tras la gracia,
+// las piedras). Si hay un joystick conectado los pasos son los del joystick
+// (stick izquierdo o cruceta, RB, LT; ver el bloque data-modo="joystick" de
+// index.html) y con sus propias voces (1- Analogico, 2- RB, 3- L2, ver
+// AYUDA_VOCES_JOYSTICK); lo que se use, teclado o joystick, completa
+// los pasos de las dos versiones. Solo pasa la primera vez: después de un
+// choque no.
 //
 // Estrellas: se ven algunas estrellas blancas sobre el fondo, también en la
 // intro y en el final (solo decoración, no se chocan). En distintos puntos del mapa aparecen agujeros de
@@ -38,21 +59,22 @@
 // putea en un globo de diálogo (*#$%!) y se escapan. Cuando se van, se vuelve al
 // escenario principal (el nivel está completo).
 //
-// Música (audio/nivel4.ogg, con audio/nivel4.m4a de respaldo): arranca 2 s después de que la nave prende la luz
-// (así se oye el sonido de luz on) y suena en bucle mientras dura la partida,
+// Música (game sound/nivel4.ogg, con game sound/nivel4.m4a de respaldo): arranca cuando
+// terminan las instrucciones y suena en bucle mientras dura la partida,
 // acelerando de a muy poquito. Se frena al chocar (queda en silencio lo que
 // dura la caída de la nave) y arranca de nuevo desde el principio, a
 // velocidad normal, cuando empieza la partida siguiente.
-// Al perder suena audio/stopgame.m4a (una vez, sin cortarlo al reiniciar: se
+// Al perder suena game sound/stopgame.m4a (una vez, sin cortarlo al reiniciar: se
 // oye un rato más, aunque ya haya vuelto la música).
 // Cada pasaje por un agujero cuenta hacia atrás con la voz: 10, 9, ... 1
 // (audio/Esc4/conteo; ver CONTEO_ARCHIVOS). Al perder el conteo vuelve a 10.
 // En el último portal, tras el "1" (o en su lugar) suena una felicitación. Además,
-// de vez en cuando (50 %) hay voces de ánimo a los ~20 s y de cansancio pasados los
-// 30 s. Todas comparten un canal y las de ánimo/cansancio no pisan a las de portal.
+// hay dos voces de ánimo por partida (a los ~15 s y a los ~25 s, siempre) y de
+// cansancio pasados los 30 s (a los 30, 40, 50..., cada una con un 50 % de chance).
+// Todas comparten un canal y las de ánimo/cansancio no pisan a las de portal.
 // Se reproduce con Web Audio (el archivo se decodifica una vez y se loopea el
 // buffer): con un <audio loop> el bucle tenía un hueco al volver a empezar y
-// al reiniciar con currentTime había demora. Si Web Audio no está disponible
+// al reiniciar con currentTime habíademora. Si Web Audio no está disponible
 // o falla la carga, cae a un <audio> común.
 //
 // script.js registra el escenario (scenes.game) y llama a
@@ -88,43 +110,183 @@
   const INTRO_ACELERACION = 380; // px/s² del mundo al irse
   const INTRO_DIR = { x: -0.75, y: -0.66 }; // arriba a la izquierda
   const INTRO_MIRADA_MAX = 75; // grados: lo máximo que gira la nave para mirar a las navecitas
+  // Los sonidos del nivel (música, perder, nota) están en audio/Esc4/game sound;
+  // las voces y los efectos de portal, en las otras carpetas de audio/Esc4.
   // Opus (el más liviano, bucle sin hueco) y, si el navegador no lo lee (Safari
   // viejo), la misma música en AAC. Se usa la primera que se pueda decodificar.
   const MUSICA_FUENTES = [
-    { url: "audio/nivel4.ogg", tipo: 'audio/ogg; codecs="opus"' },
-    { url: "audio/nivel4.m4a", tipo: 'audio/mp4; codecs="mp4a.40.2"' },
+    {
+      url: "audio/Esc4/game sound/nivel4.ogg",
+      tipo: 'audio/ogg; codecs="opus"',
+    },
+    {
+      url: "audio/Esc4/game sound/nivel4.m4a",
+      tipo: 'audio/mp4; codecs="mp4a.40.2"',
+    },
   ];
   const MUSICA_VOLUMEN = 0.1;
-  const MUSICA_RETRASO = 2; // segundos entre que la nave prende la luz y arranca la música
+  // Mientras duran las instrucciones suena esta, en bucle, y se va con un fade
+  // out cuando suena el "listo". Tiene el mismo volumen que la del juego.
+  const INTRO_MUSICA_URL = "audio/Esc4/game sound/nivel4_intro.m4a";
+  const INTRO_MUSICA_FUNDIDO = 1.2; // segundos que tarda en apagarse
+  const AYUDA_RETRASO = 2; // segundos entre que la nave prende la luz y arrancan las instrucciones (con su música): así se oye el sonido de luz on
+  const AYUDA_ESPERA = 1; // segundos que se espera, ya usadas las teclas, antes de desvanecer el paso
+  const AYUDA_FUNDIDO = 0.6; // segundos que tarda en desvanecerse un paso (igual que la transición de .game-ayuda-paso en styles.css)
+  const AYUDA_VOZ_MAX = 6; // segundos: si una voz no termina (ej. el audio está bloqueado) no se la espera más
+  // Qué teclas hay que apretar en cada paso (ver #game-ayuda en index.html: cada
+  // tecla dibujada tiene su data-tecla). Las flechas y WASD valen lo mismo, como
+  // en script.js.
+  const AYUDA_PASOS = [["up", "left", "down", "right"], ["shift"], ["space"]];
+  // Voces de las instrucciones (audio/Esc4): al aparecer cada paso suena una de
+  // las de su carpeta, al azar (una carpeta por paso, en el mismo orden), y el
+  // paso no se desvanece hasta que termina. Al final, tras el último paso, suena
+  // una de "4- listo" y recién cuando termina empieza el juego.
+  const AYUDA_VOCES = [
+    [
+      "1- flechitas/Usalas_felchitasmp3.m4a",
+      "1- flechitas/usa_las_flechitas_0mp3.m4a",
+      "1- flechitas/usa_las_flechitas_1mp3.m4a",
+    ],
+    [
+      "2- shift/usa_shift_para_acelerarmp3.m4a",
+      "2- shift/usa_shift_para_acelerar_0mp3.m4a",
+      "2- shift/usa_shift_para_acelerar_1mp3.m4a",
+      "2- shift/usa_shift_para_acelerar_2mp3.m4a",
+      "2- shift/usa_shift_para_acelerar_3mp3.m4a",
+    ],
+    [
+      "3- espacio/Con_espacio_podes_ver_mas_lejosmp3.m4a",
+      "3- espacio/Con_espacio_podes_ver_mas_lejos_1.m4a",
+      "3- espacio/Con_espacio_podes_ver_mas_lejos_2mp3.m4a",
+      "3- espacio/con_espacio_podes_ver_mas_lejos_3mp3.m4a",
+      "3- espacio/con_espacio_podes_ver_mas_lejos_4mp3.m4a",
+    ],
+  ];
+  const AYUDA_LISTO = [
+    "4- listo/listmp3.m4a",
+    "4- listo/listo01mp3.m4a",
+    "4- listo/listo02mp3.m4a",
+    "4- listo/listo0mp3.m4a",
+    "4- listo/listo10mp3.m4a",
+    "4- listo/listo1mp3.m4a",
+    "4- listo/listo2mp3.m4a",
+    "4- listo/listo3mp3.m4a",
+    "4- listo/listo4mp3.m4a",
+    "4- listo/listo5mp3.m4a",
+    "4- listo/LISTO8mp3.m4a",
+    "4- listo/listo9mp3.m4a",
+  ];
+  // Las del joystick (las de arriba nombran "flechitas", "shift" y "espacio"):
+  // mismos pasos y mismo orden, una carpeta por paso. Una lista vacía haría que
+  // ese paso no hable. El "listo" del final es el mismo.
+  const AYUDA_VOCES_JOYSTICK = [
+    [
+      "1- Analogico/1mp3.m4a",
+      "1- Analogico/2mp3.m4a",
+      "1- Analogico/3mp3.m4a",
+      "1- Analogico/4mp3.m4a",
+      "1- Analogico/5mp3.m4a",
+      "1- Analogico/6mp3.m4a",
+    ],
+    [
+      "2- RB/r1mp3.m4a",
+      "2- RB/r11mp3.m4a",
+      "2- RB/r111mp3.m4a",
+      "2- RB/r11111mp3.m4a",
+    ],
+    [
+      "3- L2/l2mp3.m4a",
+      "3- L2/l22mp3.m4a",
+      "3- L2/l222mp3.m4a",
+      "3- L2/l22222mp3.m4a",
+      "3- L2/l22222222mp3.m4a",
+    ],
+  ];
+  // Joystick (mapeo estándar del Gamepad API, el mismo que usa script.js): stick
+  // izquierdo o cruceta para moverse, RB para el boost y LT (analógico) para
+  // alejar la cámara. Cuentan como las teclas "up", "left", "down", "right",
+  // "shift" y "space" de AYUDA_PASOS, así los dos controles completan los mismos
+  // pasos.
+  const PAD_CRUCETA = { up: 12, down: 13, left: 14, right: 15 };
+  const PAD_RB = 5;
+  const PAD_LT = 6;
+  const AYUDA_STICK_UMBRAL = 0.5; // cuánto hay que empujar el stick para que cuente una dirección (0 a 1)
+  const AYUDA_STICK_RECORRIDO = 0.6; // em que se corre la palanca dibujada con el stick a fondo (ver .game-stick en styles.css)
+  const AYUDA_GATILLO = 0.3; // cuánto hay que apretar un botón analógico (LT) para que cuente (0 a 1)
+  const AYUDA_TECLAS = {
+    ArrowUp: "up",
+    KeyW: "up",
+    ArrowLeft: "left",
+    KeyA: "left",
+    ArrowDown: "down",
+    KeyS: "down",
+    ArrowRight: "right",
+    KeyD: "right",
+    ShiftLeft: "shift",
+    ShiftRight: "shift",
+    Space: "space",
+    KeyM: "space", // M y espacio alejan la cámara (ver script.js)
+  };
   // La música acelera de a muy poquito mientras dura la partida (casi
   // imperceptible): sube MUSICA_ACEL por segundo hasta MUSICA_ACEL_MAX (0,0004
   // por segundo = +1,2 % a los 30 s), como fracción de la velocidad normal.
   const MUSICA_ACEL = 0.0004;
   const MUSICA_ACEL_MAX = 0.1;
-  const PERDER_URL = "audio/stopgame.m4a";
+  const PERDER_URL = "audio/Esc4/game sound/stopgame.m4a";
   const PERDER_VOLUMEN = 0.2;
   // Al entrar al último agujero de gusano (el que completa el color de la nave)
   // suena esta nota, una sola vez.
-  const NOTA_URL = "audio/mimayor.m4a";
+  const NOTA_URL = "audio/Esc4/game sound/mimayor.m4a";
   const NOTA_VOLUMEN = 0.1;
-  // Voces (audio/Esc4). Todas comparten un solo canal: suena una a la vez, y las
+  // Cada vez que se abre un agujero de gusano nuevo (un par) suena este sonido.
+  // Va aparte de las voces: no corta ni es cortado por ellas.
+  const PORTAL_URL = "audio/Esc4/portales/nuevoportal.m4a";
+  const PORTAL_VOLUMEN = 0.1;
+  // Y este, cada vez que la nave cruza un agujero, con su propio volumen (más
+  // fuerte que el de apertura).
+  const PORTAL_CRUCE_URL = "audio/Esc4/portales/portal++.m4a";
+  const PORTAL_CRUCE_VOLUMEN = 0.8;
+  // Voces (audio/Esc4, una carpeta por momento: 1- a 4- las instrucciones, conteo,
+  // animo, cansancio y 5- final). Todas comparten un solo canal: suena una a la vez, y las
   // de los portales (el conteo y las felicitaciones) tienen prioridad, cortan la
   // que esté sonando; las de ánimo y de cansancio, en cambio, nunca cortan a una
   // de un portal, esperan a que termine.
   const VOZ_URL = "audio/Esc4/";
   const VOZ_VOLUMEN = 0.2;
-  const VOZ_CHANCE = 0.5; // probabilidad de que suene cada vez que le toca (50 %)
-  // Ánimo: una sola tirada por partida, en algún momento de este rango de
-  // segundos de juego (así no siempre cae en el mismo segundo).
-  const VOZ_ANIMO = ["vamos.m4a", "concentrate.m4a"];
-  const VOZ_ANIMO_DESDE = [20, 25];
+  const VOZ_CHANCE = 0.5; // probabilidad de que suene cada tirada de cansancio (50 %)
+  // Ánimo: dos voces por partida, siempre (sin chance), a estos segundos de juego
+  // más o menos: a cada uno se le suma o resta al azar hasta VOZ_ANIMO_MARGEN
+  // segundos, así no caen siempre en el mismo segundo. No se repite la voz.
+  const VOZ_ANIMO = [
+    "animo/vamos.m4a",
+    "animo/concentrate.m4a",
+    "animo/atencionmp3.m4a",
+    "animo/vamosdalemp3.m4a",
+    "animo/vospodesmp3.m4a",
+  ];
+  const VOZ_ANIMO_EN = [15, 25];
+  const VOZ_ANIMO_MARGEN = 2;
   // Cansancio: cuando el juego ya va rápido y lleva mucho: la primera tirada a
   // los VOZ_CANSADO_DESDE segundos y otra cada VOZ_CANSADO_CADA mientras siga.
-  const VOZ_CANSADO = ["ufff.m4a", "seeee.m4a"];
+  const VOZ_CANSADO = [
+    "cansancio/ufff.m4a",
+    "cansancio/seeee.m4a",
+    "cansancio/Que_rapidomp3.m4a",
+    "cansancio/unpocomasmp3.m4a",
+    "cansancio/vancadavezmasrapidomp3.m4a",
+    "cansancio/wemp3.m4a",
+    "cansancio/wowmp3.m4a",
+    "cansancio/wowrapidisimomp3.m4a",
+  ];
   const VOZ_CANSADO_DESDE = 30;
   const VOZ_CANSADO_CADA = 10;
   // Felicitación: en el último portal, después del "1" o en lugar del "1".
-  const VOZ_FELICITA = ["bien.m4a", "muy_bien.m4a", "buenisimoo.m4a", "siii.m4a"];
+  const VOZ_FELICITA = [
+    "5- final/bien.m4a",
+    "5- final/muy_bien.m4a",
+    "5- final/buenisimoo.m4a",
+    "5- final/siii.m4a",
+  ];
   const VOZ_REEMPLAZA = 0.5; // probabilidad de que reemplace al "1" (si no, suena después)
   // Conteo regresivo: cada vez que la nave entra a un agujero de gusano suena
   // el número que sigue, del 10 al 1 (un pasaje por número: CUMULOS_PARA_COLOR
@@ -250,7 +412,24 @@
   const timerEl = document.getElementById("game-timer");
   const ship = document.getElementById("starry-cohete-pair");
   const tapa = document.getElementById("game-tapa"); // pantalla negra por encima de la nave
-  if (!scene || !canvas || !timerEl || !ship) return;
+  const ayudaEl = document.getElementById("game-ayuda"); // instrucciones del arranque
+  if (!scene || !canvas || !timerEl || !ship || !ayudaEl) return;
+  // Las dos versiones de las instrucciones (ver #game-ayuda en index.html), cada
+  // una con sus pasos y con el dibujo de cada tecla o botón ("up", "shift"...).
+  const modosAyuda = {};
+  ayudaEl.querySelectorAll("[data-modo]").forEach((el) => {
+    const teclas = {};
+    el.querySelectorAll("[data-tecla]").forEach((t) => {
+      teclas[t.dataset.tecla] = t;
+    });
+    modosAyuda[el.dataset.modo] = {
+      el,
+      pasos: [...el.querySelectorAll(".game-ayuda-paso")],
+      teclas,
+      palanca: el.querySelector(".game-stick-palanca"), // solo la del joystick
+    };
+  });
+  if (!modosAyuda.teclado || !modosAyuda.joystick) return;
   const ctx = canvas.getContext("2d");
 
   // Hitbox de la nave: tres círculos sobre el sprite (cohete.webp, 203x300),
@@ -277,38 +456,69 @@
   let dpr = 1;
   let introT = -1; // segundos de intro (-1: sin intro)
   let gracia = GRACIA; // segundos sin polígonos desde que empieza a correr el tiempo
-  let timerOculto = false;
   let musicaIniciada = false; // ya se pidió cargar la música
   let audioCtx = null; // Web Audio
   let musicaBuffer = null; // música decodificada (ver MUSICA_FUENTES)
   let musicaGain = null;
   let perderGain = null;
-  let perderBuffer = null; // audio/stopgame.m4a decodificado
+  let perderBuffer = null; // audio/Esc4/game sound/stopgame.m4a decodificado
   let perderFuente = null; // fuente sonando ahora (o null)
   let notaGain = null;
-  let notaBuffer = null; // audio/mimayor.m4a decodificado
+  let notaBuffer = null; // audio/Esc4/game sound/mimayor.m4a decodificado
   let notaFuente = null; // fuente sonando ahora (o null)
   let nota = null; // <audio> de respaldo
+  let portalGain = null;
+  let portalBuffer = null; // audio/Esc4/portales/nuevoportal.m4a decodificado
+  let portalFuente = null; // fuente sonando ahora (o null)
+  let portal = null; // <audio> de respaldo
+  let portalCruceGain = null;
+  let portalCruceBuffer = null; // audio/Esc4/portales/portal++.m4a decodificado
+  let portalCruceFuente = null; // fuente sonando ahora (o null)
+  let portalCruce = null; // <audio> de respaldo
   // Cada voz es { url, buffer, audio }: el buffer decodificado, o un <audio> de
   // respaldo si falla Web Audio.
-  const crearVoz = (url) => ({ url: encodeURI(url), buffer: null, audio: null });
+  const crearVoz = (url) => ({
+    url: encodeURI(url),
+    buffer: null,
+    audio: null,
+  });
   const conteo = CONTEO_ARCHIVOS.map((variantes) =>
     variantes.map((f) => crearVoz(CONTEO_URL + f)),
   ); // un elemento por número (10 a 1), con sus variantes
   const vocesAnimo = VOZ_ANIMO.map((f) => crearVoz(VOZ_URL + f));
   const vocesCansado = VOZ_CANSADO.map((f) => crearVoz(VOZ_URL + f));
   const vocesFelicita = VOZ_FELICITA.map((f) => crearVoz(VOZ_URL + f));
+  const vocesAyuda = AYUDA_VOCES.map((paso) =>
+    paso.map((f) => crearVoz(VOZ_URL + f)),
+  ); // un elemento por paso de las instrucciones, con sus variantes
+  const vocesAyudaJoystick = AYUDA_VOCES_JOYSTICK.map((paso) =>
+    paso.map((f) => crearVoz(VOZ_URL + f)),
+  );
+  const vocesListo = AYUDA_LISTO.map((f) => crearVoz(VOZ_URL + f));
   let vozGain = null;
   let vozFuente = null; // fuente sonando ahora (o null)
   let vozAudio = null; // <audio> de respaldo sonando ahora (o null)
   let vozSonando = false; // hay una voz sonando
   let vozId = 0; // cambia con cada voz nueva o cortada (para ignorar el final de una vieja)
   let vozPendiente = null; // voz de ánimo/cansancio que espera a que se libere el canal
-  let proxAnimo = null; // segundo de la partida en que toca la tirada de ánimo (o null: ya pasó)
+  let proxAnimo = []; // segundos de la partida en que tocan las voces de ánimo que faltan, en orden
+  let animoDichas = []; // las voces de ánimo que ya sonaron en esta partida (para no repetir)
   let proxCansado = VOZ_CANSADO_DESDE; // segundo de la próxima tirada de cansancio
   let perder = null; // <audio> de respaldo
   let musicaFuente = null; // fuente sonando ahora (o null)
-  let musicaEspera = null; // segundos que faltan para que arranque la música (o null)
+  let introBuffer = null; // audio/Esc4/game sound/nivel4_intro.m4a decodificado
+  let introGain = null;
+  let introFuente = null; // fuente sonando ahora (o null)
+  let musicaIntro = null; // <audio> de respaldo
+  // Instrucciones: null fuera de ellas, si no { modo, paso, fase, t, hechas }
+  // (modo: la versión que se muestra, de modosAyuda). fase:
+  // "antes" (esperando a que arranquen), "activa" (paso visible, esperando las
+  // teclas), "hecha" (ya se usaron, esperando el segundo y a que termine la
+  // voz), "saliendo" (el paso se está desvaneciendo) o "listo" (dice "listo" y
+  // se espera a que termine). t = segundos en la fase; hechas = teclas ya
+  // apretadas en el paso.
+  let ayuda = null;
+  const sostenidas = new Set(); // teclas de las instrucciones que están apretadas ahora
   let musicaT = 0; // segundos que lleva sonando la música (para acelerarla)
   let musica = null; // <audio> de respaldo si falla Web Audio
   let spriteP7 = null; // imagen del parallax 7, se carga al entrar por primera vez
@@ -497,15 +707,15 @@
   function reiniciar(recolocar, conIntro) {
     poligonos = [];
     tiempo = 0;
-    // Con intro el segundero queda oculto y parado hasta que se van las naves.
+    // Con intro el segundero queda oculto y parado hasta que se van las naves y
+    // terminan las instrucciones.
     introT = conIntro ? 0 : -1;
     gracia = GRACIA;
-    timerOculto = !!conIntro;
-    timerEl.style.visibility = timerOculto ? "hidden" : "";
+    timerEl.style.visibility = conIntro ? "hidden" : "";
     // La intro es a color y con el fondo starry (ver game-color en la nave y
     // game-intro en la escena, styles.css); sin intro (después de un choque)
     // ya es blanco y negro.
-    musicaEspera = null;
+    cancelarAyuda();
     ship.classList.toggle("game-color", !!conIntro);
     scene.classList.toggle("game-intro", !!conIntro);
     levantarTapa(true);
@@ -526,9 +736,10 @@
     // Voces de la partida nueva: se corta lo que sonaba y vuelven a tirarse.
     cortarVoz();
     vozPendiente = null;
-    proxAnimo =
-      VOZ_ANIMO_DESDE[0] +
-      Math.random() * (VOZ_ANIMO_DESDE[1] - VOZ_ANIMO_DESDE[0]);
+    proxAnimo = VOZ_ANIMO_EN.map(
+      (t) => t + (Math.random() * 2 - 1) * VOZ_ANIMO_MARGEN,
+    );
+    animoDichas = [];
     proxCansado = VOZ_CANSADO_DESDE;
     colorObjetivo = 0;
     colorNave = 0;
@@ -563,9 +774,18 @@
     };
     if (audioCtx) {
       musicaGain = conGain(MUSICA_VOLUMEN);
+      introGain = conGain(MUSICA_VOLUMEN);
       perderGain = conGain(PERDER_VOLUMEN);
       notaGain = conGain(NOTA_VOLUMEN);
+      portalGain = conGain(PORTAL_VOLUMEN);
+      portalCruceGain = conGain(PORTAL_CRUCE_VOLUMEN);
       vozGain = conGain(VOZ_VOLUMEN);
+      // La de las instrucciones primero: es chica y es la que se necesita antes.
+      try {
+        introBuffer = await decodificar(INTRO_MUSICA_URL);
+      } catch (e) {
+        introBuffer = null;
+      }
       for (const { url } of MUSICA_FUENTES) {
         try {
           musicaBuffer = await decodificar(url);
@@ -584,6 +804,16 @@
       } catch (e) {
         perderBuffer = null;
       }
+      try {
+        portalBuffer = await decodificar(PORTAL_URL);
+      } catch (e) {
+        portalBuffer = null;
+      }
+      try {
+        portalCruceBuffer = await decodificar(PORTAL_CRUCE_URL);
+      } catch (e) {
+        portalCruceBuffer = null;
+      }
     }
     if (!musicaBuffer) {
       const prueba = new Audio();
@@ -594,6 +824,11 @@
       musica.loop = true;
       musica.volume = MUSICA_VOLUMEN;
     }
+    if (!introBuffer) {
+      musicaIntro = new Audio(INTRO_MUSICA_URL);
+      musicaIntro.loop = true;
+      musicaIntro.volume = MUSICA_VOLUMEN;
+    }
     if (!perderBuffer) {
       perder = new Audio(PERDER_URL);
       perder.volume = PERDER_VOLUMEN;
@@ -602,13 +837,25 @@
       nota = new Audio(NOTA_URL);
       nota.volume = NOTA_VOLUMEN;
     }
+    if (!portalBuffer) {
+      portal = new Audio(PORTAL_URL);
+      portal.volume = PORTAL_VOLUMEN;
+    }
+    if (!portalCruceBuffer) {
+      portalCruce = new Audio(PORTAL_CRUCE_URL);
+      portalCruce.volume = PORTAL_CRUCE_VOLUMEN;
+    }
+    const voces = [
+      ...conteo.flat(),
+      ...vocesAnimo,
+      ...vocesCansado,
+      ...vocesFelicita,
+      ...vocesAyuda.flat(),
+      ...vocesAyudaJoystick.flat(),
+      ...vocesListo,
+    ];
     await Promise.all(
-      [
-        ...conteo.flat(),
-        ...vocesAnimo,
-        ...vocesCansado,
-        ...vocesFelicita,
-      ].map(async (s) => {
+      voces.map(async (s) => {
         if (audioCtx) {
           try {
             s.buffer = await decodificar(s.url);
@@ -687,13 +934,17 @@
     else decirVoz(numero, () => decirVoz(felicita));
   }
 
-  // Las voces de ánimo y de cansancio, según el segundo de la partida: cada
-  // tirada tiene VOZ_CHANCE de sonar, y si hay una voz de un portal sonando
-  // espera a que termine.
+  // Las voces de ánimo y de cansancio, según el segundo de la partida: las de
+  // ánimo suenan siempre y las de cansancio tienen VOZ_CHANCE de sonar en cada
+  // tirada. Si hay una voz de un portal sonando esperan a que termine.
   function actualizarVoces() {
-    if (proxAnimo !== null && tiempo >= proxAnimo) {
-      proxAnimo = null;
-      if (Math.random() < VOZ_CHANCE) vozPendiente = alAzar(vocesAnimo);
+    if (proxAnimo.length && tiempo >= proxAnimo[0]) {
+      proxAnimo.shift();
+      // Una que no haya sonado ya en esta partida (si se acabaron, cualquiera).
+      const nuevas = vocesAnimo.filter((v) => !animoDichas.includes(v));
+      const voz = alAzar(nuevas.length ? nuevas : vocesAnimo);
+      animoDichas.push(voz);
+      vozPendiente = voz;
     }
     if (tiempo >= proxCansado) {
       proxCansado += VOZ_CANSADO_CADA;
@@ -718,6 +969,34 @@
     } else if (nota) {
       nota.currentTime = 0;
       nota.play().catch(() => {});
+    }
+  }
+
+  // El sonido de un agujero nuevo: suena una vez desde el principio.
+  function sonarPortal() {
+    if (portalBuffer) {
+      audioCtx.resume().catch(() => {});
+      portalFuente = audioCtx.createBufferSource();
+      portalFuente.buffer = portalBuffer;
+      portalFuente.connect(portalGain);
+      portalFuente.start();
+    } else if (portal) {
+      portal.currentTime = 0;
+      portal.play().catch(() => {});
+    }
+  }
+
+  // El sonido de cruzar un agujero: suena una vez desde el principio.
+  function sonarCruce() {
+    if (portalCruceBuffer) {
+      audioCtx.resume().catch(() => {});
+      portalCruceFuente = audioCtx.createBufferSource();
+      portalCruceFuente.buffer = portalCruceBuffer;
+      portalCruceFuente.connect(portalCruceGain);
+      portalCruceFuente.start();
+    } else if (portalCruce) {
+      portalCruce.currentTime = 0;
+      portalCruce.play().catch(() => {});
     }
   }
 
@@ -761,8 +1040,51 @@
     else if (musica && !musica.paused) musica.playbackRate = velocidad;
   }
 
+  // La música de las instrucciones, en bucle.
+  function iniciarMusicaIntro() {
+    frenarMusicaIntro();
+    if (introBuffer) {
+      audioCtx.resume().catch(() => {});
+      introGain.gain.cancelScheduledValues(0);
+      introGain.gain.value = MUSICA_VOLUMEN;
+      introFuente = audioCtx.createBufferSource();
+      introFuente.buffer = introBuffer;
+      introFuente.loop = true;
+      introFuente.connect(introGain);
+      introFuente.start();
+    } else if (musicaIntro) {
+      musicaIntro.currentTime = 0;
+      musicaIntro.play().catch(() => {});
+    }
+  }
+
+  // Con fundido = true se va apagando de a poco (al pasar a la música del
+  // juego); si no, se corta de golpe.
+  function frenarMusicaIntro(fundido) {
+    const fuente = introFuente;
+    introFuente = null;
+    if (fuente) {
+      const cortar = () => {
+        try {
+          fuente.stop();
+        } catch (e) {}
+        fuente.disconnect();
+      };
+      if (fundido) {
+        // setTargetAtTime tiende a 0 sin llegar: a los 5 tau ya no se oye, y ahí
+        // se corta. Un iniciarMusicaIntro() posterior le vuelve a subir el volumen.
+        introGain.gain.setTargetAtTime(
+          0,
+          audioCtx.currentTime,
+          INTRO_MUSICA_FUNDIDO / 5,
+        );
+        setTimeout(cortar, INTRO_MUSICA_FUNDIDO * 1000);
+      } else cortar();
+    }
+    if (musicaIntro) musicaIntro.pause();
+  }
+
   function frenarMusica() {
-    musicaEspera = null; // si estaba por arrancar, se cancela
     if (musicaFuente) {
       try {
         musicaFuente.stop();
@@ -776,6 +1098,7 @@
   // Al salir del escenario se corta todo, también el sonido de perder.
   function frenarSonidos() {
     frenarMusica();
+    frenarMusicaIntro();
     if (perderFuente) {
       try {
         perderFuente.stop();
@@ -792,8 +1115,194 @@
       notaFuente = null;
     }
     if (nota) nota.pause();
+    if (portalFuente) {
+      try {
+        portalFuente.stop();
+      } catch (e) {}
+      portalFuente.disconnect();
+      portalFuente = null;
+    }
+    if (portal) portal.pause();
+    if (portalCruceFuente) {
+      try {
+        portalCruceFuente.stop();
+      } catch (e) {}
+      portalCruceFuente.disconnect();
+      portalCruceFuente = null;
+    }
+    if (portalCruce) portalCruce.pause();
     cortarVoz();
     vozPendiente = null;
+  }
+
+  // --- Instrucciones del arranque (ver el comentario de arriba) ---------------
+  const apretada = (tecla) =>
+    [...sostenidas].some((codigo) => AYUDA_TECLAS[codigo] === tecla);
+
+  // Se siguen las teclas todo el tiempo que el escenario está activo (no solo
+  // durante las instrucciones), así una tecla ya apretada cuando aparece el
+  // paso cuenta y se ve iluminada. Se lleva por código de tecla y no por
+  // "up"/"left"...: flecha y WASD dan lo mismo y soltar una no debe apagar a la
+  // otra.
+  function teclaAyuda(ev, abajo) {
+    const tecla = AYUDA_TECLAS[ev.code];
+    if (!tecla || !activo) return;
+    if (abajo) {
+      sostenidas.add(ev.code);
+      // Un toque más corto que un cuadro no llegaría a verse en sostenidas.
+      if (ayuda && ayuda.fase === "activa") ayuda.hechas.add(tecla);
+    } else sostenidas.delete(ev.code);
+    modosAyuda.teclado.teclas[tecla].classList.toggle(
+      "pulsada",
+      apretada(tecla),
+    );
+  }
+
+  function soltarTeclas() {
+    sostenidas.clear();
+    for (const el of Object.values(modosAyuda.teclado.teclas))
+      el.classList.remove("pulsada");
+  }
+
+  const primerJoystick = () => {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const gp of pads) if (gp) return gp;
+    return null;
+  };
+  const botonPad = (gp, i) => {
+    const b = gp.buttons[i];
+    return !!b && (b.pressed || b.value >= AYUDA_GATILLO);
+  };
+
+  // Qué se está haciendo con el joystick: las "teclas" que cuentan (ver
+  // AYUDA_PASOS) y hacia dónde está empujado el stick (x, y de -1 a 1).
+  function leerJoystick() {
+    const teclas = new Set();
+    const gp = primerJoystick();
+    if (!gp) return { teclas, x: 0, y: 0 };
+    let x = gp.axes[0] || 0;
+    let y = gp.axes[1] || 0;
+    if (botonPad(gp, PAD_CRUCETA.left)) x = -1;
+    else if (botonPad(gp, PAD_CRUCETA.right)) x = 1;
+    if (botonPad(gp, PAD_CRUCETA.up)) y = -1;
+    else if (botonPad(gp, PAD_CRUCETA.down)) y = 1;
+    if (x <= -AYUDA_STICK_UMBRAL) teclas.add("left");
+    else if (x >= AYUDA_STICK_UMBRAL) teclas.add("right");
+    if (y <= -AYUDA_STICK_UMBRAL) teclas.add("up");
+    else if (y >= AYUDA_STICK_UMBRAL) teclas.add("down");
+    if (botonPad(gp, PAD_RB)) teclas.add("shift");
+    if (botonPad(gp, PAD_LT)) teclas.add("space");
+    return { teclas, x, y };
+  }
+
+  // Ilumina en el dibujo del joystick lo que se aprieta y le da a la palanca la
+  // posición del stick (sin salirse de la base).
+  function pintarJoystick(joy) {
+    const { teclas, palanca } = modosAyuda.joystick;
+    for (const tecla in teclas)
+      teclas[tecla].classList.toggle("pulsada", joy.teclas.has(tecla));
+    const largo = Math.hypot(joy.x, joy.y);
+    const k = (largo > 1 ? 1 / largo : 1) * AYUDA_STICK_RECORRIDO;
+    palanca.style.transform = `translate(${(joy.x * k).toFixed(2)}em, ${(joy.y * k).toFixed(2)}em)`;
+  }
+
+  document.addEventListener("keydown", (ev) => teclaAyuda(ev, true));
+  document.addEventListener("keyup", (ev) => teclaAyuda(ev, false));
+  // Al perder el foco no llega el keyup: se sueltan todas.
+  window.addEventListener("blur", soltarTeclas);
+
+  // Corta las instrucciones donde estén: se apaga el texto y la música (al
+  // empezar una partida nueva, sea la primera o después de un choque, y al
+  // salir del escenario).
+  function cancelarAyuda() {
+    ayuda = null;
+    soltarTeclas();
+    pintarJoystick({ teclas: new Set(), x: 0, y: 0 });
+    for (const modo of Object.values(modosAyuda)) {
+      modo.el.hidden = modo !== modosAyuda.teclado;
+      for (const paso of modo.pasos) paso.classList.remove("visible");
+    }
+    frenarMusicaIntro();
+  }
+
+  function empezarAyuda() {
+    ayuda = {
+      modo: modosAyuda.teclado,
+      paso: 0,
+      fase: "antes",
+      t: 0,
+      hechas: new Set(),
+    };
+  }
+
+  function activarPaso() {
+    ayuda.fase = "activa";
+    ayuda.t = 0;
+    ayuda.hechas = new Set();
+    ayuda.modo.pasos[ayuda.paso].classList.add("visible");
+    const voces = (
+      ayuda.modo === modosAyuda.joystick ? vocesAyudaJoystick : vocesAyuda
+    )[ayuda.paso];
+    if (voces.length) decirVoz(alAzar(voces));
+  }
+
+  // Terminaron las instrucciones (ya dijo "listo" y la música de intro se fue
+  // con un fade out): entra la música del juego, aparece el segundero y empieza
+  // la partida (con su gracia sin polígonos).
+  function terminarAyuda() {
+    ayuda = null;
+    timerEl.style.visibility = "";
+    iniciarMusica();
+  }
+
+  // ¿terminó la voz de la fase? (o se cansó de esperarla: ver AYUDA_VOZ_MAX)
+  const vozLibre = () => !vozSonando || ayuda.t >= AYUDA_VOZ_MAX;
+
+  function actualizarAyuda(dt) {
+    ayuda.t += dt;
+    const joy = leerJoystick();
+    if (ayuda.modo === modosAyuda.joystick) pintarJoystick(joy);
+    if (ayuda.fase === "antes") {
+      if (ayuda.t >= AYUDA_RETRASO) {
+        // Si hay un joystick conectado se muestra la versión del joystick; si
+        // no, la del teclado. Igual cuenta lo que se use de los dos.
+        ayuda.modo = primerJoystick()
+          ? modosAyuda.joystick
+          : modosAyuda.teclado;
+        for (const modo of Object.values(modosAyuda))
+          modo.el.hidden = modo !== ayuda.modo;
+        iniciarMusicaIntro();
+        activarPaso();
+      }
+    } else if (ayuda.fase === "activa") {
+      for (const codigo of sostenidas) ayuda.hechas.add(AYUDA_TECLAS[codigo]);
+      for (const tecla of joy.teclas) ayuda.hechas.add(tecla);
+      if (AYUDA_PASOS[ayuda.paso].every((tecla) => ayuda.hechas.has(tecla))) {
+        ayuda.fase = "hecha";
+        ayuda.t = 0;
+      }
+    } else if (ayuda.fase === "hecha") {
+      // El texto se queda hasta que la voz termina de hablar.
+      if (ayuda.t >= AYUDA_ESPERA && vozLibre()) {
+        ayuda.modo.pasos[ayuda.paso].classList.remove("visible");
+        ayuda.fase = "saliendo";
+        ayuda.t = 0;
+      }
+    } else if (ayuda.fase === "saliendo") {
+      if (ayuda.t >= AYUDA_FUNDIDO) {
+        // Ya se desvaneció: sigue el otro paso, o el "listo" si era el último.
+        ayuda.paso++;
+        if (ayuda.paso < AYUDA_PASOS.length) activarPaso();
+        else {
+          ayuda.fase = "listo";
+          ayuda.t = 0;
+          frenarMusicaIntro(true); // fade out apenas suena el "listo"
+          decirVoz(alAzar(vocesListo));
+        }
+      }
+    } else if (vozLibre()) {
+      terminarAyuda(); // fase "listo": ya lo dijo, empieza el juego
+    }
   }
 
   // Sube o baja la pantalla negra; instantáneo = sin fundido (al salir del
@@ -1234,6 +1743,7 @@
     a.par = b;
     b.par = a;
     cumulos.push(a, b);
+    sonarPortal();
   }
 
   // Chispas en un punto (al entrar y al salir).
@@ -1281,6 +1791,7 @@
       if (window.shipPlace) window.shipPlace(salida.x, salida.y, true);
       cumulos = cumulos.filter((c) => c !== entrado && c !== salida);
       cumulosTomados++;
+      sonarCruce();
       sonarConteo(cumulosTomados - 1); // 1.er pasaje: "10" ... 10.º: "1"
       colorObjetivo = Math.min(1, cumulosTomados / CUMULOS_PARA_COLOR);
       if (cumulosTomados >= CUMULOS_PARA_COLOR) {
@@ -1730,39 +2241,41 @@
       }
       mirarNaves(circulos[1], navesIntro(introT), introT);
     } else {
-      if (timerOculto) {
+      if (introT >= 0) {
         introT = -1; // termina la intro
-        timerOculto = false;
-        timerEl.style.visibility = "";
         // Pasada la oscuridad la nave prende la luz (con su sonido), se levanta
-        // la pantalla negra y la nave aparece en blanco y negro; empieza el
-        // juego.
+        // la pantalla negra y la nave aparece en blanco y negro, ya bajo el
+        // control del jugador; empiezan las instrucciones.
         levantarTapa(false);
         if (window.shipLightSet) window.shipLightSet(true);
-        musicaEspera = MUSICA_RETRASO; // la música arranca un rato después, para que se oiga el sonido de luz
+        empezarAyuda();
       }
-      // La música: arranca MUSICA_RETRASO segundos después de prender la luz y
-      // de ahí acelera de a muy poquito.
-      if (musicaEspera !== null) {
-        musicaEspera -= dt;
-        if (musicaEspera <= 0) iniciarMusica();
-      } else if (musicaFuente || (musica && !musica.paused)) {
-        musicaT += dt;
-        acelerarMusica();
-      }
-      const centro = circulos[1];
-      if (centro && navePrev && dt > 0) {
-        const vel =
-          Math.hypot(centro.x - navePrev.x, centro.y - navePrev.y) / dt;
-        tQuieta = vel < QUIETA_MOV ? tQuieta + dt : 0;
-      }
-      navePrev = centro ? { x: centro.x, y: centro.y } : null;
-      if (tiempo < gracia) {
-        // Quieta por la gracia: no cuenta para las piedras que buscan a la nave.
+      if (ayuda) actualizarAyuda(dt);
+      if (ayuda) {
+        // Instrucciones: el tiempo no corre (sin segundero ni polígonos ni
+        // agujeros) y la nave se mueve libre.
         tQuieta = 0;
-        if (enCentro) centrarNave();
+        navePrev = null;
+      } else {
+        // La música del juego acelera de a muy poquito.
+        if (musicaFuente || (musica && !musica.paused)) {
+          musicaT += dt;
+          acelerarMusica();
+        }
+        const centro = circulos[1];
+        if (centro && navePrev && dt > 0) {
+          const vel =
+            Math.hypot(centro.x - navePrev.x, centro.y - navePrev.y) / dt;
+          tQuieta = vel < QUIETA_MOV ? tQuieta + dt : 0;
+        }
+        navePrev = centro ? { x: centro.x, y: centro.y } : null;
+        if (tiempo < gracia) {
+          // Quieta por la gracia: no cuenta para las piedras que buscan a la nave.
+          tQuieta = 0;
+          if (enCentro) centrarNave();
+        }
+        actualizar(dt, circulos);
       }
-      actualizar(dt, circulos);
     }
     luzNivel += ((luz ? 1 : 0) - luzNivel) * Math.min(1, dt * 6);
     dibujar(circulos[1]); // la luz sale del cuerpo de la nave
@@ -1831,6 +2344,7 @@
       } else {
         cancelAnimationFrame(raf);
         frenarSonidos();
+        cancelarAyuda();
         limpiarFinal(); // la nave vuelve a verse en el resto de los escenarios
         ship.classList.remove("game-color");
         ship.style.removeProperty("--luz-rgb"); // en el resto de los escenarios la luz es la de siempre

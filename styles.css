@@ -675,6 +675,182 @@ html.escenas-listas .salmon-scene {
   transition: color 1s ease;
   font-variant-numeric: tabular-nums;
 }
+/* Instrucciones del arranque del escenario 4. Los pasos van uno encima del otro
+   y esc4-game.js les pone .visible de a uno (se funden). Spaceport no tiene
+   tildes, comas ni paréntesis: los textos van sin ellos. */
+.game-ayuda {
+  position: absolute;
+  top: 70%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  width: min(92vw, 46rem);
+  transform: translateX(-50%);
+  font-size: clamp(0.7rem, 1.7vmin, 1rem);
+  pointer-events: none;
+}
+/* Cada versión (teclado / joystick) es una grilla con sus tres pasos encima
+   uno del otro; esc4-game.js muestra una sola (la otra queda con hidden). */
+.game-ayuda-modo {
+  display: grid;
+}
+.game-ayuda-modo[hidden] {
+  display: none;
+}
+.game-ayuda-paso {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9em 1.3em;
+  margin: 0;
+  font-family: Spaceport, ui-monospace, Consolas, monospace;
+  letter-spacing: 0.2em;
+  text-align: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.game-ayuda-paso.visible {
+  opacity: 1;
+}
+/* Las flechas en "T" invertida: arriba en el medio, las otras tres abajo. */
+.game-teclas {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 0.3em;
+}
+.game-tecla {
+  display: grid;
+  place-items: center;
+  min-width: 2.4em;
+  height: 2.4em;
+  border: 2px solid #fff;
+  border-radius: 0.35em;
+  font: inherit;
+  letter-spacing: 0.1em;
+  color: #fff;
+  transition:
+    background-color 0.08s,
+    color 0.08s,
+    transform 0.08s;
+}
+/* Mientras la tecla está apretada (de verdad, en el teclado). */
+.game-tecla.pulsada {
+  background: #fff;
+  color: #000;
+  transform: translateY(0.1em) scale(0.94);
+}
+.game-tecla svg {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+}
+.game-tecla--arriba {
+  grid-column: 2;
+  grid-row: 1;
+}
+.game-tecla--izquierda {
+  grid-column: 1;
+  grid-row: 2;
+}
+.game-tecla--abajo {
+  grid-column: 2;
+  grid-row: 2;
+}
+.game-tecla--derecha {
+  grid-column: 3;
+  grid-row: 2;
+}
+.game-tecla--izquierda svg {
+  transform: rotate(-90deg);
+}
+.game-tecla--abajo svg {
+  transform: rotate(180deg);
+}
+.game-tecla--derecha svg {
+  transform: rotate(90deg);
+}
+.game-tecla--shift,
+.game-tecla--boton {
+  padding: 0 0.8em;
+}
+/* Barra espaciadora: la tecla ancha, con el corchete de siempre dibujado. */
+.game-tecla--espacio {
+  min-width: 8em;
+}
+.game-tecla--espacio svg {
+  width: 4em;
+  height: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Stick del joystick: la base con la palanca adentro y, alrededor, una flecha
+   por dirección. */
+.game-stick {
+  display: grid;
+  grid-template-columns: 1.3em 2.6em 1.3em;
+  grid-template-rows: 1.3em 2.6em 1.3em;
+  place-items: center;
+}
+.game-stick-base {
+  position: relative;
+  grid-area: 2 / 2;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+/* La palanca sigue al stick: esc4-game.js le pone el desplazamiento. */
+.game-stick-palanca {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1.2em;
+  height: 1.2em;
+  margin: -0.6em 0 0 -0.6em;
+  border-radius: 50%;
+  background: #fff;
+}
+.game-stick-flecha {
+  display: grid;
+  place-items: center;
+  opacity: 0.35;
+  transition: opacity 0.08s;
+}
+.game-stick-flecha.pulsada {
+  opacity: 1;
+}
+.game-stick-flecha svg {
+  width: 1em;
+  height: 1em;
+  fill: #fff;
+}
+.game-stick-flecha--arriba {
+  grid-area: 1 / 2;
+}
+.game-stick-flecha--izquierda {
+  grid-area: 2 / 1;
+}
+.game-stick-flecha--abajo {
+  grid-area: 3 / 2;
+}
+.game-stick-flecha--derecha {
+  grid-area: 2 / 3;
+}
+.game-stick-flecha--izquierda svg {
+  transform: rotate(-90deg);
+}
+.game-stick-flecha--abajo svg {
+  transform: rotate(180deg);
+}
+.game-stick-flecha--derecha svg {
+  transform: rotate(90deg);
+}
 #game-canvas {
   position: absolute;
   inset: 0;
@@ -1135,12 +1311,14 @@ html.escenas-listas .salmon-scene {
    en cada sprite y no en la caja: uno en la caja también volvería gris el
    resplandor. El de .starry-cohete-fondo lo pone script.js junto con el
    drop-shadow (ver scenes.game.light). */
-.starry-cohete-pair.in-game .starry-cohete-top {
+.starry-cohete-pair.in-game .starry-cohete-top,
+.starry-cohete-pair.in-game .starry-cohete-fuego {
   filter: url(#nave-gris);
 }
 /* Solo apagada se ve oscura: con la luz prendida (script.js le pone luz-on a
    la nave) el gris se levanta. */
-.starry-cohete-pair.in-game.luz-on .starry-cohete-top {
+.starry-cohete-pair.in-game.luz-on .starry-cohete-top,
+.starry-cohete-pair.in-game.luz-on .starry-cohete-fuego {
   filter: url(#nave-gris-luz);
 }
 /* Intro del escenario 4: la nave llega a color y con la luz apagada, y sigue
@@ -1149,6 +1327,7 @@ html.escenas-listas .salmon-scene {
    blanco y negro cuando prende la luz. Va al final para ganarle a las reglas de arriba, y con !important
    el sprite de atrás porque script.js le escribe el gris en línea. */
 .starry-cohete-pair.in-game.game-color .starry-cohete-top,
+.starry-cohete-pair.in-game.game-color .starry-cohete-fuego,
 .starry-cohete-pair.in-game.game-color .starry-cohete-fondo {
   filter: none !important;
 }
@@ -1232,6 +1411,12 @@ html.escenas-listas .salmon-scene {
 }
 .starry-cohete-fondo {
   z-index: 1;
+}
+/* Fuego (canvas que dibuja script.js): va detrás del sprite de adelante y
+   queda invisible hasta que se carga el dibujo y se dibuja el primer cuadro. */
+.starry-cohete-fuego {
+  z-index: 1;
+  opacity: 0;
 }
 .starry-cohete-top {
   z-index: 2;

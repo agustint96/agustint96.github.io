@@ -1,0 +1,5 @@
+# Fuentes de audio sin comprimir (el sitio usa los .ogg / .m4a de audio/)
+audio/*.wav
+
+# PNG de origen de la nave (el sitio usa los .webp de parallax/)
+parallax/cohete*.png

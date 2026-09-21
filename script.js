@@ -2146,12 +2146,128 @@ function drawStars() {
           currentSceneId === "space" ? t.getBoundingClientRect() : null;
         spaceDrifters.forEach((update) => update(driftShipRect, n, r));
         if (updateBiosRepel) updateBiosRepel(driftShipRect);
+        updateShipFire(e, a, boosting || mouseBoost);
         ((t.style.opacity = f),
           // window.shipZoom (1 por defecto) agranda la nave sobre su propio centro:
           // el final del escenario 4 lo usa para el zoom a la nave.
           (t.style.transform = `translate(${e}px, ${a}px) rotate(${s}deg) scale(${shipScale * (window.shipZoom || 1)})`),
           requestAnimationFrame(tick));
       }));
+    // Fuego de la nave (parallax/cohete_fuego.webp, mismo lienzo de 203x300 que el
+    // sprite): se ve siempre. Quieta, arde bajito (más corto y con una
+    // animación mínima, lenta); al moverse se alarga y se agita del todo, y al
+    // frenar vuelve a ese ardor bajito de a poco. Se guía por la velocidad real
+    // (lo que se desplazó entre un cuadro y el siguiente, así vale para el
+    // mouse, el teclado, el joystick y el vuelo de entrada). Se deforma: cada
+    // franja horizontal del dibujo se corre de costado (más cuanto más cerca de
+    // la punta), el largo parpadea y el ancho respira. Con el boost (Shift, RB o
+    // click mantenido) se agita todavía más rápido y se alarga un poco más.
+    const updateShipFire = (function () {
+      const canvas = t.querySelector(".starry-cohete-fuego");
+      if (!canvas) return function () {};
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      img.src = "parallax/cohete_fuego.webp";
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)");
+      // Zona del dibujo que tiene fuego (px del lienzo de 203x300): arranca
+      // pegado a los motores (FIRE_TOP) y las franjas son de SLICE px.
+      const FIRE_TOP = 196;
+      const FIRE_BOTTOM = 270;
+      const FIRE_X = 60;
+      const FIRE_W = 90;
+      const FIRE_CX = 102;
+      const SLICE = 2;
+      const MOVING_MIN = 15; // px/s: por debajo, está quieta
+      const MOVING_FULL = 75; // px/s: desde acá el fuego arde a pleno
+      const FADE_IN = 0.08; // s: quieta -> en movimiento
+      const FADE_OUT = 0.6; // s: en movimiento -> quieta
+      const IDLE_AMP = 0.15; // fuerza de la deformación quieta (1 = en movimiento)
+      const IDLE_SPEED = 0.35; // velocidad de la animación quieta (1 = en movimiento)
+      const BOOST_SPEED = 1.9; // velocidad de la animación con boost (1 = en movimiento)
+      const BOOST_AMP = 1.25; // fuerza de la deformación con boost
+      const BOOST_LARGO = 1.2; // largo del fuego con boost
+      const BOOST_IN = 0.12; // s
+      const BOOST_OUT = 0.35; // s
+      const IDLE_FRAME_MS = 50; // quieta redibuja a ~20 cuadros/s: no hace falta más y gasta menos
+      let lastX = null;
+      let lastY = null;
+      let lastT = 0;
+      let lastDraw = 0;
+      let level = 0; // 0 quieta .. 1 en movimiento
+      let boostLevel = 0; // 0 sin boost .. 1 con boost (sólo cuenta si se mueve)
+      let fase = 0; // reloj de la animación (segundos "propios": va lento quieta)
+      let shown = false;
+      return function (x, y, boost) {
+        const now = performance.now();
+        const dt = Math.min(0.1, (now - lastT) / 1000);
+        let speed = 0;
+        // Un salto grande en un solo cuadro es un cambio de escenario (la nave
+        // reaparece en otro lado), no velocidad.
+        if (lastX !== null && dt > 0) {
+          const dist = Math.hypot(x - lastX, y - lastY);
+          if (dist < 250) speed = dist / dt;
+        }
+        lastX = x;
+        lastY = y;
+        lastT = now;
+        if (dt <= 0) return;
+        const target = Math.max(
+          0,
+          Math.min(1, (speed - MOVING_MIN) / (MOVING_FULL - MOVING_MIN)),
+        );
+        const tau = target > level ? FADE_IN : FADE_OUT;
+        level += (target - level) * (1 - Math.exp(-dt / tau));
+        if (level < 0.004 && target === 0) level = 0;
+        boostLevel +=
+          ((boost ? 1 : 0) - boostLevel) *
+          (1 - Math.exp(-dt / (boost ? BOOST_IN : BOOST_OUT)));
+        // Sólo cuenta si la nave se mueve de verdad (apretar boost quieta no hace nada).
+        const boostF = boostLevel * level;
+        fase +=
+          dt *
+          (IDLE_SPEED + (1 - IDLE_SPEED) * level) *
+          (1 + (BOOST_SPEED - 1) * boostF);
+        if (!img.complete || !img.naturalWidth) return;
+        if (level < 0.02 && now - lastDraw < IDLE_FRAME_MS) return;
+        lastDraw = now;
+        const s = fase;
+        // Fuerza de la deformación: mínima quieta, completa en movimiento.
+        const amp = still.matches
+          ? 0
+          : (IDLE_AMP + (1 - IDLE_AMP) * level) * (1 + (BOOST_AMP - 1) * boostF);
+        // Largo: crece con la velocidad (y más con el boost) y parpadea.
+        const largo =
+          (0.55 + 0.45 * level) *
+          (1 + (BOOST_LARGO - 1) * boostF) *
+          (1 +
+            amp *
+              (0.1 * Math.sin(s * 23) +
+                0.06 * Math.sin(s * 37 + 1) +
+                0.04 * Math.sin(s * 11 + 2)));
+        // Ancho: respira alrededor del centro del fuego.
+        const ancho = 1 + amp * 0.06 * Math.sin(s * 29 + 0.5);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let sy = FIRE_TOP; sy < FIRE_BOTTOM; sy += SLICE) {
+          const p = (sy - FIRE_TOP) / (FIRE_BOTTOM - FIRE_TOP); // 0 motores .. 1 punta
+          const sh = Math.min(SLICE, FIRE_BOTTOM - sy);
+          const dy = FIRE_TOP + (sy - FIRE_TOP) * largo;
+          const dh = sh * largo + 0.6; // 0.6 de más para que no queden rendijas entre franjas
+          // Ondula de costado, más fuerte hacia la punta.
+          const sway =
+            amp *
+            8 *
+            p *
+            p *
+            (Math.sin(s * 14 - p * 7) * 0.7 + Math.sin(s * 23 - p * 11 + 1) * 0.3);
+          const dx = FIRE_CX + (FIRE_X - FIRE_CX) * ancho + sway;
+          ctx.drawImage(img, FIRE_X, sy, FIRE_W, sh, dx, dy, FIRE_W * ancho, dh);
+        }
+        if (!shown) {
+          canvas.style.opacity = "1";
+          shown = true;
+        }
+      };
+    })();
     const d = t.querySelector(".starry-cohete-fondo");
     const cohetteTop = t.querySelector(".starry-cohete-top");
     if (d) {

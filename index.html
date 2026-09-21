@@ -502,6 +502,78 @@
       <div class="game-cuadrado">
         <span class="game-timer" id="game-timer">0.0</span>
       </div>
+      <!-- Instrucciones del arranque (esc4-game.js las muestra de a un paso y
+           marca .pulsada en lo que se aprieta de verdad). Hay dos versiones, la
+           del teclado y la del joystick (la elige según haya uno conectado). -->
+      <div class="game-ayuda" id="game-ayuda">
+        <div class="game-ayuda-modo" data-modo="teclado">
+          <p class="game-ayuda-paso">
+            <span>Para moverte usa</span>
+            <span class="game-teclas">
+              <kbd class="game-tecla game-tecla--arriba" data-tecla="up">
+                <svg viewBox="0 0 24 24"><path d="M12 5 20 18H4Z" /></svg>
+              </kbd>
+              <kbd class="game-tecla game-tecla--izquierda" data-tecla="left">
+                <svg viewBox="0 0 24 24"><path d="M12 5 20 18H4Z" /></svg>
+              </kbd>
+              <kbd class="game-tecla game-tecla--abajo" data-tecla="down">
+                <svg viewBox="0 0 24 24"><path d="M12 5 20 18H4Z" /></svg>
+              </kbd>
+              <kbd class="game-tecla game-tecla--derecha" data-tecla="right">
+                <svg viewBox="0 0 24 24"><path d="M12 5 20 18H4Z" /></svg>
+              </kbd>
+            </span>
+          </p>
+          <p class="game-ayuda-paso">
+            <span>Usa</span>
+            <kbd class="game-tecla game-tecla--shift" data-tecla="shift"
+              >shift</kbd
+            >
+            <span>para potenciar la velocidad</span>
+          </p>
+          <p class="game-ayuda-paso">
+            <span>Podes usar</span>
+            <kbd class="game-tecla game-tecla--espacio" data-tecla="space">
+              <svg viewBox="0 0 48 12"><path d="M3 2v7h42V2" /></svg>
+            </kbd>
+            <span>para ver mas lejos</span>
+          </p>
+        </div>
+        <div class="game-ayuda-modo" data-modo="joystick" hidden>
+          <p class="game-ayuda-paso">
+            <span>Para moverte usa</span>
+            <!-- El stick izquierdo: la palanca se mueve como el stick de verdad
+                 y se ilumina la flecha de la dirección a la que se lo empuja. -->
+            <span class="game-stick">
+              <i class="game-stick-flecha game-stick-flecha--arriba" data-tecla="up">
+                <svg viewBox="0 0 24 24"><path d="M12 5 20 18H4Z" /></svg>
+              </i>
+              <i class="game-stick-flecha game-stick-flecha--izquierda" data-tecla="left">
+                <svg viewBox="0 0 24 24"><path d="M12 5 20 18H4Z" /></svg>
+              </i>
+              <i class="game-stick-flecha game-stick-flecha--abajo" data-tecla="down">
+                <svg viewBox="0 0 24 24"><path d="M12 5 20 18H4Z" /></svg>
+              </i>
+              <i class="game-stick-flecha game-stick-flecha--derecha" data-tecla="right">
+                <svg viewBox="0 0 24 24"><path d="M12 5 20 18H4Z" /></svg>
+              </i>
+              <span class="game-stick-base"
+                ><span class="game-stick-palanca"></span
+              ></span>
+            </span>
+          </p>
+          <p class="game-ayuda-paso">
+            <span>Usa</span>
+            <kbd class="game-tecla game-tecla--boton" data-tecla="shift">RB</kbd>
+            <span>para potenciar la velocidad</span>
+          </p>
+          <p class="game-ayuda-paso">
+            <span>Podes usar</span>
+            <kbd class="game-tecla game-tecla--boton" data-tecla="space">LT</kbd>
+            <span>para ver mas lejos</span>
+          </p>
+        </div>
+      </div>
       <canvas id="game-canvas"></canvas>
     </div>
 
@@ -511,6 +583,15 @@
         class="starry-cohete starry-cohete-fondo"
         alt=""
       />
+
+      <!-- Fuego: lo dibuja script.js (updateShipFire) sólo mientras la nave se
+           mueve. Va entre el sprite de atrás y el de adelante. -->
+      <canvas
+        class="starry-cohete starry-cohete-fuego"
+        width="203"
+        height="300"
+        aria-hidden="true"
+      ></canvas>
 
       <img
         src="parallax/cohete.webp"
