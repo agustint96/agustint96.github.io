@@ -49,18 +49,19 @@ function createAlphaHitTester(imgEl, alphaThreshold = 20) {
   let ctx = null;
   let ready = false;
 
+  // Se arma recién la primera vez que alguien apunta adentro de la imagen, no al
+  // cargar (dibujar y leer los píxeles de cada sprite en la carga costaba cientos
+  // de ms de hilo principal). willReadFrequently: canvas por CPU, así el
+  // getImageData de cada test no tiene que bajar la textura de la GPU.
   function prepare() {
     if (ready || !imgEl.naturalWidth) return;
     canvas = document.createElement("canvas");
     canvas.width = imgEl.naturalWidth;
     canvas.height = imgEl.naturalHeight;
-    ctx = canvas.getContext("2d");
+    ctx = canvas.getContext("2d", { willReadFrequently: true });
     ctx.drawImage(imgEl, 0, 0);
     ready = true;
   }
-
-  if (imgEl.complete) prepare();
-  else imgEl.addEventListener("load", prepare, { once: true });
 
   return function isOpaqueAt(clientX, clientY) {
     const rect = imgEl.getBoundingClientRect();
@@ -72,6 +73,7 @@ function createAlphaHitTester(imgEl, alphaThreshold = 20) {
     ) {
       return false;
     }
+    if (!ready) prepare();
     if (!ready) return true; // sin datos todavía: no bloquear la interacción
     const px = Math.min(
       canvas.width - 1,
@@ -103,13 +105,25 @@ function createAlphaHitTester(imgEl, alphaThreshold = 20) {
 function createOpaqueBoundsTracker(imgEl, alphaThreshold = 20) {
   let bounds = null; // fracciones 0..1 relativas al tamaño natural de la imagen
 
+  // El recuadro se saca de una miniatura (a lo sumo BOUNDS_MAX px de lado) y no
+  // del PNG entero: recorrer todos los píxeles de un sprite de ~1000x700 al
+  // cargar costaba unos 400 ms, y para un colchón de decenas de px alcanza y
+  // sobra. Al promediar, un píxel suelto queda con poca opacidad: por eso el
+  // umbral de la miniatura es más bajo (el recuadro sale igual o apenas más
+  // grande que el real, que es el lado seguro para "se está acercando").
+  const BOUNDS_MAX = 250;
+  const umbral = Math.min(alphaThreshold, 8);
   function prepare() {
     if (bounds || !imgEl.naturalWidth) return;
+    const escala = Math.min(
+      1,
+      BOUNDS_MAX / Math.max(imgEl.naturalWidth, imgEl.naturalHeight),
+    );
     const canvas = document.createElement("canvas");
-    canvas.width = imgEl.naturalWidth;
-    canvas.height = imgEl.naturalHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(imgEl, 0, 0);
+    canvas.width = Math.max(1, Math.round(imgEl.naturalWidth * escala));
+    canvas.height = Math.max(1, Math.round(imgEl.naturalHeight * escala));
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
     let data;
     try {
       data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -122,7 +136,7 @@ function createOpaqueBoundsTracker(imgEl, alphaThreshold = 20) {
       maxY = -1;
     for (let y = 0; y < canvas.height; y++) {
       for (let x = 0; x < canvas.width; x++) {
-        if (data[(y * canvas.width + x) * 4 + 3] > alphaThreshold) {
+        if (data[(y * canvas.width + x) * 4 + 3] > umbral) {
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
@@ -166,30 +180,42 @@ function pointInRect(x, y, rect) {
   return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
-const beepPath = "audio/beep.mp3";
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+const beepPath = "audio/beep.m4a";
+// El AudioContext se crea con el primer gesto del usuario (click/tecla/toque) y
+// no al cargar: crearlo abre el dispositivo de audio y costaba unos 300 ms del
+// hilo principal en cada carga (era lo más pesado de toda la página), y sin
+// gesto el navegador lo deja suspendido de todos modos -no se podía oír nada-.
+// Los bytes del audio sí se bajan ya (21 KB, sin costo) para que el primer beep
+// suene enseguida; sólo se decodifican con el contexto.
+let audioContext = null;
 let beepBuffer = null;
 let beepLoaded = false;
-
-fetch(beepPath)
+const beepBytes = fetch(beepPath)
   .then((response) => response.arrayBuffer())
-  .then((arrayBuffer) => audioContext.decodeAudioData(arrayBuffer))
-  .then((buffer) => {
-    beepBuffer = buffer;
-    beepLoaded = true;
-  })
-  .catch(() => {
-    beepLoaded = false;
-  });
+  .catch(() => null);
 
 function resumeAudioContext() {
+  if (!audioContext) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audioContext = new AC();
+    beepBytes
+      .then((arrayBuffer) => audioContext.decodeAudioData(arrayBuffer))
+      .then((buffer) => {
+        beepBuffer = buffer;
+        beepLoaded = true;
+      })
+      .catch(() => {
+        beepLoaded = false;
+      });
+  }
   if (audioContext.state === "suspended") {
     audioContext.resume().catch(() => {});
   }
 }
 
 function playBeep() {
-  if (!beepLoaded || !beepBuffer) return;
+  if (!audioContext || !beepLoaded || !beepBuffer) return;
   const startBeep = () => {
     const source = audioContext.createBufferSource();
     source.buffer = beepBuffer;
@@ -327,10 +353,14 @@ const group256 = document.getElementById("group-256"),
   MAX_PX = 80;
 let targetX = 0,
   currentX = 0;
+// Lo último que tick() escribió en los transforms (NaN: todavía nada).
+let drawnX = NaN,
+  drawnFleeX = NaN,
+  drawnFleeScale = NaN;
 const lerp = (t, e, a) => t + (e - t) * a;
 
 if (p3el) {
-  const guitarraAudio = new Audio("audio/Guitarra.mp3");
+  const guitarraAudio = new Audio("audio/Guitarra.m4a");
   guitarraAudio.preload = "none"; // sólo se baja si tocan la guitarra, no en cada carga
   guitarraAudio.volume = 0.12;
   const playGuitarra = () => {
@@ -423,6 +453,9 @@ let p7FleeScale = 1;
 
 function updateP7Flee() {
   if (!getP7DangerRect) return;
+  // Sin nave todavía y con el planeta en su lugar no hay nada que calcular (y
+  // getDangerRect mide el layout, que no es gratis a cada cuadro).
+  if (shipCenterX === null && !p7Fleeing && p7FleeOffsetX >= 0) return;
 
   const dangerRect = getP7DangerRect(P7_DANGER_MARGIN);
   const shipNear =
@@ -462,16 +495,33 @@ function tick() {
   // resto de los escenarios (la principal queda oculta) no tiene sentido tocar
   // los estilos de todas esas capas cuadro a cuadro.
   if (currentSceneId === "main") {
-    (updateP7Flee(),
-      (currentX = lerp(currentX, targetX, 0.04)),
-      group256 &&
-        (group256.style.transform = `translateX(${MAX_PX * currentX * DEPTH_256 * 100}px)`),
-      p3el &&
-        (p3el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P3 * 100}px)`),
-      p7el &&
-        (p7el.style.transform = `translateX(${MAX_PX * currentX * DEPTH_P7 * 100 + p7FleeOffsetX}px) scale(${p7FleeScale})`),
-      p8el &&
-        (p8el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P8 * 100}px)`));
+    updateP7Flee();
+    // Con el mouse quieto el lerp se acerca a targetX sin llegar nunca, y se
+    // reescribían 4 transforms por cuadro para mover capas fracciones de
+    // milésima de píxel. A menos de 5e-4 (~0,01 px en la capa que más se
+    // mueve) se clava en el valor final, y los estilos sólo se escriben si algo
+    // cambió respecto de lo último que se escribió.
+    currentX =
+      Math.abs(targetX - currentX) < 5e-4
+        ? targetX
+        : lerp(currentX, targetX, 0.04);
+    if (
+      currentX !== drawnX ||
+      p7FleeOffsetX !== drawnFleeX ||
+      p7FleeScale !== drawnFleeScale
+    ) {
+      ((drawnX = currentX),
+        (drawnFleeX = p7FleeOffsetX),
+        (drawnFleeScale = p7FleeScale),
+        group256 &&
+          (group256.style.transform = `translateX(${MAX_PX * currentX * DEPTH_256 * 100}px)`),
+        p3el &&
+          (p3el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P3 * 100}px)`),
+        p7el &&
+          (p7el.style.transform = `translateX(${MAX_PX * currentX * DEPTH_P7 * 100 + p7FleeOffsetX}px) scale(${p7FleeScale})`),
+        p8el &&
+          (p8el.style.transform = `translateX(${MAX_PX * -currentX * DEPTH_P8 * 100}px)`));
+    }
   }
   requestAnimationFrame(tick);
 }
@@ -950,6 +1000,13 @@ function drawStars() {
     }
     const FLIGHT_MARGIN = 100; // cuánto puede salirse la nave del viewport, en px
     const FLIGHT_MARGIN_TOP = 160; // arriba necesita más margen: al rotar, la nave (130px) sobresale de su caja
+    // Para cruzar a otro escenario la nave se tiene que salir bastante de la
+    // pantalla (irse es una decisión, no un roce): este margen vale para todos
+    // los bordes que llevan a otro escenario, en todos los escenarios, salvo que
+    // el borde pida el suyo (edges.<borde>.margin). En pantallas chicas no puede
+    // pasar de esa fracción del ancho (o alto) de la pantalla.
+    const EDGE_EXIT_MARGIN = 450; // px
+    const EDGE_EXIT_MAX_FRACTION = 0.4;
     // Solo en desktop: al llegar la nave al borde superior, se corta a la
     // segunda pantalla (mismo fondo starry azul, a pantalla completa, sin
     // parallax) que tapa nav/footer/parallax, y la nave reaparece del mismo
@@ -1154,6 +1211,9 @@ function drawStars() {
     // archivo- y agregar un edges.<borde> en el escenario desde el que se
     // entra, apuntando al id nuevo.
     Object.assign(scenes.main, {
+      // Mientras la nave hace su entrada (viene de afuera de la pantalla) no
+      // hay barras de aviso.
+      edgeWarning: () => !shipEntry,
       setVisible: (visible) =>
         siteContent && siteContent.classList.toggle("space-hidden", !visible),
       edges: {
@@ -1265,14 +1325,14 @@ function drawStars() {
       edges: {
         right: {
           to: "main",
-          // Irse a la derecha tiene que ser una decisión: la nave se tiene que
-          // salir 450 px de la pantalla (el resto de los bordes piden 100). Con
-          // el juego esquivando, si no, se sale casi sin querer. Ver
-          // progresoSalida() en js/esc4-game.js, que avisa mientras se acerca.
-          margin: 450,
           enter: (w, h) => ({ x: 40, y: h / 2 - 65 }),
         },
       },
+      // Con el juego esquivando, irse tiene que ser una decisión. La barra de
+      // aviso no va durante la intro (la nave entra desde afuera) ni en el final.
+      edgeWarning: () => !window.esc4Game || window.esc4Game.avisoSalida(),
+      // Ni en la intro ni en el final se puede alejar la cámara (M/Espacio/LT/rueda).
+      zoomBloqueado: () => !!window.esc4Game && window.esc4Game.sinZoom(),
     });
 
     // Planeta de la escena de espacio: arranca "apagado" (más oscuro que su
@@ -1322,22 +1382,51 @@ function drawStars() {
       });
     }
 
-    // Fundido de entrada: la nave arranca fuera de pantalla (e = -FLIGHT_MARGIN)
-    // y aparece de a poco al acercarse al borde izquierdo. Una vez que llegó a
-    // opacidad 1 la primera vez queda fija ahí -si no, como la opacidad se
-    // recalculaba en cada frame en base a la posición actual, la nave se
-    // transparentaba de nuevo cada vez que el usuario la llevaba de vuelta
-    // cerca del borde izquierdo durante el uso normal.
+    // Entrada de la nave al abrir el index: viene volando sola desde la esquina de
+    // arriba a la izquierda (mirando hacia donde va), frena y se acomoda cerca
+    // de esa esquina. Si el jugador toma el control (mouse apretado, teclado o
+    // joystick) antes de que termine, se corta ahí.
+    const SHIP_ENTRY_FROM = { x: -140, y: -160 }; // esquina de la caja (px), afuera de la pantalla
+    const SHIP_ENTRY_DELAY_MS = 400; // que la página se pinte antes
+    const SHIP_ENTRY_MS = 2400;
+    const shipEntryTo = () => ({
+      x: window.innerWidth * 0.17 - 65,
+      y: window.innerHeight * 0.27 - 65,
+    });
+    // Rotación con la que mira hacia donde va (0° = nariz arriba, igual que el
+    // seguimiento del mouse más abajo).
+    const shipEntryHeading = (to) =>
+      (Math.atan2(to.y - SHIP_ENTRY_FROM.y, to.x - SHIP_ENTRY_FROM.x) * 180) /
+        Math.PI +
+      90;
+    // Al terminar la entrada la nave queda mirando al nombre (AGUSTIN TARDELLA)
+    // desde donde se acomoda: rotación que apunta al centro de ese texto (si no
+    // se encuentra, 90° = mirando a la derecha).
+    const shipEntryAim = (to) => {
+      const el = document.querySelector(".footer-col-left .name");
+      const r = el && el.getBoundingClientRect();
+      if (!r || !r.width) return 90;
+      const dx = r.left + r.width / 2 - (to.x + 65);
+      const dy = r.top + r.height / 2 - (to.y + 65);
+      return (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+    };
+    let shipEntry = { t0: performance.now() + SHIP_ENTRY_DELAY_MS, to: null };
+    // Fundido de entrada: la nave arranca fuera de pantalla y aparece de a poco
+    // al acercarse al borde izquierdo (e). Una vez que llegó a opacidad 1 la
+    // primera vez queda fija ahí -si no, como la opacidad se recalculaba en cada
+    // frame en base a la posición actual, la nave se transparentaba de nuevo
+    // cada vez que el usuario la llevaba de vuelta cerca del borde izquierdo
+    // durante el uso normal.
     let introOpacity = 0;
     // La nave se mantiene 100% opaca en cualquier escenario -antes se ponía
     // semitransparente en el de espacio profundo ("nebulosa"), pero eso se
     // veía mal al pasar delante de otros objetos (astronauta, planeta).
     let shipAlpha = 1;
-    let e = -FLIGHT_MARGIN,
-      a = 180,
+    let e = SHIP_ENTRY_FROM.x,
+      a = SHIP_ENTRY_FROM.y,
       n = 0,
       r = 0,
-      s = 90,
+      s = shipEntryHeading(shipEntryTo()),
       i = null,
       o = null,
       l = !1,
@@ -1392,6 +1481,298 @@ function drawStars() {
       lockShip();
     };
     const isMobileTouch = () => window.innerWidth <= 600;
+
+    // Cuánto tiene que salirse la nave del viewport para cruzar por ese borde:
+    // el del escenario si lo pide, EDGE_EXIT_MARGIN si el borde lleva a otro
+    // escenario, y dflt si no lleva a ninguno (ahí la nave solo se frena).
+    const edgeMargin = (scene, side, dflt) => {
+      const edge = scene.edges[side];
+      if (!edge) return dflt;
+      if (edge.margin) return edge.margin;
+      const dim =
+        side === "left" || side === "right"
+          ? window.innerWidth
+          : window.innerHeight;
+      return Math.min(EDGE_EXIT_MARGIN, dim * EDGE_EXIT_MAX_FRACTION);
+    };
+
+    // Aviso de que la nave se está yendo del escenario: una franja transparente
+    // pegada al borde por el que se va (totalmente transparente: solo se ven las
+    // estrellas que viajan adentro, sin deformar ni oscurecer lo que hay detrás;
+    // ver .edge-warn en styles.css), que crece y se hace más marcada a medida que
+    // se acerca el cambio de escenario. Una por borde, en cualquier escenario; se calcula cada cuadro
+    // en updateEdgeWarnings.
+    // La franja tiene forma de una sola onda (una campana) corta, con su pico a la
+    // altura por donde se fue la nave (su posición a lo largo del borde; el eje de
+    // la onda es la nave). Cuanto más se aleja la nave, más alta y más ancha es la
+    // onda, pero siempre corta: lejos de la nave no hay nada. Se recorta con un
+    // clip-path (la franja ocupa solo esa forma).
+    // Para que pese poco, cada franja es una caja chica (EDGE_WARN_VENTANA desvíos
+    // de la onda a cada lado) que se mueve con la nave con un transform, y no un
+    // elemento del largo de todo el borde: la forma solo se recalcula cuando cambia
+    // el progreso, y no hay filtros que deformen lo que hay detrás.
+    const EDGE_WARN_BOX = 96; // px: grosor de la caja donde cabe la franja (más que el pico)
+    const EDGE_WARN_PICO = [6, 76]; // px: grosor en el pico, con progreso 0 y con progreso 1
+    const EDGE_WARN_ANCHO = [0.022, 0.05]; // qué tan ancha es la onda (fracción del largo del borde; es el desvío de la campana), con progreso 0 y con 1
+    const EDGE_WARN_VENTANA = 3; // desvíos de la onda que cubre la caja a cada lado de la nave
+    const EDGE_WARN_PASO = 4; // px: cada cuánto se calcula un punto de la forma
+    // Irregularidad de la onda: la campana se multiplica por un ruido suave de dos
+    // escalas (manchas grandes + rugosidad fina) y cada lado del pico tiene su
+    // propio ancho, así no sale una campana prolija y simétrica. La forma se sortea
+    // de nuevo cada vez que aparece la franja (ver edgeNuevaForma).
+    const EDGE_WARN_RUIDO = {
+      celdas: [40, 13], // px: tamaño de las manchas grandes y de la rugosidad fina
+      peso: 0.6, // cuánto pesa el ruido grande frente al fino (0 a 1)
+      altura: [0.4, 1.2], // multiplicador del grosor: mínimo y máximo que puede dar el ruido
+      lados: [0.7, 1.4], // rango del ancho de cada lado del pico, como multiplicador del desvío
+    };
+    const EDGE_WARN_SALMON = "#f19280"; // el --accent del sitio
+    // Adentro de la franja hay estrellas que viajan, como en velocidad de crucero:
+    // rayitas blancas y salmón que corren hacia el borde por el que se va la nave (solo se
+    // ven adentro de la forma de la onda, que recorta todo). Con más progreso hay
+    // más, van más rápido y las rayas son más largas.
+    const EDGE_WARN_ESTRELLAS = {
+      n: 90, // cuántas hay en cada borde (con progreso 1)
+      vel: [120, 560], // px/s: velocidad mínima y máxima de cada estrella
+      rapidez: [0.6, 1.4], // multiplicador de la velocidad con progreso 0 y con progreso 1
+      estela: [0.03, 0.065], // s: largo de la raya (velocidad por este tiempo), con progreso 0 y con progreso 1
+      concentracion: 0.9, // qué tan repartidas están a lo largo del borde, como fracción del ancho de la onda (menos = más juntas en la altura de la nave)
+      alfa: [0.3, 0.45], // multiplicador de la opacidad de las estrellas con progreso 0 y con progreso 1 (bien transparentes)
+      salmon: 0.4, // fracción de estrellas salmón (el resto son blancas)
+    };
+    // Número al azar con distribución normal (media 0, desvío 1).
+    const edgeRandn = () => {
+      const u = 1 - Math.random();
+      const v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    };
+    // Ruido de valor 1D suave (0 a 1) sobre una tabla circular de valores al azar.
+    const edgeRuido = (tabla, x) => {
+      const n = tabla.length;
+      const i = Math.floor(x);
+      const f = x - i;
+      const t = f * f * (3 - 2 * f);
+      const a = tabla[((i % n) + n) % n];
+      const b = tabla[(((i + 1) % n) + n) % n];
+      return a + (b - a) * t;
+    };
+    // Una forma al azar para la onda: dos tablas de ruido (grueso y fino) y el
+    // ancho de cada lado del pico.
+    const edgeNuevaForma = () => {
+      const R = EDGE_WARN_RUIDO;
+      const tabla = (n) => Array.from({ length: n }, Math.random);
+      return {
+        grueso: tabla(32),
+        fino: tabla(96),
+        offGrueso: Math.random() * 32,
+        offFino: Math.random() * 96,
+        izq: R.lados[0] + Math.random() * (R.lados[1] - R.lados[0]),
+        der: R.lados[0] + Math.random() * (R.lados[1] - R.lados[0]),
+      };
+    };
+    const edgeWarns = {};
+    for (const side of ["left", "right", "top", "bottom"]) {
+      const el = document.createElement("div");
+      el.className = "edge-warn edge-warn--" + side;
+      el.style.display = "none";
+      if (side === "left" || side === "right")
+        el.style.width = EDGE_WARN_BOX + "px";
+      else el.style.height = EDGE_WARN_BOX + "px";
+      // El canvas de las estrellas (ocupa toda la caja de la franja; el recorte
+      // de la onda lo limita).
+      const cv = document.createElement("canvas");
+      cv.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;";
+      el.appendChild(cv);
+      document.body.appendChild(el);
+      const estrellas = Array.from({ length: EDGE_WARN_ESTRELLAS.n }, () => ({
+        z: edgeRandn(), // a lo largo del borde: desvío respecto de la nave, en desvíos de la campana (se concentran donde está la nave)
+        a: Math.random() * EDGE_WARN_BOX, // distancia al borde de la pantalla
+        v: Math.random(), // qué tan rápida es (0 a 1)
+        alfa: 0.35 + Math.random() * 0.65,
+        grosor: 0.7 + Math.random() * 1,
+        salmon: Math.random() < EDGE_WARN_ESTRELLAS.salmon, // blanca o salmón
+      }));
+      edgeWarns[side] = {
+        el,
+        cv,
+        ctx: cv.getContext("2d"),
+        estrellas,
+        forma: edgeNuevaForma(),
+        ultimo: 0,
+        win: 0, // largo de la caja a lo largo del borde, en px
+        desp: null, // dónde está la caja a lo largo del borde
+        shown: "",
+      };
+    }
+    // Mueve y dibuja las estrellas de una franja. p: progreso; sigma: desvío de la
+    // onda en px; win: largo de la caja. Las estrellas se juntan en el centro de la
+    // caja, que es donde está la nave.
+    const drawEdgeStars = (side, warn, p, sigma, win) => {
+      const horizontal = side === "left" || side === "right";
+      const desdeBorde = side === "left" || side === "top";
+      const box = EDGE_WARN_BOX;
+      const cw = horizontal ? box : win;
+      const ch = horizontal ? win : box;
+      const dpr = window.devicePixelRatio || 1;
+      if (warn.cv.width !== Math.round(cw * dpr)) {
+        warn.cv.width = Math.round(cw * dpr);
+        warn.cv.style.width = cw + "px";
+      }
+      if (warn.cv.height !== Math.round(ch * dpr)) {
+        warn.cv.height = Math.round(ch * dpr);
+        warn.cv.style.height = ch + "px";
+      }
+      const ahora = performance.now();
+      const dt = warn.ultimo ? Math.min(0.05, (ahora - warn.ultimo) / 1000) : 0;
+      warn.ultimo = ahora;
+      const c = warn.ctx;
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.clearRect(0, 0, cw, ch);
+      c.lineCap = "round";
+      const E = EDGE_WARN_ESTRELLAS;
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const rapidez = lerp(E.rapidez[0], E.rapidez[1], p);
+      const estela = lerp(E.estela[0], E.estela[1], p);
+      const alfa = lerp(E.alfa[0], E.alfa[1], p);
+      const visibles = Math.floor(E.n * (0.3 + 0.7 * p));
+      const dispersion = sigma * E.concentracion;
+      for (let i = 0; i < visibles; i++) {
+        const e = warn.estrellas[i];
+        const vel = lerp(E.vel[0], E.vel[1], e.v) * rapidez;
+        const largoRaya = vel * estela;
+        e.a -= vel * dt;
+        // Sale por el borde de la pantalla y vuelve a entrar desde adentro.
+        if (e.a + largoRaya < 0) {
+          e.a = box + Math.random() * 30;
+          e.z = edgeRandn();
+          e.salmon = Math.random() < E.salmon;
+        }
+        const pos = win / 2 + e.z * dispersion;
+        if (pos < 0 || pos > win) continue; // fuera de la caja
+        // Cabeza de la estrella y su estela (que queda atrás, del lado de adentro).
+        const cabeza = desdeBorde ? e.a : box - e.a;
+        const cola = desdeBorde ? e.a + largoRaya : box - e.a - largoRaya;
+        c.globalAlpha = e.alfa * alfa;
+        c.strokeStyle = e.salmon ? EDGE_WARN_SALMON : "#fff";
+        c.lineWidth = e.grosor;
+        c.beginPath();
+        if (horizontal) {
+          c.moveTo(cabeza, pos);
+          c.lineTo(cola, pos);
+        } else {
+          c.moveTo(pos, cabeza);
+          c.lineTo(pos, cola);
+        }
+        c.stroke();
+      }
+    };
+    // La forma de la franja (clip-path) dentro de su caja, que está centrada en la
+    // nave: de un lado el borde de la pantalla, del otro la campana.
+    const edgeWarnShape = (side, p, sigma, win, forma) => {
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const R = EDGE_WARN_RUIDO;
+      const pico = lerp(EDGE_WARN_PICO[0], EDGE_WARN_PICO[1], p);
+      const box = EDGE_WARN_BOX;
+      const alLado = side === "left" || side === "right";
+      const desdeBorde = side === "left" || side === "top";
+      const pts = [];
+      for (let u = 0; u <= win + EDGE_WARN_PASO; u += EDGE_WARN_PASO) {
+        const pos = Math.min(u, win);
+        const d = pos - win / 2;
+        // Cada lado del pico tiene su ancho (la onda no es simétrica).
+        const sg = sigma * (d < 0 ? forma.izq : forma.der);
+        const campana = Math.exp(-(d * d) / (2 * sg * sg));
+        const ruido =
+          R.peso * edgeRuido(forma.grueso, forma.offGrueso + pos / R.celdas[0]) +
+          (1 - R.peso) * edgeRuido(forma.fino, forma.offFino + pos / R.celdas[1]);
+        const t = Math.max(
+          0,
+          Math.min(box, pico * campana * lerp(R.altura[0], R.altura[1], ruido)),
+        );
+        const x = alLado ? (desdeBorde ? t : box - t) : pos;
+        const y = alLado ? pos : desdeBorde ? t : box - t;
+        pts.push(x.toFixed(1) + "px " + y.toFixed(1) + "px");
+      }
+      // Se cierra por el borde de la pantalla.
+      const borde = desdeBorde ? 0 : box;
+      if (alLado) pts.push(borde + "px " + win + "px", borde + "px 0px");
+      else pts.push(win + "px " + borde + "px", "0px " + borde + "px");
+      return "polygon(" + pts.join(",") + ")";
+    };
+    // cx/cy: centro de la nave (caja + 65). Progreso 0 = todavía lejos (el aviso
+    // empieza 30 px antes del borde), 1 = ya cruza.
+    const updateEdgeWarnings = (scene, cx, cy) => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const enabled = !scene.edgeWarning || scene.edgeWarning();
+      for (const side in edgeWarns) {
+        const edge = scene.edges[side];
+        let p = 0;
+        if (enabled && edge && !(edge.requiresDesktop && isMobileTouch())) {
+          const m = edgeMargin(scene, side);
+          const desde =
+            side === "left" || side === "top"
+              ? 30
+              : (side === "right" ? w : h) - 30;
+          const c = side === "left" || side === "right" ? cx : cy;
+          const hasta =
+            side === "left" || side === "top"
+              ? -m + 65
+              : (side === "right" ? w : h) + m + 65;
+          p = Math.max(0, Math.min(1, (c - desde) / (hasta - desde)));
+        }
+        const warn = edgeWarns[side];
+        if (p <= 0) {
+          if (warn.shown !== "") {
+            warn.shown = "";
+            warn.desp = null;
+            warn.ultimo = 0;
+            warn.el.style.display = "none";
+          }
+          continue;
+        }
+        const alLado = side === "left" || side === "right";
+        const largo = alLado ? h : w;
+        const along = alLado ? cy : cx;
+        // La caja: de este largo (a lo largo del borde), centrada en la nave.
+        const sigma = (EDGE_WARN_ANCHO[0] + (EDGE_WARN_ANCHO[1] - EDGE_WARN_ANCHO[0]) * p) * largo;
+        const win = Math.max(
+          120,
+          Math.round(2 * EDGE_WARN_VENTANA * EDGE_WARN_ANCHO[1] * largo),
+        );
+        // La forma solo se recalcula cuando cambia (de a centésimas de progreso).
+        const value = Math.round(p * 100) + "x" + w + "x" + h;
+        if (value !== warn.shown) {
+          // Recién aparece la franja: forma nueva.
+          if (warn.shown === "") warn.forma = edgeNuevaForma();
+          warn.shown = value;
+          warn.el.style.display = "";
+          if (win !== warn.win) {
+            warn.win = win;
+            if (alLado) warn.el.style.height = win + "px";
+            else warn.el.style.width = win + "px";
+          }
+          warn.el.style.clipPath = edgeWarnShape(
+            side,
+            Math.round(p * 100) / 100,
+            sigma,
+            win,
+            warn.forma,
+          );
+          warn.el.style.opacity = String(0.3 + 0.7 * p);
+        }
+        // La caja acompaña a la nave a lo largo del borde (solo un transform).
+        const desp = Math.round(along - win / 2);
+        if (desp !== warn.desp) {
+          warn.desp = desp;
+          warn.el.style.transform = alLado
+            ? "translateY(" + desp + "px)"
+            : "translateX(" + desp + "px)";
+        }
+        // Las estrellas viajan todos los cuadros mientras la franja se ve.
+        drawEdgeStars(side, warn, p, sigma, win);
+      }
+    };
     const GAMEPAD_DEADZONE = 0.2;
     const GAMEPAD_THRUST_BASE = 0.3; // velocidad normal del stick/flechitas
     const GAMEPAD_THRUST_BOOST = 0.6; // velocidad con RB apretado
@@ -1554,15 +1935,44 @@ function drawStars() {
         e += n;
         a += r;
 
+        // Entrada de la nave (ver SHIP_ENTRY_*): el vuelo pisa la posición hasta
+        // que termina o el jugador toma el control.
+        if (shipEntry) {
+          if (l || gamepadActive) {
+            shipEntry = null;
+          } else {
+            const now = performance.now();
+            if (!shipEntry.to) shipEntry.to = shipEntryTo();
+            const to = shipEntry.to;
+            const u = Math.max(
+              0,
+              Math.min(1, (now - shipEntry.t0) / SHIP_ENTRY_MS),
+            );
+            const ease = 1 - Math.pow(1 - u, 3); // llega rápido y frena suave
+            e = SHIP_ENTRY_FROM.x + (to.x - SHIP_ENTRY_FROM.x) * ease;
+            a = SHIP_ENTRY_FROM.y + (to.y - SHIP_ENTRY_FROM.y) * ease;
+            n = 0;
+            r = 0;
+            // Mira hacia donde va y en el último tramo gira hacia el nombre.
+            const settle = Math.max(0, Math.min(1, (u - 0.55) / 0.45));
+            const heading = shipEntryHeading(to);
+            if (settle > 0 && shipEntry.aim == null)
+              shipEntry.aim = shipEntryAim(to);
+            let giro = settle > 0 ? shipEntry.aim - heading : 0;
+            giro = ((((giro + 180) % 360) + 360) % 360) - 180; // por el camino corto
+            s = heading + giro * settle * settle * (3 - 2 * settle);
+            if (u >= 1) shipEntry = null;
+          }
+        }
+
         // Cada borde de un escenario puede pedir su propio margen (edges.<borde>.margin):
         // cuánto tiene que salirse la nave del viewport para cruzar al escenario del
         // otro lado. Un margen grande hace que irse sea una decisión, no un roce.
-        const edgeMargin = (side, dflt) =>
-          (scene.edges[side] && scene.edges[side].margin) || dflt;
-        const minX = -edgeMargin("left", FLIGHT_MARGIN),
-          maxX = window.innerWidth + edgeMargin("right", FLIGHT_MARGIN),
-          minY = -edgeMargin("top", FLIGHT_MARGIN_TOP),
-          maxY = window.innerHeight + edgeMargin("bottom", FLIGHT_MARGIN);
+        const minX = -edgeMargin(scene, "left", FLIGHT_MARGIN),
+          maxX = window.innerWidth + edgeMargin(scene, "right", FLIGHT_MARGIN),
+          minY = -edgeMargin(scene, "top", FLIGHT_MARGIN_TOP),
+          maxY =
+            window.innerHeight + edgeMargin(scene, "bottom", FLIGHT_MARGIN);
         let touchedEdge = null;
         if (e < minX) {
           e = minX;
@@ -1629,6 +2039,7 @@ function drawStars() {
 
         shipCenterX = e + 65;
         shipCenterY = a + 65;
+        updateEdgeWarnings(scene, shipCenterX, shipCenterY);
 
         if (introOpacity < 1) {
           introOpacity = Math.max(
@@ -1643,8 +2054,16 @@ function drawStars() {
         // pone, en vez de un tamaño fijo. Sólo aplica si el escenario
         // declaró heightScale (ver registro de escenarios); si no, se queda
         // en el tamaño normal siempre.
+        // (Con el rango de vuelo de siempre, sin el margen extra de salida.)
         const spaceT = scene.heightScale
-          ? Math.max(0, Math.min(1, (a - minY) / (maxY - minY)))
+          ? Math.max(
+              0,
+              Math.min(
+                1,
+                (a + FLIGHT_MARGIN_TOP) /
+                  (window.innerHeight + FLIGHT_MARGIN + FLIGHT_MARGIN_TOP),
+              ),
+            )
           : 1;
         // Con M (teclado) o LT (joystick) apretado se ve el mapa completo
         // sin zoom (multiplicador 1); se restaura solo al soltar ambos.
@@ -1656,13 +2075,16 @@ function drawStars() {
         // achiquen/agranden todos juntos, como si una cámara se alejara, en
         // vez de la nave sola encogiéndose. Sólo aplica si el escenario
         // declaró camera (ver registro de escenarios); si no, no tiene zoom.
+        // Si el escenario bloquea el zoom out (zoomBloqueado, ver el escenario 4)
+        // no se aleja aunque se apriete M/Espacio/LT o se use la rueda; la rueda
+        // además no acumula, para que al terminar no salte de golpe.
+        const zoomBloqueado = !!scene.zoomBloqueado && scene.zoomBloqueado();
+        if (zoomBloqueado) wheelMapViewT = 0;
         if (wheelMapViewT > 0 && performance.now() > wheelExpireAt)
           wheelMapViewT = 0;
-        const mapViewT = Math.max(
-          keyMapView ? 1 : 0,
-          gamepadMapViewT,
-          wheelMapViewT,
-        );
+        const mapViewT = zoomBloqueado
+          ? 0
+          : Math.max(keyMapView ? 1 : 0, gamepadMapViewT, wheelMapViewT);
         const targetCameraZoom = scene.camera
           ? scene.camera.zoom + (1 - scene.camera.zoom) * mapViewT
           : 1;
@@ -1767,7 +2189,7 @@ function drawStars() {
             : "parallax/cohete.webp";
         if (silent) return;
         const snd = new Audio(
-          lightOn ? "audio/light_on.mp3" : "audio/light_off.mp3",
+          lightOn ? "audio/light_on.m4a" : "audio/light_off.m4a",
         );
         const light = scenes[currentSceneId].light;
         snd.volume = light ? light.volume : 1;
@@ -1802,7 +2224,7 @@ function drawStars() {
     (function () {
       const t = document.querySelector(".starry-p9");
       if (!t) return;
-      const e = new Audio("audio/satelite.mp3");
+      const e = new Audio("audio/satelite.m4a");
       e.preload = "none"; // sólo se baja si tocan el satélite, no en cada carga
       e.volume = 0.25;
       const triggerSatelite = () => {
@@ -1841,7 +2263,7 @@ function drawStars() {
     bassGroup.querySelectorAll(".gl img")[0];
   if (!bassTarget) return;
 
-  const bassAudio = new Audio("audio/bass.mp3");
+  const bassAudio = new Audio("audio/bass.m4a");
   bassAudio.preload = "none"; // sólo se baja si tocan esa nota, no en cada carga
   bassAudio.volume = 0.6;
 
@@ -1966,16 +2388,22 @@ function drawStars() {
   });
 })();
 
-// Typed.js for year animation
-document.addEventListener("DOMContentLoaded", function () {
-  new Typed("#typed-year", {
-    strings: ["2026"],
-    typeSpeed: 100,
-    backSpeed: 0,
-    loop: false,
-    showCursor: false,
-  });
-});
+// Año tipeado de a una letra. Antes lo hacía typed.js (una librería de un CDN
+// externo, cargada de forma bloqueante, para escribir cuatro caracteres).
+(function () {
+  const el = document.getElementById("typed-year");
+  if (!el) return;
+  const texto = "2026";
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    el.textContent = texto;
+    return;
+  }
+  let n = 0;
+  (function siguiente() {
+    el.textContent = texto.slice(0, ++n);
+    if (n < texto.length) setTimeout(siguiente, 100);
+  })();
+})();
 
 // Joystick: A (Xbox) / X (PlayStation) — botón 0 — reproduce el sonido de la
 // zona del parallax que la nave esté tocando, igual que un click de mouse.
@@ -2008,11 +2436,26 @@ document.addEventListener("DOMContentLoaded", function () {
     const prevActionPressed = [];
     const prevLightPressed = [];
 
-    (function pollButtons() {
+    // Se sondea sólo mientras haya un joystick conectado: antes corría un
+    // requestAnimationFrame eterno preguntándole al navegador por joysticks que
+    // casi nunca existen. gamepadconnected salta apenas se toca un botón del
+    // joystick (también si ya estaba enchufado al cargar) y lo vuelve a
+    // arrancar; si en un cuadro no queda ninguno, se frena solo.
+    let sondeando = false;
+    const arrancarSondeo = () => {
+      if (sondeando) return;
+      sondeando = true;
+      pollButtons();
+    };
+    window.addEventListener("gamepadconnected", arrancarSondeo);
+
+    function pollButtons() {
       const pads = navigator.getGamepads();
+      let hayJoystick = false;
       for (let idx = 0; idx < pads.length; idx++) {
         const gp = pads[idx];
         if (!gp) continue;
+        hayJoystick = true;
 
         const actionButton = gp.buttons[BTN_ACTION];
         const actionPressed = !!(actionButton && actionButton.pressed);
@@ -2026,8 +2469,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         prevLightPressed[idx] = lightPressed;
       }
-      requestAnimationFrame(pollButtons);
-    })();
+      if (hayJoystick) requestAnimationFrame(pollButtons);
+      else sondeando = false;
+    }
+    // Un joystick que ya estaba conectado antes de que cargara el script.
+    arrancarSondeo();
   }
 
   // ev.repeat descarta el auto-repeat del navegador al mantener la tecla

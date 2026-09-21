@@ -45,6 +45,10 @@
     c.height = h;
     return c;
   };
+  // Los canvas del sprite (color y gris) se leen con getImageData: por CPU
+  // (willReadFrequently) esa lectura no tiene que bajar la textura de la GPU, que
+  // era casi todo el costo de armar().
+  const ctxLectura = (c) => c.getContext("2d", { willReadFrequently: true });
 
   let listo = false;
   let inutil = false; // no se pueden leer los píxeles
@@ -73,12 +77,12 @@
         sh,
       );
     colorC = nuevoCanvas(sw, sh);
-    const cc = colorC.getContext("2d");
+    const cc = ctxLectura(colorC);
     recorte(cc);
     // Gris: se desatura con un relleno gris en modo "saturation" y se vuelve a
     // recortar con la silueta (el relleno también pinta lo transparente).
     grisC = nuevoCanvas(sw, sh);
-    const g = grisC.getContext("2d");
+    const g = ctxLectura(grisC);
     recorte(g);
     g.globalCompositeOperation = "saturation";
     g.fillStyle = "#808080";
@@ -132,8 +136,20 @@
     p7.appendChild(cv);
     listo = true;
   }
-  if (img.complete) armar();
-  else img.addEventListener("load", armar, { once: true });
+  // Armar el efecto (varios canvas, sombra, lectura de píxeles) es lo más pesado
+  // de este archivo, así que no va en la carga: se hace con el navegador
+  // desocupado, ya con la página andando. Si el mouse llega antes a la nave, se
+  // arma en ese momento (ver el mousemove de abajo).
+  function armarCuandoPuedas() {
+    if (listo || inutil) return;
+    if (img.complete) armar();
+    else img.addEventListener("load", armar, { once: true });
+  }
+  window.addEventListener("load", () => {
+    if (window.requestIdleCallback)
+      requestIdleCallback(armarCuandoPuedas, { timeout: 5000 });
+    else setTimeout(armarCuandoPuedas, 2000);
+  });
 
   // ¿El mouse está sobre la nave (píxel opaco, con un par de px de tolerancia)?
   // Devuelve el punto en px del sprite, o null.
@@ -396,10 +412,24 @@
   }
 
   document.addEventListener("mousemove", (ev) => {
-    if (!listo) return;
     // Solo en la escena principal: en los demás la capa queda tapada.
     if (typeof currentSceneId !== "undefined" && currentSceneId !== "main")
       return;
+    if (!listo) {
+      // Todavía no se armó (ver armarCuandoPuedas): si el mouse ya está sobre el
+      // sprite, se arma ahora; si no, nada.
+      if (inutil || !img.complete) return;
+      const r = img.getBoundingClientRect();
+      if (
+        ev.clientX < r.left ||
+        ev.clientX > r.right ||
+        ev.clientY < r.top ||
+        ev.clientY > r.bottom
+      )
+        return;
+      armar();
+      if (!listo) return;
+    }
     const punto = tocaNave(ev.clientX, ev.clientY);
     if (!punto) return;
     ultimoHover = performance.now();

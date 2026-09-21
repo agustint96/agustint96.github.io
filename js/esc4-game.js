@@ -38,13 +38,18 @@
 // putea en un globo de diálogo (*#$%!) y se escapan. Cuando se van, se vuelve al
 // escenario principal (el nivel está completo).
 //
-// Música (audio/nivel4.ogg): arranca 2 s después de que la nave prende la luz
+// Música (audio/nivel4.ogg, con audio/nivel4.m4a de respaldo): arranca 2 s después de que la nave prende la luz
 // (así se oye el sonido de luz on) y suena en bucle mientras dura la partida,
 // acelerando de a muy poquito. Se frena al chocar (queda en silencio lo que
 // dura la caída de la nave) y arranca de nuevo desde el principio, a
 // velocidad normal, cuando empieza la partida siguiente.
-// Al perder suena audio/stopgame.mp3 (una vez, sin cortarlo al reiniciar: se
+// Al perder suena audio/stopgame.m4a (una vez, sin cortarlo al reiniciar: se
 // oye un rato más, aunque ya haya vuelto la música).
+// Cada pasaje por un agujero cuenta hacia atrás con la voz: 10, 9, ... 1
+// (audio/Esc4/conteo; ver CONTEO_ARCHIVOS). Al perder el conteo vuelve a 10.
+// En el último portal, tras el "1" (o en su lugar) suena una felicitación. Además,
+// de vez en cuando (50 %) hay voces de ánimo a los ~20 s y de cansancio pasados los
+// 30 s. Todas comparten un canal y las de ánimo/cansancio no pisan a las de portal.
 // Se reproduce con Web Audio (el archivo se decodifica una vez y se loopea el
 // buffer): con un <audio loop> el bucle tenía un hueco al volver a empezar y
 // al reiniciar con currentTime había demora. Si Web Audio no está disponible
@@ -83,7 +88,12 @@
   const INTRO_ACELERACION = 380; // px/s² del mundo al irse
   const INTRO_DIR = { x: -0.75, y: -0.66 }; // arriba a la izquierda
   const INTRO_MIRADA_MAX = 75; // grados: lo máximo que gira la nave para mirar a las navecitas
-  const MUSICA_URL = "audio/nivel4.ogg";
+  // Opus (el más liviano, bucle sin hueco) y, si el navegador no lo lee (Safari
+  // viejo), la misma música en AAC. Se usa la primera que se pueda decodificar.
+  const MUSICA_FUENTES = [
+    { url: "audio/nivel4.ogg", tipo: 'audio/ogg; codecs="opus"' },
+    { url: "audio/nivel4.m4a", tipo: 'audio/mp4; codecs="mp4a.40.2"' },
+  ];
   const MUSICA_VOLUMEN = 0.1;
   const MUSICA_RETRASO = 2; // segundos entre que la nave prende la luz y arranca la música
   // La música acelera de a muy poquito mientras dura la partida (casi
@@ -91,12 +101,48 @@
   // por segundo = +1,2 % a los 30 s), como fracción de la velocidad normal.
   const MUSICA_ACEL = 0.0004;
   const MUSICA_ACEL_MAX = 0.1;
-  const PERDER_URL = "audio/stopgame.mp3";
+  const PERDER_URL = "audio/stopgame.m4a";
   const PERDER_VOLUMEN = 0.2;
   // Al entrar al último agujero de gusano (el que completa el color de la nave)
   // suena esta nota, una sola vez.
   const NOTA_URL = "audio/mimayor.m4a";
   const NOTA_VOLUMEN = 0.1;
+  // Voces (audio/Esc4). Todas comparten un solo canal: suena una a la vez, y las
+  // de los portales (el conteo y las felicitaciones) tienen prioridad, cortan la
+  // que esté sonando; las de ánimo y de cansancio, en cambio, nunca cortan a una
+  // de un portal, esperan a que termine.
+  const VOZ_URL = "audio/Esc4/";
+  const VOZ_VOLUMEN = 0.2;
+  const VOZ_CHANCE = 0.5; // probabilidad de que suene cada vez que le toca (50 %)
+  // Ánimo: una sola tirada por partida, en algún momento de este rango de
+  // segundos de juego (así no siempre cae en el mismo segundo).
+  const VOZ_ANIMO = ["vamos.m4a", "concentrate.m4a"];
+  const VOZ_ANIMO_DESDE = [20, 25];
+  // Cansancio: cuando el juego ya va rápido y lleva mucho: la primera tirada a
+  // los VOZ_CANSADO_DESDE segundos y otra cada VOZ_CANSADO_CADA mientras siga.
+  const VOZ_CANSADO = ["ufff.m4a", "seeee.m4a"];
+  const VOZ_CANSADO_DESDE = 30;
+  const VOZ_CANSADO_CADA = 10;
+  // Felicitación: en el último portal, después del "1" o en lugar del "1".
+  const VOZ_FELICITA = ["bien.m4a", "muy_bien.m4a", "buenisimoo.m4a", "siii.m4a"];
+  const VOZ_REEMPLAZA = 0.5; // probabilidad de que reemplace al "1" (si no, suena después)
+  // Conteo regresivo: cada vez que la nave entra a un agujero de gusano suena
+  // el número que sigue, del 10 al 1 (un pasaje por número: CUMULOS_PARA_COLOR
+  // tiene que ser igual a la cantidad de números). De cada número hay una o
+  // más variantes (audio/Esc4/conteo) y en cada pasaje suena una al azar.
+  const CONTEO_URL = VOZ_URL + "conteo/";
+  const CONTEO_ARCHIVOS = [
+    ["10.m4a", "10 (1).m4a"],
+    ["9.m4a", "nueve.m4a"],
+    ["8.m4a"],
+    ["7.m4a"],
+    ["6.m4a"],
+    ["5.m4a"],
+    ["4.m4a"],
+    ["3.m4a"],
+    ["dos.m4a"],
+    ["1.m4a"],
+  ];
   const P7_ANCHO = 40; // px del mundo: ancho de la nave (chica, como la de la escena; ver ESCALA_MUNDO)
   // Posición de la nave que ya está ahí, relativa al ancho del mundo, y a
   // qué distancia del piso está: la misma altura a la que aparece el
@@ -234,15 +280,32 @@
   let timerOculto = false;
   let musicaIniciada = false; // ya se pidió cargar la música
   let audioCtx = null; // Web Audio
-  let musicaBuffer = null; // audio/nivel4.ogg decodificado
+  let musicaBuffer = null; // música decodificada (ver MUSICA_FUENTES)
   let musicaGain = null;
   let perderGain = null;
-  let perderBuffer = null; // audio/stopgame.mp3 decodificado
+  let perderBuffer = null; // audio/stopgame.m4a decodificado
   let perderFuente = null; // fuente sonando ahora (o null)
   let notaGain = null;
   let notaBuffer = null; // audio/mimayor.m4a decodificado
   let notaFuente = null; // fuente sonando ahora (o null)
   let nota = null; // <audio> de respaldo
+  // Cada voz es { url, buffer, audio }: el buffer decodificado, o un <audio> de
+  // respaldo si falla Web Audio.
+  const crearVoz = (url) => ({ url: encodeURI(url), buffer: null, audio: null });
+  const conteo = CONTEO_ARCHIVOS.map((variantes) =>
+    variantes.map((f) => crearVoz(CONTEO_URL + f)),
+  ); // un elemento por número (10 a 1), con sus variantes
+  const vocesAnimo = VOZ_ANIMO.map((f) => crearVoz(VOZ_URL + f));
+  const vocesCansado = VOZ_CANSADO.map((f) => crearVoz(VOZ_URL + f));
+  const vocesFelicita = VOZ_FELICITA.map((f) => crearVoz(VOZ_URL + f));
+  let vozGain = null;
+  let vozFuente = null; // fuente sonando ahora (o null)
+  let vozAudio = null; // <audio> de respaldo sonando ahora (o null)
+  let vozSonando = false; // hay una voz sonando
+  let vozId = 0; // cambia con cada voz nueva o cortada (para ignorar el final de una vieja)
+  let vozPendiente = null; // voz de ánimo/cansancio que espera a que se libere el canal
+  let proxAnimo = null; // segundo de la partida en que toca la tirada de ánimo (o null: ya pasó)
+  let proxCansado = VOZ_CANSADO_DESDE; // segundo de la próxima tirada de cansancio
   let perder = null; // <audio> de respaldo
   let musicaFuente = null; // fuente sonando ahora (o null)
   let musicaEspera = null; // segundos que faltan para que arranque la música (o null)
@@ -460,6 +523,13 @@
     acumCumulo = 0;
     proxCumulo = CUMULO_PRIMERO;
     cumulosTomados = 0;
+    // Voces de la partida nueva: se corta lo que sonaba y vuelven a tirarse.
+    cortarVoz();
+    vozPendiente = null;
+    proxAnimo =
+      VOZ_ANIMO_DESDE[0] +
+      Math.random() * (VOZ_ANIMO_DESDE[1] - VOZ_ANIMO_DESDE[0]);
+    proxCansado = VOZ_CANSADO_DESDE;
     colorObjetivo = 0;
     colorNave = 0;
     limpiarFinal();
@@ -495,10 +565,14 @@
       musicaGain = conGain(MUSICA_VOLUMEN);
       perderGain = conGain(PERDER_VOLUMEN);
       notaGain = conGain(NOTA_VOLUMEN);
-      try {
-        musicaBuffer = await decodificar(MUSICA_URL);
-      } catch (e) {
-        musicaBuffer = null;
+      vozGain = conGain(VOZ_VOLUMEN);
+      for (const { url } of MUSICA_FUENTES) {
+        try {
+          musicaBuffer = await decodificar(url);
+          break;
+        } catch (e) {
+          musicaBuffer = null;
+        }
       }
       try {
         notaBuffer = await decodificar(NOTA_URL);
@@ -512,7 +586,11 @@
       }
     }
     if (!musicaBuffer) {
-      musica = new Audio(MUSICA_URL);
+      const prueba = new Audio();
+      const fuente =
+        MUSICA_FUENTES.find((f) => prueba.canPlayType(f.tipo)) ||
+        MUSICA_FUENTES[0];
+      musica = new Audio(fuente.url);
       musica.loop = true;
       musica.volume = MUSICA_VOLUMEN;
     }
@@ -523,6 +601,109 @@
     if (!notaBuffer) {
       nota = new Audio(NOTA_URL);
       nota.volume = NOTA_VOLUMEN;
+    }
+    await Promise.all(
+      [
+        ...conteo.flat(),
+        ...vocesAnimo,
+        ...vocesCansado,
+        ...vocesFelicita,
+      ].map(async (s) => {
+        if (audioCtx) {
+          try {
+            s.buffer = await decodificar(s.url);
+          } catch (e) {
+            s.buffer = null;
+          }
+        }
+        if (!s.buffer) {
+          s.audio = new Audio(s.url);
+          s.audio.volume = VOZ_VOLUMEN;
+        }
+      }),
+    );
+  }
+
+  const alAzar = (lista) => lista[Math.floor(Math.random() * lista.length)];
+
+  // Corta la voz que esté sonando (y cancela lo que tenía encadenado).
+  function cortarVoz() {
+    vozId++;
+    vozSonando = false;
+    if (vozFuente) {
+      try {
+        vozFuente.stop();
+      } catch (e) {}
+      vozFuente.disconnect();
+      vozFuente = null;
+    }
+    if (vozAudio) {
+      vozAudio.pause();
+      vozAudio = null;
+    }
+  }
+
+  // Dice una voz cortando la que esté sonando; alTerminar (opcional) se llama
+  // cuando termina sola (no si la cortan).
+  function decirVoz(s, alTerminar) {
+    cortarVoz();
+    if (!s.buffer && !s.audio) return; // todavía no cargó
+    vozSonando = true;
+    const id = vozId;
+    const fin = () => {
+      if (id !== vozId) return;
+      cortarVoz();
+      if (alTerminar) alTerminar();
+    };
+    if (s.buffer) {
+      // El navegador puede tenerla suspendida hasta la primera interacción.
+      audioCtx.resume().catch(() => {});
+      vozFuente = audioCtx.createBufferSource();
+      vozFuente.buffer = s.buffer;
+      vozFuente.connect(vozGain);
+      vozFuente.onended = fin;
+      vozFuente.start();
+    } else {
+      s.audio.currentTime = 0;
+      s.audio.onended = fin;
+      s.audio.play().catch(fin); // si el navegador la bloquea no se queda esperando
+      vozAudio = s.audio;
+    }
+  }
+
+  // El conteo del pasaje número i (0 = el 10, 9 = el 1): suena una de las
+  // variantes al azar. En el último pasaje, además, la felicitación: a veces
+  // después del "1" y a veces en su lugar.
+  function sonarConteo(i) {
+    const variantes = conteo[i];
+    if (!variantes) return;
+    const numero = alAzar(variantes);
+    if (i < conteo.length - 1) {
+      decirVoz(numero);
+      return;
+    }
+    const felicita = alAzar(vocesFelicita);
+    if (Math.random() < VOZ_REEMPLAZA) decirVoz(felicita);
+    else decirVoz(numero, () => decirVoz(felicita));
+  }
+
+  // Las voces de ánimo y de cansancio, según el segundo de la partida: cada
+  // tirada tiene VOZ_CHANCE de sonar, y si hay una voz de un portal sonando
+  // espera a que termine.
+  function actualizarVoces() {
+    if (proxAnimo !== null && tiempo >= proxAnimo) {
+      proxAnimo = null;
+      if (Math.random() < VOZ_CHANCE) vozPendiente = alAzar(vocesAnimo);
+    }
+    if (tiempo >= proxCansado) {
+      proxCansado += VOZ_CANSADO_CADA;
+      if (!vozPendiente && Math.random() < VOZ_CHANCE)
+        vozPendiente = alAzar(vocesCansado);
+    }
+    if (vozPendiente && !vozSonando) {
+      const s = vozPendiente;
+      vozPendiente = null;
+      decirVoz(s);
     }
   }
 
@@ -611,6 +792,8 @@
       notaFuente = null;
     }
     if (nota) nota.pause();
+    cortarVoz();
+    vozPendiente = null;
   }
 
   // Sube o baja la pantalla negra; instantáneo = sin fundido (al salir del
@@ -1098,6 +1281,7 @@
       if (window.shipPlace) window.shipPlace(salida.x, salida.y, true);
       cumulos = cumulos.filter((c) => c !== entrado && c !== salida);
       cumulosTomados++;
+      sonarConteo(cumulosTomados - 1); // 1.er pasaje: "10" ... 10.º: "1"
       colorObjetivo = Math.min(1, cumulosTomados / CUMULOS_PARA_COLOR);
       if (cumulosTomados >= CUMULOS_PARA_COLOR) {
         // El último: suena la nota y empieza el final enseguida (no hay que
@@ -1120,6 +1304,7 @@
 
   function actualizar(dt, circulos) {
     if (!ganado) tiempo += dt; // al ganar el segundero queda parado
+    if (!ganado) actualizarVoces();
 
     if (tiempo > gracia && !ganado) {
       acumSpawn += dt;
@@ -1163,9 +1348,13 @@
       actualizarPuntos(p);
     }
     // Se descartan los que ya salieron por abajo, compactando el mismo array.
+    // Nunca antes de haber pasado la nave, aunque esté más abajo de lo que se ve
+    // (la nave puede salirse un poco de la pantalla): así no se puede esconder
+    // ahí y pasarse el minutero sin chocar.
+    const suelo = circulos.reduce((m, c) => Math.max(m, c.y + c.r), abajo);
     let quedan = 0;
     for (const p of poligonos)
-      if (p.y - p.radio < abajo) poligonos[quedan++] = p;
+      if (p.y - p.radio < suelo) poligonos[quedan++] = p;
     poligonos.length = quedan;
 
     // Durante el final (ya completó el color) no se choca: el nivel está ganado.
@@ -1187,6 +1376,8 @@
         tChoque = 0;
         golpeadora = p;
         frenarMusica();
+        cortarVoz();
+        vozPendiente = null;
         sonarPerder();
         // El golpe: la nave sale despedida hacia abajo (con parte de lo que
         // traía la piedra) y para el lado opuesto al que le pegaron, girando.
@@ -1372,34 +1563,6 @@
     }
   }
 
-  // Cuánto falta para que la nave cruce el borde derecho hacia el escenario
-  // principal (0 = todavía lejos, 1 = ya cruza). El margen de ese borde lo define
-  // scenes.game.edges.right.margin en script.js.
-  function progresoSalida() {
-    if (typeof shipCenterX === "undefined" || shipCenterX === null) return 0;
-    if (typeof scenes === "undefined" || !scenes.game) return 0;
-    const borde = scenes.game.edges && scenes.game.edges.right;
-    if (!borde || !borde.margin) return 0;
-    const w = window.innerWidth;
-    const desde = w - 30; // el aviso empieza un poco antes del borde
-    const hasta = w + borde.margin + 65; // centro de la nave cuando cruza (caja + 65)
-    return Math.max(0, Math.min(1, (shipCenterX - desde) / (hasta - desde)));
-  }
-
-  // Aviso de que la nave se está yendo por la derecha: una barra plana blanca
-  // pegada al borde que crece a medida que se acerca el cambio de escenario.
-  function dibujarSalida() {
-    const p = progresoSalida();
-    if (p <= 0) return;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const ancho = 6 + 70 * p;
-    ctx.globalAlpha = 0.2 + 0.6 * p;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(w - ancho, 0, ancho, h);
-    ctx.globalAlpha = 1;
-  }
-
   function dibujar(centro) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
@@ -1438,7 +1601,11 @@
       // entre los dos sprites, como en los agujeros).
       const k = Math.max(0, Math.min(1, colorNave));
       for (let v = 0; v < 2; v++) {
-        ctx.globalAlpha = LUZ_INTENSIDAD * luzNivel * (v === 0 ? 1 - k : k);
+        const alfa = LUZ_INTENSIDAD * luzNivel * (v === 0 ? 1 - k : k);
+        // El que no se ve (opacidad casi 0) no se dibuja: es una imagen grande y
+        // rellenarla cada cuadro cuesta.
+        if (alfa < 0.002) continue;
+        ctx.globalAlpha = alfa;
         ctx.drawImage(
           luzSprites[v],
           centro.x - LUZ_RADIO,
@@ -1475,7 +1642,6 @@
     dibujarFinal();
     // Lo que sigue va en pantalla, sin el zoom de la cámara.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (negro && !ganado) dibujarSalida();
   }
 
   function cuadro(ahora) {
@@ -1633,6 +1799,16 @@
     // script.js: luz de la nave prendida/apagada.
     setLight(valor) {
       luz = valor;
+    },
+    // script.js: ¿se muestra la barra de aviso de que la nave se va del escenario?
+    // No durante la intro (la nave entra desde afuera) ni en el final.
+    avisoSalida() {
+      return negro && !ganado;
+    },
+    // script.js: ¿está bloqueado alejar la cámara (M/Espacio/LT/rueda)? Sí en la
+    // intro y en el final.
+    sinZoom() {
+      return introT >= 0 || ganado;
     },
     setActive(valor) {
       if (valor === activo) return;

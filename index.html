@@ -10,12 +10,40 @@
       content="Portfolio de Agustín Tardella, Analista de Sistemas Informáticos y Desarrollador Full Stack de Córdoba, Argentina. Fondo parallax animado y acceso a la consola SQL interactiva."
     />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Carga (sobre todo en una recarga sin caché, Ctrl+Shift+R): mientras las
+    capas del parallax no estén todas bajadas y decodificadas, html.cargando las
+    deja transparentes para que se funden juntas y no de a pedazos (ver el
+    script del final del body y "Carga" en styles.css). Va acá, antes del CSS,
+    para que la clase esté puesta desde el primer render. -->
+    <script>
+      document.documentElement.classList.add("cargando");
+    </script>
 
+    <!-- Lo que se ve primero, pedido ya mismo: el fondo estrellado (lo pide el
+    CSS, o sea que sin esto se descubre tarde y la página aparece un rato sobre
+    azul liso) y la tipografía del nombre (si no, el nombre se ve un instante en
+    otra fuente y después salta). DM Mono y JetBrains Mono ya no vienen de
+    Google Fonts: están en fonts/ y las declara styles.css. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      as="image"
+      href="parallax/fondo-estrellado.webp"
+      type="image/webp"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="font"
+      href="fonts/dm-mono-400-latin.woff2"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      href="fonts/Spaceport_2006.otf"
+      type="font/otf"
+      crossorigin
     />
 
     <link rel="icon" type="image/png" href="parallax/parallax 9.webp" />
@@ -315,6 +343,8 @@
       <canvas id="space-scene-canvas"></canvas>
       <img
         src="parallax/nave bora het.webp"
+        fetchpriority="low"
+        decoding="async"
         class="space-bora-nave"
         id="space-bora-nave"
         alt=""
@@ -322,6 +352,8 @@
       />
       <img
         src="parallax/piedra.webp"
+        fetchpriority="low"
+        decoding="async"
         class="space-rock"
         id="space-rock"
         alt=""
@@ -334,18 +366,24 @@
       <div class="space-rock-orange" id="space-rock-orange">
         <img
           src="parallax/piedra_naranja_1.webp"
+        fetchpriority="low"
+        decoding="async"
           class="space-rock-orange-sprite space-rock-orange-rest"
           alt=""
           aria-hidden="true"
         />
         <img
           src="parallax/piedra_naranja_2.webp"
+        fetchpriority="low"
+        decoding="async"
           class="space-rock-orange-sprite space-rock-orange-move"
           alt=""
           aria-hidden="true"
         />
         <img
           src="parallax/piedra_naranja_3.webp"
+        fetchpriority="low"
+        decoding="async"
           class="space-rock-orange-sprite space-rock-orange-move-alt"
           alt=""
           aria-hidden="true"
@@ -358,6 +396,8 @@
       250 y la nave (.in-space) 253, ver styles.css. -->
       <img
         src="parallax/planetavioleta.webp"
+        fetchpriority="low"
+        decoding="async"
         class="space-planet-violeta"
         id="space-planet-violeta"
         alt=""
@@ -365,6 +405,8 @@
       />
       <img
         src="parallax/piedra_2.webp"
+        fetchpriority="low"
+        decoding="async"
         class="space-rock-2"
         id="space-rock-2"
         alt=""
@@ -404,6 +446,8 @@
     <div class="space-scene-front" id="space-scene-front" aria-hidden="true">
       <img
         src="parallax/everyone planeta.webp"
+        fetchpriority="low"
+        decoding="async"
         class="space-planet"
         id="space-planet"
         alt=""
@@ -411,6 +455,8 @@
       />
       <img
         src="parallax/Astronauta.webp"
+        fetchpriority="low"
+        decoding="async"
         class="space-astronaut"
         id="space-astronaut"
         alt=""
@@ -432,6 +478,8 @@
     <div class="salmon-scene-front" id="salmon-scene-front" aria-hidden="true">
       <img
         src="parallax/esc3/FONDO2.webp"
+        fetchpriority="low"
+        decoding="async"
         class="salmon-fondo2"
         alt=""
         aria-hidden="true"
@@ -475,9 +523,43 @@
          encima de todo, nave incluida. -->
     <div class="game-tapa" id="game-tapa" aria-hidden="true"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
-    <script src="js/esc4-game.js"></script>
-    <script src="script.js"></script>
-    <script src="js/p7-pintura.js"></script>
+    <!-- Carga en dos tiempos (ver "Carga" en styles.css):
+         1) Las capas del parallax se revelan todas juntas cuando están bajadas
+            y decodificadas (o a los 4 s como tope, por si alguna falla o tarda:
+            nunca queda oculto).
+         2) Recién con la página lista y el navegador desocupado se pide lo de
+            los escenarios que no se ven (html.escenas-listas), para que no le
+            compita al primer pantallazo. -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var revelar = function () {
+          root.classList.remove("cargando");
+        };
+        var capas = document.querySelectorAll(".parallax-footer img");
+        var listas = Array.prototype.map.call(capas, function (img) {
+          return img.decode ? img.decode().catch(function () {}) : Promise.resolve();
+        });
+        Promise.all(listas).then(revelar);
+        setTimeout(revelar, 4000);
+
+        var escenas = function () {
+          root.classList.add("escenas-listas");
+        };
+        window.addEventListener("load", function () {
+          if (window.requestIdleCallback)
+            requestIdleCallback(escenas, { timeout: 3000 });
+          else setTimeout(escenas, 1500);
+        });
+      })();
+    </script>
+
+    <!-- defer: el HTML se pinta sin esperar a los scripts (que antes lo
+    frenaban, y typed.js —un CDN externo— iba en el medio: si tardaba, todo lo
+    demás también). Siguen ejecutándose en este mismo orden. El tipeo del año
+    está ahora en script.js, sin dependencias. -->
+    <script src="js/esc4-game.js" defer></script>
+    <script src="script.js" defer></script>
+    <script src="js/p7-pintura.js" defer></script>
   </body>
 </html>
