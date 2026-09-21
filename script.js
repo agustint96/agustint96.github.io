@@ -1321,6 +1321,8 @@ function drawStars() {
         // Más fuerte que en los otros escenarios: el sonido de luz on marca el
         // momento en que empieza el juego y tiene que oírse bien.
         volume: 0.9,
+        // Prender/apagar la luz a mano no hace ruido en este escenario.
+        silentToggle: true,
       },
       edges: {
         right: {
@@ -2195,7 +2197,12 @@ function drawStars() {
         snd.volume = light ? light.volume : 1;
         snd.play().catch(() => {});
       };
-      const toggleLight = () => setLight(!lightOn);
+      // Al prender/apagar a mano (click, Q, gamepad) el escenario 4 no suena
+      // (light.silentToggle); el sonido de luz on de la intro sí, va por shipLightSet.
+      const toggleLight = () => {
+        const light = scenes[currentSceneId].light;
+        setLight(!lightOn, !!(light && light.silentToggle));
+      };
       toggleShipLight = toggleLight;
       forceShipLight = (on, silent = true) => {
         const before = lightOn;
