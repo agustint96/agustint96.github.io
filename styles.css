@@ -1122,12 +1122,6 @@ nav.nav-compact {
 .starry-cohete-pair.in-game.luz-on.game-luz-index .starry-cohete-fondo {
   filter: grayscale(var(--nave-gris, 0)) var(--nave-luz-halo) !important;
 }
-/* Final (victoria) del escenario 4: la nave del jugador no se ve (sin
-   fundido), la escena es el fondo starry con las naves parallax 7
-   (esc4-game.js le pone y le saca game-final). */
-.starry-cohete-pair.in-game.game-final {
-  visibility: hidden;
-}
 /* Pantalla negra del escenario 4: al terminar la intro cae (clase "cae",
    esc4-game.js) por encima de todo, la nave incluida, así que se oscurece
    junto con el fondo. Se levanta, de a poco, cuando la nave prende la luz. */

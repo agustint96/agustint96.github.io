@@ -30,14 +30,13 @@
 // Todo el escenario acompaña a la nave: a medida que se colorea, el fondo negro
 // va pasando al azul starry (--fondo-color en styles.css).
 //
-// Cuando la nave cruza el último agujero (victoria) el final tiene dos partes:
-// primero un zoom a la nave del jugador, ya toda de color (se van los polígonos,
-// los cúmulos y el segundero), y después cae la pantalla negra y se repite la
-// animación de la intro pero con los parallax 7 en blanco y negro (con sombra
-// interna), juntándose en otro lugar, con un zoom hacia ellos mientras llegan y
-// se escapan. Ahí queda solo el fondo starry con las naves (la nave del jugador
-// no se ve). Cuando se van, se vuelve al escenario principal (el nivel está
-// completo).
+// Cuando la nave cruza el último agujero (victoria) el final tiene dos partes,
+// seguidas y sin cortes: primero un zoom a la nave del jugador, ya toda de color
+// (se van los polígonos, los cúmulos y el segundero), y enseguida, con ese mismo
+// zoom, se repite la animación de la intro pero con los parallax 7 en blanco y
+// negro (con sombra interna): llegan junto a la nave, que las mira, una de ellas
+// putea en un globo de diálogo (*#$%!) y se escapan. Cuando se van, se vuelve al
+// escenario principal (el nivel está completo).
 //
 // Música (audio/nivel4.ogg): arranca 2 s después de que la nave prende la luz
 // (así se oye el sonido de luz on) y suena en bucle mientras dura la partida,
@@ -162,15 +161,24 @@
   const CUMULO_INTERVALO = [3, 6]; // segundos entre un par y el siguiente (al azar)
   const CUMULO_DISTANCIA_MIN = 160; // px del mundo: no aparecen encima de la nave
   // Final (victoria): la intro otra vez, con los parallax 7 en blanco y negro,
-  // sin la nave del jugador y con un zoom hacia ellos. Los tiempos son los de la
-  // intro (INTRO_LLEGADA, INTRO_ESPERA, INTRO_SALIDA...).
-  const FINAL_PUNTO = { x: 0.6, y: 0.45 }; // dónde se juntan, como fracción de lo que se ve (0 = arriba a la izquierda)
-  const FINAL_NAVE_DUR = 2.6; // fase 1: segundos de zoom a la nave del jugador, ya a color (después cae la pantalla negra)
-  const FINAL_ZOOM_NAVE = 1.25; // zoom de esa fase, encima del de la cámara del juego (que es el de la intro; 1 = igual que la intro)
+  // junto a la nave del jugador (que las mira) y con el zoom a la nave. Los
+  // tiempos son los de la intro (INTRO_LLEGADA, INTRO_SALIDA...), salvo la espera.
+  const FINAL_NAVE_DUR = 2.6; // fase 1: segundos de zoom a la nave del jugador, ya a color (después llegan las navecitas)
+  const FINAL_ZOOM_NAVE = 1.25; // zoom de esa fase (y se queda en la 2), encima del de la cámara del juego (que es el de la intro; 1 = igual que la intro)
   const FINAL_COLOR_SUAVIZADO = 3; // 1/s: en el final la nave termina de teñirse rápido (COLOR_SUAVIZADO es el del juego)
-  const FINAL_ZOOM = 1.25; // fase 2: zoom que se acerca al punto donde se juntan las naves, encima del de la cámara del juego (1 = igual que la intro)
   const FINAL_ZOOM_FONDO = 0.5; // el fondo starry se acerca menos (fracción del zoom de las naves), así hay paralaje
   const FINAL_COLA = 0.3; // segundos entre que se va la última nave y se vuelve al escenario principal
+  const FINAL_ESPERA = 1.7; // fase 2: segundos que esperan juntas antes de irse (más que en la intro, para que se alcance a leer el globo)
+  const FINAL_DISTANCIA = 230; // px del mundo: a qué distancia (en horizontal) de la nave del jugador se juntan
+  const FINAL_ELEVACION = 110; // px del mundo: y cuánto más arriba que ella
+  // Globo de diálogo de una de las navecitas (índice en FINAL_NAVES).
+  const FINAL_GLOBO = {
+    nave: 3, // la que queda más arriba: el globo le sale por encima sin tapar a las otras
+    texto: "*#$%!",
+    desde: INTRO_LLEGADA - 0.4, // segundos de la fase 2 en que aparece (todavía llegando)...
+    hasta: INTRO_LLEGADA + FINAL_ESPERA + 1.1, // ...y en que se va (ya se están escapando, el globo las sigue)
+    fuente: 15, // px del mundo
+  };
   // Cada nave: desde dónde entra (siempre afuera de lo que se ve, p = punto de
   // encuentro, v = vista) y dónde se acomoda, relativo al punto (px del mundo).
   const FINAL_NAVES = [
@@ -301,13 +309,16 @@
 
   // Rectángulo del mundo que se ve en pantalla. La pantalla lleva un punto
   // del mundo a ox + (p - ox) * z, así que la esquina (0, 0) es ox * (1 - 1/z).
-  function vista() {
-    const k = 1 - 1 / cam.z;
+  // extra = zoom que se aplica encima del de la cámara, también anclado en la
+  // nave (el del final).
+  function vista(extra = 1) {
+    const z = cam.z * extra;
+    const k = 1 - 1 / z;
     return {
       x: cam.ox * k,
       y: cam.oy * k,
-      w: window.innerWidth / cam.z,
-      h: window.innerHeight / cam.z,
+      w: window.innerWidth / z,
+      h: window.innerHeight / z,
     };
   }
 
@@ -665,9 +676,8 @@
   // Durante la intro la nave mira a las navecitas: hacia donde se juntan y,
   // cuando se van, siguiéndolas (0° es mirar derecho arriba; negativo, a la
   // izquierda).
-  function mirarNaves(centro) {
+  function mirarNaves(centro, naves, t) {
     if (!centro || !window.shipFace) return;
-    const naves = navesIntro(introT);
     // Cuando ya no hay navecitas se queda mirando hacia donde se fueron.
     if (naves.length) {
       const objetivo = {
@@ -684,7 +694,7 @@
         Math.min(INTRO_MIRADA_MAX, norm),
       );
     }
-    window.shipFace(miradaGrados + Math.sin(introT * 1.3) * NAVE_BALANCEO);
+    window.shipFace(miradaGrados + Math.sin(t * 1.3) * NAVE_BALANCEO);
   }
 
   // Naves de la intro en el mundo, según el segundo de intro. Fuera de la
@@ -771,73 +781,77 @@
     return nave;
   }
 
-  // Final (victoria), en dos fases (final.fase):
+  // Final (victoria), en dos fases seguidas (final.fase), con el mismo zoom
+  // anclado en la nave del jugador y sin pantalla negra en el medio:
   // 1. Zoom a la nave del jugador, que termina de teñirse y se ve toda de color
   //    (sobre su propio centro: la escala de la nave, window.shipZoom, y todo el
   //    resto acercándose a ella). Se van los cúmulos, los polígonos y el
-  //    segundero. Después cae la pantalla negra, como en la intro.
-  // 2. Con la pantalla negra: la nave del jugador ya no se ve (game-final, ver
-  //    styles.css), queda solo el fondo starry con las naves parallax 7 en
-  //    blanco y negro, que llegan con el zoom y se escapan.
+  //    segundero.
+  // 2. Con ese zoom ya hecho llegan las naves parallax 7 en blanco y negro junto
+  //    a la nave (que las mira), una putea en un globo de diálogo y se escapan
+  //    (alejándose de la nave). final.t sigue corriendo: la fase 2 empieza en
+  //    FINAL_NAVE_DUR.
   function iniciarFinal() {
     ganado = true;
-    final = { t: 0, fase: 1, tapa: false };
+    final = { t: 0, fase: 1 };
     cumulos = [];
     particulas = [];
     poligonos = [];
     colorObjetivo = 1;
     timerEl.style.visibility = "hidden";
     ship.classList.add("game-luz-index"); // con la luz prendida, como en el index
+    // Dónde se juntan las naves, a un costado de la nave del jugador (del lado
+    // donde hay más pantalla) y un poco más arriba, y hacia dónde se escapan
+    // (alejándose de ella y hacia arriba, como en la intro). Se decide una vez.
+    const v = vista(FINAL_ZOOM_NAVE);
+    const lado = cam.ox < window.innerWidth / 2 ? 1 : -1;
+    const dist = Math.min(FINAL_DISTANCIA, v.w * 0.3);
+    final.punto = {
+      x: cam.ox + lado * dist,
+      y: Math.max(
+        v.y + v.h * 0.42,
+        Math.min(v.y + v.h * 0.75, cam.oy - FINAL_ELEVACION),
+      ),
+    };
+    final.dir = { x: lado * Math.abs(INTRO_DIR.x), y: INTRO_DIR.y };
   }
 
-  // Pasa de la fase 1 a la 2 (con la pantalla ya toda negra, no se nota el corte).
+  // Pasa de la fase 1 a la 2: no cambia nada de la cámara ni de la nave, solo
+  // aparecen las naves.
   function pasarAFaseNaves() {
     final.fase = 2;
-    final.t = 0;
-    colorNave = 1;
-    aplicarColorNave();
-    window.shipZoom = 1;
-    ship.classList.add("game-final");
-    levantarTapa(false);
   }
 
   // Vuelve todo a como estaba antes del final (al empezar una partida y al salir
-  // del escenario: la nave tiene que volver a verse en el resto de los escenarios).
+  // del escenario).
   function limpiarFinal() {
     final = null;
     ganado = false;
     window.shipZoom = 1;
-    ship.classList.remove("game-final", "game-luz-index");
+    ship.classList.remove("game-luz-index");
     scene.style.removeProperty("--fondo-zoom");
     scene.style.removeProperty("--fondo-origen");
   }
 
-  // Fase 1: zoom a la nave, suave, hasta FINAL_ZOOM_NAVE.
+  // Zoom a la nave, suave, hasta FINAL_ZOOM_NAVE (después se queda ahí).
   function zoomNave() {
     const u = Math.min(1, final.t / FINAL_NAVE_DUR);
     return 1 + (FINAL_ZOOM_NAVE - 1) * u * u * (3 - 2 * u);
   }
 
-  // Punto del mundo donde se juntan las naves del final: una posición fija de lo
-  // que se ve (no depende de dónde terminó la nave del jugador).
-  function puntoFinal() {
-    const v = vista();
-    return { x: v.x + v.w * FINAL_PUNTO.x, y: v.y + v.h * FINAL_PUNTO.y };
-  }
+  // Línea de tiempo de la fase 2 (segundos desde que empieza): igual que la de
+  // la intro, pero esperan más juntas.
+  const FINAL_INICIO = INTRO_LLEGADA + FINAL_ESPERA;
+  const FINAL_FUERA =
+    FINAL_INICIO + INTRO_SALIDA + INTRO_ESCALONADO * (FINAL_NAVES.length - 1);
 
-  // Zoom (1 = ninguno): crece suave mientras llegan las naves y se queda cuando
-  // empiezan a irse.
-  function zoomFinal() {
-    const u = Math.min(1, final.t / (INTRO_INICIO + 0.5));
-    return 1 + (FINAL_ZOOM - 1) * u * u * (3 - 2 * u);
-  }
-
-  // Igual que navesIntro (mismos tiempos y la misma salida hacia arriba a la
-  // izquierda), pero con otros orígenes y otro lugar de encuentro.
+  // Igual que navesIntro (mismos tiempos, salvo la espera), pero con otros
+  // orígenes, otro lugar de encuentro y la salida alejándose de la nave del
+  // jugador. t = segundos de la fase 2.
   function navesFinal(t) {
-    if (t > INTRO_FUERA) return [];
-    const v = vista();
-    const p = puntoFinal();
+    if (t < 0 || t > FINAL_FUERA) return [];
+    const v = vista(FINAL_ZOOM_NAVE);
+    const p = final.punto;
     const u = Math.min(1, t / INTRO_LLEGADA);
     const suave = 1 - Math.pow(1 - u, 3);
     return FINAL_NAVES.map((n, i) => {
@@ -846,22 +860,82 @@
       let y = d0.y + (p.y + n.a.y - d0.y) * suave;
       y += Math.sin(t * 3 + i * 1.7) * 3; // flotan un poco
       let esc = 1;
-      const ts = t - INTRO_INICIO - i * INTRO_ESCALONADO;
+      const ts = t - FINAL_INICIO - i * INTRO_ESCALONADO;
       if (ts > 0) {
         const d = 0.5 * INTRO_ACELERACION * ts * ts;
-        x += INTRO_DIR.x * d;
-        y += INTRO_DIR.y * d;
+        x += final.dir.x * d;
+        y += final.dir.y * d;
         esc = 1 - 0.5 * Math.min(1, ts / INTRO_SALIDA);
       }
       return { x, y, esc };
     });
   }
 
+  // Globo de diálogo (como los de historieta, en blanco y negro como las
+  // naves): sale de arriba de una nave y aparece con un pequeño rebote. n = esa
+  // nave (posición y escala), alto = alto del sprite, t = segundos de la fase 2.
+  function dibujarGlobo(n, alto, t) {
+    const g = FINAL_GLOBO;
+    if (t < g.desde || t > g.hasta) return;
+    const entra = Math.min(1, (t - g.desde) / 0.25);
+    const sale = Math.min(1, (g.hasta - t) / 0.2);
+    // Rebote al aparecer (se pasa de 1 y vuelve).
+    const q = entra - 1;
+    const k = entra < 1 ? 1 + 2.7 * q * q * q + 1.7 * q * q : 1;
+    const pad = g.fuente * 0.55;
+    ctx.save();
+    ctx.font =
+      "700 " + g.fuente + 'px "DM Mono", ui-monospace, Consolas, monospace';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const w = ctx.measureText(g.texto).width + pad * 2;
+    const h = g.fuente + pad * 2;
+    // La punta de la cola toca a la nave y el globo queda arriba, un poco
+    // corrido hacia la derecha de la cola.
+    ctx.translate(n.x, n.y - (alto * n.esc) / 2 - 3);
+    ctx.scale(k * n.esc, k * n.esc);
+    ctx.globalAlpha = Math.max(0, sale) * Math.min(1, entra * 2);
+    const cola = g.fuente * 0.9;
+    const x0 = -w * 0.4;
+    const x1 = x0 + w;
+    const y0 = -cola - h;
+    const y1 = y0 + h;
+    const r = h * 0.4;
+    const base = cola * 0.45; // medio ancho de la cola donde se une al globo
+    // Un solo contorno: el globo con la cola metida en el borde de abajo.
+    ctx.beginPath();
+    ctx.moveTo(x0 + r, y0);
+    ctx.arcTo(x1, y0, x1, y1, r);
+    ctx.arcTo(x1, y1, x0, y1, r);
+    ctx.lineTo(base, y1);
+    ctx.lineTo(0, 0);
+    ctx.lineTo(-base, y1);
+    ctx.arcTo(x0, y1, x0, y0, r);
+    ctx.arcTo(x0, y0, x1, y0, r);
+    ctx.closePath();
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    ctx.lineWidth = 1.4;
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#000";
+    ctx.stroke();
+    // El texto tiembla un poquito, de la bronca.
+    ctx.fillStyle = "#000";
+    ctx.fillText(
+      g.texto,
+      x0 + w / 2 + Math.sin(t * 60) * 0.6,
+      y0 + h / 2 + 1 + Math.cos(t * 47) * 0.6,
+    );
+    ctx.restore();
+  }
+
   function dibujarFinal() {
     if (!final || final.fase !== 2 || !spriteP7BN) return;
+    const t = final.t - FINAL_NAVE_DUR;
     const ancho = (P7_ANCHO * (P7_RECORTE.w + P7_MARGEN * 2)) / P7_RECORTE.w;
     const alto = (ancho * spriteP7BN.height) / spriteP7BN.width;
-    for (const n of navesFinal(final.t)) {
+    const naves = navesFinal(t);
+    for (const n of naves) {
       ctx.drawImage(
         spriteP7BN,
         n.x - (ancho * n.esc) / 2,
@@ -870,6 +944,7 @@
         alto * n.esc,
       );
     }
+    if (naves.length) dibujarGlobo(naves[FINAL_GLOBO.nave], alto, t);
   }
 
   function dibujarIntro() {
@@ -1338,26 +1413,18 @@
       dpr * cam.oy * (1 - cam.z),
     );
     if (final) {
-      // Zoom del final (todo lo que sigue se acerca al punto): en la fase 1 a la
-      // nave del jugador y en la 2 al punto donde se juntan las naves. El fondo
-      // starry, que es CSS, acompaña con menos zoom.
-      const p = final.fase === 1 ? { x: cam.ox, y: cam.oy } : puntoFinal();
-      const z = final.fase === 1 ? zoomNave() : zoomFinal();
-      ctx.translate(p.x, p.y);
+      // Zoom del final (todo lo que sigue se acerca a la nave del jugador, y
+      // ahí se queda en la fase 2). El fondo starry, que es CSS, acompaña con
+      // menos zoom.
+      const z = zoomNave();
+      ctx.translate(cam.ox, cam.oy);
       ctx.scale(z, z);
-      ctx.translate(-p.x, -p.y);
+      ctx.translate(-cam.ox, -cam.oy);
       scene.style.setProperty(
         "--fondo-zoom",
         (1 + (z - 1) * FINAL_ZOOM_FONDO).toFixed(4),
       );
-      scene.style.setProperty(
-        "--fondo-origen",
-        cam.ox +
-          (p.x - cam.ox) * cam.z +
-          "px " +
-          (cam.oy + (p.y - cam.oy) * cam.z) +
-          "px",
-      );
+      scene.style.setProperty("--fondo-origen", cam.ox + "px " + cam.oy + "px");
     }
 
     dibujarEstrellas();
@@ -1434,16 +1501,21 @@
       // Se deja quieta a la nave del jugador donde está (sin control, como en la
       // intro) para que no salga del escenario sin querer.
       if (window.shipMove) window.shipMove(0, 0);
+      // Zoom a la nave (ya a color); cuando termina, sin cortes, llegan las
+      // naves.
+      window.shipZoom = zoomNave();
       if (final.fase === 1) {
-        // Zoom a la nave (ya a color); cuando termina cae la pantalla negra y,
-        // ya toda negra, se pasa a la fase de las naves.
-        window.shipZoom = zoomNave();
-        if (!final.tapa && final.t >= FINAL_NAVE_DUR) {
-          final.tapa = true;
-          if (tapa) tapa.classList.add("cae");
-        }
-        if (final.t >= FINAL_NAVE_DUR + INTRO_FUNDIDO) pasarAFaseNaves();
-      } else if (!final.salio && final.t > INTRO_FUERA + FINAL_COLA) {
+        if (final.t >= FINAL_NAVE_DUR) pasarAFaseNaves();
+      } else {
+        // La nave del jugador mira a las navecitas, como en la intro.
+        const t = final.t - FINAL_NAVE_DUR;
+        mirarNaves(circulos[1], navesFinal(t), t);
+      }
+      if (
+        final.fase === 2 &&
+        !final.salio &&
+        final.t - FINAL_NAVE_DUR > FINAL_FUERA + FINAL_COLA
+      ) {
         // Terminó la animación: el nivel está completo, se vuelve al escenario
         // principal (por el borde derecho, como al irse a mano). El zoom se
         // queda como está hasta que se cierra la escena.
@@ -1490,7 +1562,7 @@
         const p = posicionNaveIntro(introT);
         window.shipPlace(p.x, p.y, true);
       }
-      mirarNaves(circulos[1]);
+      mirarNaves(circulos[1], navesIntro(introT), introT);
     } else {
       if (timerOculto) {
         introT = -1; // termina la intro
