@@ -35,7 +35,8 @@ const SIM_PASO_MS = 1000 / 60;
 // Tope (~50 ms): si un cuadro tarda más (pestaña en segundo plano, un tirón) la
 // simulación se atrasa en vez de teletransportar la nave.
 const SIM_MAX_CUADROS = 3;
-const cuadrosDe = (ms) => Math.min(SIM_MAX_CUADROS, Math.max(0, ms) / SIM_PASO_MS);
+const cuadrosDe = (ms) =>
+  Math.min(SIM_MAX_CUADROS, Math.max(0, ms) / SIM_PASO_MS);
 // Un suavizado "k por cuadro" (x += (meta - x) * k) aplicado a c cuadros.
 const suavizadoPor = (k, c) => 1 - Math.pow(1 - k, c);
 
@@ -912,7 +913,13 @@ function drawStars() {
       // intercalan lecturas y escrituras, cada lectura recalcula estilos.
       // cuadros: cuántos cuadros de 60 Hz pasaron (ver cuadrosDe): las velocidades
       // están en px por cuadro de 60 Hz.
-      const update = function update(shipRect, shipVX, shipVY, elRectPre, cuadros = 1) {
+      const update = function update(
+        shipRect,
+        shipVX,
+        shipVY,
+        elRectPre,
+        cuadros = 1,
+      ) {
         // Quieta y sin nave cerca: no hay nada que calcular ni que escribir.
         if (!shipRect && vx === 0 && vy === 0) return;
         if (el && shipRect) {
@@ -1344,6 +1351,10 @@ function drawStars() {
       edgeWarning: () => !shipEntry,
       setVisible: (visible) =>
         siteContent && siteContent.classList.toggle("space-hidden", !visible),
+      // Por el momento, en celulares solo se ve el index: los otros tres
+      // escenarios (space, salmon, game) quedan detrás de requiresDesktop,
+      // igual que ya estaba el de space. Se puede sacar cuando estén listos
+      // para mobile.
       edges: {
         top: {
           to: "space",
@@ -1352,10 +1363,12 @@ function drawStars() {
         },
         bottom: {
           to: "salmon",
+          requiresDesktop: true,
           enter: (w) => ({ x: w * 0.6 - 65, y: -FLIGHT_MARGIN_TOP + 50 }),
         },
         left: {
           to: "game",
+          requiresDesktop: true,
           enter: (w, h) => ({ x: w - 150, y: h * 0.75 - 65 }),
         },
       },
@@ -1406,8 +1419,6 @@ function drawStars() {
     // es que acá no hay elementos que escalar por CSS: el juego dibuja en un
     // canvas y aplicar scale() al canvas lo pixelaría, así que recibe el zoom
     // y el origen por camera.onFrame (ver el tick) y se dibuja ya ampliado.
-    const gameZoom =
-      window.innerWidth <= 600 ? GAME_CAMERA_ZOOM_MOBILE : GAME_CAMERA_ZOOM;
     let gameLightBefore = null;
     registerScene("game", {
       setVisible: (visible) => {
@@ -1430,7 +1441,15 @@ function drawStars() {
       speedMult: GAME_SHIP_SPEED,
       heightScale: { near: SHIP_SPACE_SCALE_NEAR, far: SHIP_SPACE_SCALE_NEAR },
       camera: {
-        zoom: gameZoom,
+        // Getter en vez de un valor fijo: si se gira el celular o se cambia
+        // el tamaño de la ventana mientras se juega, el zoom cambia solo (se
+        // lee de nuevo cada cuadro, ver el tick más abajo) en vez de quedar
+        // pegado al que había al cargar la página.
+        get zoom() {
+          return window.innerWidth <= 600
+            ? GAME_CAMERA_ZOOM_MOBILE
+            : GAME_CAMERA_ZOOM;
+        },
         elements: [],
         onFrame: (zoom, x, y) => {
           if (window.esc4Game) window.esc4Game.setCamera(zoom, x, y);
@@ -1813,8 +1832,10 @@ function drawStars() {
         const sg = sigma * (d < 0 ? forma.izq : forma.der);
         const campana = Math.exp(-(d * d) / (2 * sg * sg));
         const ruido =
-          R.peso * edgeRuido(forma.grueso, forma.offGrueso + pos / R.celdas[0]) +
-          (1 - R.peso) * edgeRuido(forma.fino, forma.offFino + pos / R.celdas[1]);
+          R.peso *
+            edgeRuido(forma.grueso, forma.offGrueso + pos / R.celdas[0]) +
+          (1 - R.peso) *
+            edgeRuido(forma.fino, forma.offFino + pos / R.celdas[1]);
         const t = Math.max(
           0,
           Math.min(box, pico * campana * lerp(R.altura[0], R.altura[1], ruido)),
@@ -1865,7 +1886,9 @@ function drawStars() {
         const largo = alLado ? h : w;
         const along = alLado ? cy : cx;
         // La caja: de este largo (a lo largo del borde), centrada en la nave.
-        const sigma = (EDGE_WARN_ANCHO[0] + (EDGE_WARN_ANCHO[1] - EDGE_WARN_ANCHO[0]) * p) * largo;
+        const sigma =
+          (EDGE_WARN_ANCHO[0] + (EDGE_WARN_ANCHO[1] - EDGE_WARN_ANCHO[0]) * p) *
+          largo;
         const win = Math.max(
           120,
           Math.round(2 * EDGE_WARN_VENTANA * EDGE_WARN_ANCHO[1] * largo),
@@ -2390,7 +2413,8 @@ function drawStars() {
         // Fuerza de la deformación: mínima quieta, completa en movimiento.
         const amp = still.matches
           ? 0
-          : (IDLE_AMP + (1 - IDLE_AMP) * level) * (1 + (BOOST_AMP - 1) * boostF);
+          : (IDLE_AMP + (1 - IDLE_AMP) * level) *
+            (1 + (BOOST_AMP - 1) * boostF);
         // Largo: crece con la velocidad (y más con el boost) y parpadea.
         const largo =
           (0.55 + 0.45 * level) *
@@ -2414,9 +2438,20 @@ function drawStars() {
             8 *
             p *
             p *
-            (Math.sin(s * 14 - p * 7) * 0.7 + Math.sin(s * 23 - p * 11 + 1) * 0.3);
+            (Math.sin(s * 14 - p * 7) * 0.7 +
+              Math.sin(s * 23 - p * 11 + 1) * 0.3);
           const dx = FIRE_CX + (FIRE_X - FIRE_CX) * ancho + sway;
-          ctx.drawImage(img, FIRE_X, sy, FIRE_W, sh, dx, dy, FIRE_W * ancho, dh);
+          ctx.drawImage(
+            img,
+            FIRE_X,
+            sy,
+            FIRE_W,
+            sh,
+            dx,
+            dy,
+            FIRE_W * ancho,
+            dh,
+          );
         }
         if (!shown) {
           canvas.style.opacity = "1";
@@ -2533,7 +2568,6 @@ function drawStars() {
     bassGroup.querySelector('.gl img[src="parallax/parallax 2.webp"]') ||
     bassGroup.querySelectorAll(".gl img")[0];
   if (!bassTarget) return;
-
 
   // Notas y ritmo reales del lick, confirmados: corchea (con silencio de
   // corchea detrás) - negra, negra, negra - dos corcheas juntas - negra,

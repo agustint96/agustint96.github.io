@@ -108,6 +108,7 @@ html {
 }
 body {
   min-height: 100vh;
+  min-height: 100dvh; /* en celulares 100vh incluye la barra del navegador y sobra alto */
   display: flex;
   flex-direction: column;
   background-color: var(--navy);
@@ -132,6 +133,7 @@ body {
   flex-direction: column;
   flex: 1;
   min-height: 100vh;
+  min-height: 100dvh; /* en celulares 100vh incluye la barra del navegador y sobra alto */
   transition: opacity 0.5s ease;
 }
 .site-content.space-hidden {

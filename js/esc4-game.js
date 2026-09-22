@@ -141,39 +141,33 @@
   // las de su carpeta, al azar (una carpeta por paso, en el mismo orden), y el
   // paso no se desvanece hasta que termina. Al final, tras el último paso, suena
   // una de "4- listo" y recién cuando termina empieza el juego.
+  // Solo se listan acá los archivos que existen de verdad en audio/Esc4/: el
+  // "Supercommit" borró varias tomas de más (duplicadas) pero estas listas
+  // habían quedado nombrándolas -alAzar() terminaba eligiendo una que ya no
+  // estaba y esa vuelta se quedaba en silencio, sin avisar ni reintentar.
   const AYUDA_VOCES = [
     [
       "1- flechitas/Usalas_felchitasmp3.m4a",
       "1- flechitas/usa_las_flechitas_0mp3.m4a",
-      "1- flechitas/usa_las_flechitas_1mp3.m4a",
     ],
     [
       "2- shift/usa_shift_para_acelerarmp3.m4a",
       "2- shift/usa_shift_para_acelerar_0mp3.m4a",
-      "2- shift/usa_shift_para_acelerar_1mp3.m4a",
-      "2- shift/usa_shift_para_acelerar_2mp3.m4a",
       "2- shift/usa_shift_para_acelerar_3mp3.m4a",
     ],
     [
       "3- espacio/Con_espacio_podes_ver_mas_lejosmp3.m4a",
-      "3- espacio/Con_espacio_podes_ver_mas_lejos_1.m4a",
       "3- espacio/Con_espacio_podes_ver_mas_lejos_2mp3.m4a",
-      "3- espacio/con_espacio_podes_ver_mas_lejos_3mp3.m4a",
       "3- espacio/con_espacio_podes_ver_mas_lejos_4mp3.m4a",
     ],
   ];
   const AYUDA_LISTO = [
-    "4- listo/listmp3.m4a",
     "4- listo/listo01mp3.m4a",
     "4- listo/listo02mp3.m4a",
-    "4- listo/listo0mp3.m4a",
-    "4- listo/listo10mp3.m4a",
     "4- listo/listo1mp3.m4a",
-    "4- listo/listo2mp3.m4a",
     "4- listo/listo3mp3.m4a",
     "4- listo/listo4mp3.m4a",
     "4- listo/listo5mp3.m4a",
-    "4- listo/LISTO8mp3.m4a",
     "4- listo/listo9mp3.m4a",
   ];
   // Las del joystick (las de arriba nombran "flechitas", "shift" y "espacio"):
@@ -182,18 +176,11 @@
   const AYUDA_VOCES_JOYSTICK = [
     [
       "1- Analogico/1mp3.m4a",
-      "1- Analogico/2mp3.m4a",
-      "1- Analogico/3mp3.m4a",
       "1- Analogico/4mp3.m4a",
       "1- Analogico/5mp3.m4a",
       "1- Analogico/6mp3.m4a",
     ],
-    [
-      "2- RB/r1mp3.m4a",
-      "2- RB/r11mp3.m4a",
-      "2- RB/r111mp3.m4a",
-      "2- RB/r11111mp3.m4a",
-    ],
+    ["2- RB/r1mp3.m4a", "2- RB/r11mp3.m4a"],
     [
       "3- L2/l2mp3.m4a",
       "3- L2/l22mp3.m4a",
@@ -275,7 +262,6 @@
     "cansancio/vancadavezmasrapidomp3.m4a",
     "cansancio/wemp3.m4a",
     "cansancio/wowmp3.m4a",
-    "cansancio/wowrapidisimomp3.m4a",
   ];
   const VOZ_CANSADO_DESDE = 30;
   const VOZ_CANSADO_CADA = 15;
@@ -312,12 +298,26 @@
   const P7_ALTURA = 296;
   // Dónde arranca cada nave (siempre afuera de la vista: de la izquierda, de
   // la derecha y de abajo; la primera ya está en su lugar) y dónde se
-  // acomoda, relativo al punto de encuentro (px del mundo).
+  // acomoda, relativo al punto de encuentro (px del mundo). v = vista()
+  // (rectángulo del mundo que se ve en pantalla, ver más abajo): mismo patrón
+  // que FINAL_NAVES, así "afuera de la vista" es real sea cual sea el zoom de
+  // la cámara (distinto en mobile) o el aspect ratio de la pantalla -antes
+  // usaba window.innerWidth/innerHeight directo, que son px de pantalla, no
+  // del mundo, y con la cámara ya haciendo zoom durante la intro (converge
+  // rápido) esos números quedaban mal escalados y las navecitas quedaban
+  // proporcionalmente raras, sobre todo en celulares (otro zoom y otro
+  // aspect ratio que en desktop).
   const INTRO_NAVES = [
     { desde: (m) => ({ x: m.x, y: m.y }), a: { x: 0, y: 0 } },
-    { desde: (m) => ({ x: -100, y: m.y + 150 }), a: { x: -50, y: 20 } },
-    { desde: (m, w) => ({ x: w + 100, y: m.y - 220 }), a: { x: 46, y: -24 } },
-    { desde: (m, w, h) => ({ x: m.x + 280, y: h + 100 }), a: { x: 10, y: 42 } },
+    { desde: (m, v) => ({ x: v.x - 100, y: m.y + 150 }), a: { x: -50, y: 20 } },
+    {
+      desde: (m, v) => ({ x: v.x + v.w + 100, y: m.y - 220 }),
+      a: { x: 46, y: -24 },
+    },
+    {
+      desde: (m, v) => ({ x: m.x + 280, y: v.y + v.h + 100 }),
+      a: { x: 10, y: 42 },
+    },
   ];
 
   const POSICION_Y_INICIAL = 0.85; // dónde reaparece la nave: centrada en x, a esta fracción del alto (0 = arriba)
@@ -395,7 +395,6 @@
   const NUMERO_CAE_A = 2.1; // segundos desde el cruce hasta que empiezan a caer (ya formado desde ~1 s)
   const NUMERO_CAIDA = 0.9; // segundos que tardan en caer y achicarse del todo
   const NUMERO_GRAVEDAD = 260; // px/s² del mundo
-  const NUMERO_DISTANCIA = 36; // px del mundo entre el agujero y el número (así no tapa la nave)
   const MUSICA_TIEMPOS_COMPAS = 5;
   const MUSICA_COMPASES_BUCLE = 60; // compases que dura el bucle entero
   const MUSICA_PULSO_TIEMPO = 0; // en qué tiempo del compás cae el pulso (0 = el primero, 4 = el último): para correrlo si se siente desfasado
@@ -1219,6 +1218,13 @@
   }
 
   // --- Instrucciones del arranque (ver el comentario de arriba) ---------------
+  // En celulares (táctil y sin mouse) las instrucciones no tienen sentido
+  // -enseñan teclado o joystick- así que la intro pasa directo al juego, sin
+  // tutorial. Por ahora este escenario ni siquiera es alcanzable en celulares
+  // (ver requiresDesktop en scenes.main.edges.left, script.js), pero se deja
+  // andando por si se vuelve a habilitar.
+  const esCelular = () =>
+    window.matchMedia("(hover: none) and (pointer: coarse)").matches;
   const apretada = (tecla) =>
     [...sostenidas].some((codigo) => AYUDA_TECLAS[codigo] === tecla);
 
@@ -1417,12 +1423,15 @@
     INTRO_INICIO + INTRO_SALIDA + INTRO_ESCALONADO * (INTRO_NAVES.length - 1);
   const INTRO_JUEGO = INTRO_FUERA + INTRO_OSCURO;
 
-  // Punto de encuentro de las naves de la intro (mundo).
+  // Punto de encuentro de las naves de la intro (mundo). x es una fracción de
+  // lo que se ve ahora (v.w, no window.innerWidth: con zoom la vista es una
+  // fracción del mundo) y el clamp de y va relativo a v.y/v.h por lo mismo
+  // -mismo patrón que iniciarFinal() más abajo con final.punto-.
   function puntoEncuentro() {
-    const h = window.innerHeight;
+    const v = vista();
     return {
-      x: window.innerWidth * P7_X,
-      y: Math.max(h * 0.3, h - P7_ALTURA),
+      x: v.x + v.w * P7_X,
+      y: Math.max(v.y + v.h * 0.3, v.y + v.h - P7_ALTURA),
     };
   }
 
@@ -1476,13 +1485,12 @@
   // intro (o cuando ya se fueron) devuelve una lista vacía.
   function navesIntro(t) {
     if (t < 0 || t > INTRO_FUERA) return [];
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    const v = vista();
     const { x: mx, y: my } = puntoEncuentro();
     const u = Math.min(1, t / INTRO_LLEGADA);
     const suave = 1 - Math.pow(1 - u, 3);
     return INTRO_NAVES.map((n, i) => {
-      const d0 = n.desde({ x: mx, y: my }, w, h);
+      const d0 = n.desde({ x: mx, y: my }, v);
       let x = d0.x + (mx + n.a.x - d0.x) * suave;
       let y = d0.y + (my + n.a.y - d0.y) * suave;
       y += Math.sin(t * 3 + i * 1.7) * 3; // flotan un poco
@@ -1932,8 +1940,11 @@
     }, 0);
   }
 
-  // Las estrellas del número que salen de (x, y) y se acomodan justo arriba (o
-  // abajo, si arriba no entra en pantalla).
+  // Las estrellas del número salen de (x, y) -el agujero de salida, ver el
+  // llamado más abajo- y se acomodan ahí mismo: son el cierre de ese agujero
+  // (antes, sin el número, ahí mismo chorreaban las chispas de siempre; ver
+  // chispas() y su llamado en el de entrada). El clamp solo evita que el
+  // número se recorte si el agujero queda pegado al borde de lo que se ve.
   function crearNumeroEstrellas(x, y, numero) {
     const { puntos, ancho, alto } = puntosNumero(numero);
     const v = vista();
@@ -1942,8 +1953,10 @@
       v.x + ancho / 2 + margen,
       Math.min(v.x + v.w - ancho / 2 - margen, x),
     );
-    let cy = y - NUMERO_DISTANCIA - alto / 2;
-    if (cy - alto / 2 < v.y + margen) cy = y + NUMERO_DISTANCIA + alto / 2;
+    const cy = Math.max(
+      v.y + alto / 2 + margen,
+      Math.min(v.y + v.h - alto / 2 - margen, y),
+    );
     // Cada número sale distinto: gira un poco, se tumba un poco y se corre un poco.
     const giro = (Math.random() * 2 - 1) * NUMERO_GIRO;
     const cursiva =
@@ -2556,7 +2569,10 @@
         // control del jugador; empiezan las instrucciones.
         levantarTapa(false);
         if (window.shipLightSet) window.shipLightSet(true);
-        empezarAyuda();
+        // En celulares se saltea el tutorial (ver esCelular arriba): arranca
+        // el juego directo, como si ya hubiera terminado.
+        if (esCelular()) terminarAyuda();
+        else empezarAyuda();
       }
       if (ayuda) actualizarAyuda(dt);
       if (ayuda) {
