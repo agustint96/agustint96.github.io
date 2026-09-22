@@ -552,6 +552,13 @@ nav.nav-compact {
 .space-scene-front.space-visible {
   opacity: 1;
 }
+/* Con el escenario oculto (opacity: 0) sus flotados infinitos -piedras, planetas,
+   astronauta, nave-bora- no tienen por qué correr: se pausan y retoman al
+   entrar. */
+.space-scene:not(.space-visible) *,
+.space-scene-front:not(.space-visible) * {
+  animation-play-state: paused;
+}
 /* Escenario 3: se entra por el borde inferior del escenario principal (ver
    edges.bottom de scenes.main, script.js) -lo opuesto a la escena de
    espacio, que se entra por arriba-. Mismo patrón que .space-scene (fixed,

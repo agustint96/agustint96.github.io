@@ -24,6 +24,21 @@ function registerScene(id, config) {
 }
 let currentSceneId = "main";
 
+// Independencia del monitor: la física y los suavizados del sitio (la nave, el
+// zoom de cámara, el parallax, las piedras, el texto BIOS) se afinaron en un
+// monitor de 60 Hz con constantes "por cuadro", así que en uno de 120 o 144 Hz
+// todo iba al doble de velocidad o más (y la nave del juego, más fácil de manejar
+// contra unos polígonos que caen en tiempo real). Ahora esas constantes siguen
+// valiendo "por cuadro de 60 Hz" pero se aplican según cuántos cuadros de 60 Hz
+// pasaron de verdad (cuadrosDe): en 60 Hz es exactamente lo de siempre.
+const SIM_PASO_MS = 1000 / 60;
+// Tope (~50 ms): si un cuadro tarda más (pestaña en segundo plano, un tirón) la
+// simulación se atrasa en vez de teletransportar la nave.
+const SIM_MAX_CUADROS = 3;
+const cuadrosDe = (ms) => Math.min(SIM_MAX_CUADROS, Math.max(0, ms) / SIM_PASO_MS);
+// Un suavizado "k por cuadro" (x += (meta - x) * k) aplicado a c cuadros.
+const suavizadoPor = (k, c) => 1 - Math.pow(1 - k, c);
+
 // Zonas del parallax que la nave puede "tocar" en el escenario principal:
 // cada una sabe cómo calcular su rectángulo actual y cómo reproducir su
 // sonido (reusado por click de mouse y por el botón A/X del joystick / tecla
@@ -180,63 +195,105 @@ function pointInRect(x, y, rect) {
   return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
-const beepPath = "audio/beep.m4a";
-// El AudioContext se crea con el primer gesto del usuario (click/tecla/toque) y
-// no al cargar: crearlo abre el dispositivo de audio y costaba unos 300 ms del
-// hilo principal en cada carga (era lo más pesado de toda la página), y sin
-// gesto el navegador lo deja suspendido de todos modos -no se podía oír nada-.
-// Los bytes del audio sí se bajan ya (21 KB, sin costo) para que el primer beep
-// suene enseguida; sólo se decodifican con el contexto.
-let audioContext = null;
-let beepBuffer = null;
-let beepLoaded = false;
-const beepBytes = fetch(beepPath)
-  .then((response) => response.arrayBuffer())
-  .catch(() => null);
+// --- Efectos de sonido (index y escenario 2) --------------------------------
+// Antes cada sonido tardaba en salir la primera vez (unos 500 ms o más): los
+// <audio> con preload="none" recién empezaban a bajarse al accionarlos, las luces
+// de la nave creaban un <audio> nuevo en cada toque y el beep necesitaba un
+// AudioContext, que se crea con el primer clic, bloquea la página unos 300 ms y,
+// sin un gesto previo, el navegador lo deja suspendido y arrancarlo tarda otro
+// tanto. Ahora los archivos (~200 KB en total) se bajan con el navegador
+// desocupado y se le dan al <audio> como archivo en memoria (blob:): no
+// se depende de que el navegador decida bajar un preload="auto", y al accionar
+// un sonido ya está todo cargado (medido: pocos ms desde el clic).
+// Para sumar un sonido: una línea acá y sfxPlay("nombre") donde corresponda.
+//   vol: volumen; reiniciar: si suena de nuevo mientras suena, corta el anterior y
+//   arranca de cero; si no, pueden solaparse (hasta `copias` a la vez).
+const SFX = {
+  beep: { url: "audio/beep.m4a", vol: 0.15, copias: 3 },
+  guitarra: { url: "audio/Guitarra.m4a", vol: 0.12, reiniciar: true },
+  bajo: { url: "audio/bass.m4a", vol: 0.6, reiniciar: true },
+  satelite: { url: "audio/satelite.m4a", vol: 0.25, reiniciar: true },
+  luzOn: { url: "audio/light_on.m4a", vol: 1, copias: 2 },
+  luzOff: { url: "audio/light_off.m4a", vol: 1, copias: 2 },
+  planeta: { url: "audio/Esc2/everyone.m4a", vol: 0.5, reiniciar: true },
+};
+const sfxPool = {}; // nombre -> { audios: [<audio>], i: siguiente a reusar } (cuando está listo)
+const sfxPedido = {}; // nombre -> true si ya se pidió el archivo
+const sfxRespaldo = {}; // nombre -> <audio> normal, por si se acciona antes de que esté listo
 
-function resumeAudioContext() {
-  if (!audioContext) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    audioContext = new AC();
-    beepBytes
-      .then((arrayBuffer) => audioContext.decodeAudioData(arrayBuffer))
-      .then((buffer) => {
-        beepBuffer = buffer;
-        beepLoaded = true;
-      })
-      .catch(() => {
-        beepLoaded = false;
-      });
+function sfxPreparar(nombre) {
+  if (sfxPedido[nombre]) return;
+  sfxPedido[nombre] = true;
+  const def = SFX[nombre];
+  fetch(def.url)
+    .then((response) => response.blob())
+    .then((blob) => {
+      const url = URL.createObjectURL(blob);
+      const audios = [];
+      for (let k = 0; k < (def.reiniciar ? 1 : def.copias || 2); k++) {
+        const audio = new Audio();
+        audio.preload = "auto";
+        audio.src = url;
+        // Al terminar se rebobina solo, en segundo plano: rebobinar un audio ya
+        // cargado obliga al navegador a hacer un "seek" (reinicia el decodificador)
+        // y, hecho justo al accionarlo, atrasa el sonido.
+        audio.addEventListener("ended", () => {
+          audio.currentTime = 0;
+        });
+        audio.load();
+        audios.push(audio);
+      }
+      sfxPool[nombre] = { audios, i: 0 };
+    })
+    .catch(() => {
+      sfxPedido[nombre] = false; // que se pueda reintentar en la próxima
+    });
+}
+
+function sfxPlay(nombre, volumen) {
+  const def = SFX[nombre];
+  if (!def) return;
+  const vol = volumen === undefined ? def.vol : volumen;
+  const pool = sfxPool[nombre];
+  let audio;
+  if (pool) {
+    audio = def.reiniciar
+      ? pool.audios[0]
+      : pool.audios.find((a) => a.paused || a.ended) ||
+        pool.audios[pool.i++ % pool.audios.length];
+  } else {
+    // Todavía no está listo (se accionó antes de tiempo): <audio> normal, como
+    // antes, y se pide para la próxima.
+    sfxPreparar(nombre);
+    audio = def.reiniciar ? sfxRespaldo[nombre] : null;
+    if (!audio) {
+      audio = new Audio(def.url);
+      if (def.reiniciar) sfxRespaldo[nombre] = audio;
+    }
   }
-  if (audioContext.state === "suspended") {
-    audioContext.resume().catch(() => {});
+  audio.volume = vol;
+  // Solo se rebobina si hace falta (si ya sonó y quedó a mitad de camino, como al
+  // volver a accionar un "reiniciar"): en 0 no hay nada que hacer, y pedirlo igual
+  // hace un seek que atrasa el primer sonido.
+  if (audio.currentTime > 0) {
+    try {
+      audio.currentTime = 0;
+    } catch (err) {}
   }
+  audio.play().catch(() => {});
 }
 
 function playBeep() {
-  if (!audioContext || !beepLoaded || !beepBuffer) return;
-  const startBeep = () => {
-    const source = audioContext.createBufferSource();
-    source.buffer = beepBuffer;
-    const gain = audioContext.createGain();
-    gain.gain.value = 0.15;
-    source.connect(gain).connect(audioContext.destination);
-    source.start(0);
-  };
-
-  if (audioContext.state === "suspended") {
-    audioContext.resume().then(startBeep).catch(startBeep);
-  } else {
-    startBeep();
-  }
+  sfxPlay("beep");
 }
 
-["click", "pointerdown", "keydown", "touchstart"].forEach((eventName) => {
-  document.addEventListener(eventName, resumeAudioContext, {
-    once: true,
-    capture: true,
-  });
+// El beep se pide ya (7 KB, sin costo); el resto, apenas termina la carga de la
+// página (son ~200 KB: no compite con nada de lo que se ve, y no se espera a un
+// momento "desocupado" porque puede tardar y un clic rápido los encontraría sin
+// listar).
+sfxPreparar("beep");
+window.addEventListener("load", () => {
+  setTimeout(() => Object.keys(SFX).forEach(sfxPreparar), 200);
 });
 
 navLinks.forEach((link) => {
@@ -248,6 +305,22 @@ navLinks.forEach((link) => {
 
 // Botón de encendido: sonido de arranque + parpadeo CRT antes de abrir la consola SQL
 const powerBtn = document.querySelector(".power-btn");
+// El <audio> del arranque se prepara antes (con el navegador desocupado) para que
+// suene en el acto al apretar el botón, no cuando recién empieza a bajarse.
+let encendidoPrecargado = null;
+if (powerBtn) {
+  window.addEventListener("load", () => {
+    const preparar = () => {
+      try {
+        encendidoPrecargado = new Audio("audio/sisopon.m4a");
+        encendidoPrecargado.preload = "auto";
+      } catch (err) {}
+    };
+    if (window.requestIdleCallback)
+      requestIdleCallback(preparar, { timeout: 4000 });
+    else setTimeout(preparar, 2000);
+  });
+}
 if (powerBtn) {
   powerBtn.addEventListener("click", (e) => {
     const href = powerBtn.getAttribute("href");
@@ -278,7 +351,7 @@ if (powerBtn) {
     };
     marcarInicio(Date.now());
     try {
-      const encendido = new Audio("audio/sisopon.m4a");
+      const encendido = encendidoPrecargado || new Audio("audio/sisopon.m4a");
       encendido.volume = 0.6;
       encendido.addEventListener("playing", () => {
         // t0 real del audio, descontando lo que ya avanzó
@@ -360,13 +433,7 @@ let drawnX = NaN,
 const lerp = (t, e, a) => t + (e - t) * a;
 
 if (p3el) {
-  const guitarraAudio = new Audio("audio/Guitarra.m4a");
-  guitarraAudio.preload = "none"; // sólo se baja si tocan la guitarra, no en cada carga
-  guitarraAudio.volume = 0.12;
-  const playGuitarra = () => {
-    guitarraAudio.currentTime = 0;
-    guitarraAudio.play().catch(() => {});
-  };
+  const playGuitarra = () => sfxPlay("guitarra");
   const guitarraImg = p3el.querySelector("img");
   const hitGuitarra = guitarraImg
     ? createAlphaHitTester(guitarraImg)
@@ -451,7 +518,7 @@ let p7Fleeing = false;
 let p7FleeOffsetX = 0;
 let p7FleeScale = 1;
 
-function updateP7Flee() {
+function updateP7Flee(cuadros) {
   if (!getP7DangerRect) return;
   // Sin nave todavía y con el planeta en su lugar no hay nada que calcular (y
   // getDangerRect mide el layout, que no es gratis a cada cuadro).
@@ -464,8 +531,8 @@ function updateP7Flee() {
   if (shipNear) p7Fleeing = true;
 
   if (p7Fleeing) {
-    p7FleeOffsetX -= P7_FLEE_SPEED;
-    p7FleeScale = Math.max(0, p7FleeScale - P7_SHRINK_RATE);
+    p7FleeOffsetX -= P7_FLEE_SPEED * cuadros;
+    p7FleeScale = Math.max(0, p7FleeScale - P7_SHRINK_RATE * cuadros);
     if (p7FleeScale <= 0) p7Fleeing = false; // ya está escondido, ahora espera
     return;
   }
@@ -485,17 +552,21 @@ function updateP7Flee() {
     shipCenterX === null ||
     !pointInRect(shipCenterX, shipCenterY, homeSafeRect);
   if (shipFar) {
-    p7FleeOffsetX = Math.min(0, p7FleeOffsetX + P7_RETURN_SPEED);
-    p7FleeScale = Math.min(1, p7FleeScale + P7_RETURN_GROW_RATE);
+    p7FleeOffsetX = Math.min(0, p7FleeOffsetX + P7_RETURN_SPEED * cuadros);
+    p7FleeScale = Math.min(1, p7FleeScale + P7_RETURN_GROW_RATE * cuadros);
   }
 }
 
+let parallaxPrevT = 0;
 function tick() {
+  const ahora = performance.now();
+  const cuadros = parallaxPrevT ? cuadrosDe(ahora - parallaxPrevT) : 1;
+  parallaxPrevT = ahora;
   // El parallax solo se mueve cuando la escena principal es la que se ve; en el
   // resto de los escenarios (la principal queda oculta) no tiene sentido tocar
   // los estilos de todas esas capas cuadro a cuadro.
   if (currentSceneId === "main") {
-    updateP7Flee();
+    updateP7Flee(cuadros);
     // Con el mouse quieto el lerp se acerca a targetX sin llegar nunca, y se
     // reescribían 4 transforms por cuadro para mover capas fracciones de
     // milésima de píxel. A menos de 5e-4 (~0,01 px en la capa que más se
@@ -504,7 +575,7 @@ function tick() {
     currentX =
       Math.abs(targetX - currentX) < 5e-4
         ? targetX
-        : lerp(currentX, targetX, 0.04);
+        : lerp(currentX, targetX, suavizadoPor(0.04, cuadros));
     if (
       currentX !== drawnX ||
       p7FleeOffsetX !== drawnFleeX ||
@@ -836,9 +907,16 @@ function drawStars() {
         vy = 0,
         hadHit = false;
       const DRIFT_DAMPING = 0.985;
-      return function update(shipRect, shipVX, shipVY) {
+      // elRectPre (opcional): la caja ya medida. El tick mide todas las piedras
+      // juntas antes de escribirle a ninguna (ver "driftRects" más abajo): si se
+      // intercalan lecturas y escrituras, cada lectura recalcula estilos.
+      // cuadros: cuántos cuadros de 60 Hz pasaron (ver cuadrosDe): las velocidades
+      // están en px por cuadro de 60 Hz.
+      const update = function update(shipRect, shipVX, shipVY, elRectPre, cuadros = 1) {
+        // Quieta y sin nave cerca: no hay nada que calcular ni que escribir.
+        if (!shipRect && vx === 0 && vy === 0) return;
         if (el && shipRect) {
-          const elRect = el.getBoundingClientRect();
+          const elRect = elRectPre || el.getBoundingClientRect();
           const dx =
             elRect.left +
             elRect.width / 2 -
@@ -865,16 +943,23 @@ function drawStars() {
             hadHit = false;
           }
         }
-        vx *= DRIFT_DAMPING;
-        vy *= DRIFT_DAMPING;
-        x += vx;
-        y += vy;
+        const freno = Math.pow(DRIFT_DAMPING, cuadros);
+        vx *= freno;
+        vy *= freno;
+        // Por debajo de esto queda a lo sumo ~0,07 px más de recorrido: se la da
+        // por detenida (así "quieta" es exacto y el early return de arriba vale).
+        if (Math.abs(vx) < 0.001) vx = 0;
+        if (Math.abs(vy) < 0.001) vy = 0;
+        x += vx * cuadros;
+        y += vy * cuadros;
         if (el) {
           el.style.setProperty("--hit-x", `${x.toFixed(2)}px`);
           el.style.setProperty("--hit-y", `${y.toFixed(2)}px`);
         }
         if (onSpeed) onSpeed(Math.sqrt(vx * vx + vy * vy));
       };
+      update.measure = () => (el ? el.getBoundingClientRect() : null);
+      return update;
     }
     const spaceDrifters = [];
     if (spaceRock) spaceDrifters.push(makeSpaceDrifter(spaceRock, 0.35));
@@ -953,20 +1038,42 @@ function drawStars() {
       // que calcular ni que escribirle al DOM (esto corría cuadro a cuadro en
       // todos los escenarios).
       let biosEnReposo = false;
-      updateBiosRepel = (shipRect) => {
+      const biosRects = new Array(bioLetters.length);
+      updateBiosRepel = (shipRect, cuadros = 1) => {
         if (!shipRect && biosEnReposo) return;
         let shipCx = null,
           shipCy = null,
           radius = 0;
-        let hayMovimiento = false;
         if (shipRect) {
           shipCx = shipRect.left + shipRect.width / 2;
           shipCy = shipRect.top + shipRect.height / 2;
           radius = shipRect.width * BIOS_REPEL_RADIUS_RATIO;
+          // Letras quietas y la nave lejos del bloque de texto (con el radio de
+          // empuje de colchón): ninguna se va a mover, no hace falta ni medirlas.
+          if (biosEnReposo) {
+            const b = spaceBios.getBoundingClientRect();
+            if (
+              shipCx < b.left - radius ||
+              shipCx > b.right + radius ||
+              shipCy < b.top - radius ||
+              shipCy > b.bottom + radius
+            )
+              return;
+          }
+          // Todas las lecturas juntas y después todas las escrituras: si se
+          // intercalan (leer una letra, escribirle el transform, leer la
+          // siguiente...) el navegador recalcula estilos en cada lectura, ~300
+          // veces por cuadro.
+          for (let i = 0; i < bioLetters.length; i++)
+            biosRects[i] = bioLetters[i].el.getBoundingClientRect();
         }
-        bioLetters.forEach((l) => {
+        // Empuje, resorte y freno son "por cuadro de 60 Hz" (ver cuadrosDe).
+        const frenoBios = Math.pow(BIOS_DAMPING, cuadros);
+        let hayMovimiento = false;
+        for (let i = 0; i < bioLetters.length; i++) {
+          const l = bioLetters[i];
           if (shipCx !== null) {
-            const rect = l.el.getBoundingClientRect();
+            const rect = biosRects[i];
             const cx = rect.left + rect.width / 2;
             const cy = rect.top + rect.height / 2;
             const dx = cx - shipCx;
@@ -976,16 +1083,16 @@ function drawStars() {
               const force = (1 - dist / radius) * BIOS_REPEL_STRENGTH;
               const nx = dist > 0.01 ? dx / dist : 1;
               const ny = dist > 0.01 ? dy / dist : 0;
-              l.vx += nx * force;
-              l.vy += ny * force;
+              l.vx += nx * force * cuadros;
+              l.vy += ny * force * cuadros;
             }
           }
-          l.vx += -l.x * BIOS_SPRING_K;
-          l.vy += -l.y * BIOS_SPRING_K;
-          l.vx *= BIOS_DAMPING;
-          l.vy *= BIOS_DAMPING;
-          l.x += l.vx;
-          l.y += l.vy;
+          l.vx += -l.x * BIOS_SPRING_K * cuadros;
+          l.vy += -l.y * BIOS_SPRING_K * cuadros;
+          l.vx *= frenoBios;
+          l.vy *= frenoBios;
+          l.x += l.vx * cuadros;
+          l.y += l.vy * cuadros;
           if (
             Math.abs(l.x) > 0.01 ||
             Math.abs(l.y) > 0.01 ||
@@ -993,9 +1100,19 @@ function drawStars() {
             Math.abs(l.vy) > 0.01
           )
             hayMovimiento = true;
-          l.el.style.transform = `translate(${l.x.toFixed(2)}px, ${l.y.toFixed(2)}px)`;
-        });
-        biosEnReposo = !shipRect && !hayMovimiento;
+        }
+        // Si ya se asentaron todas, se clavan en su lugar (de a <0,01 px no se
+        // ve) y de ahí en más no se toca nada hasta que la nave se acerque.
+        if (!hayMovimiento)
+          for (const l of bioLetters) l.x = l.y = l.vx = l.vy = 0;
+        for (const l of bioLetters) {
+          const tr = `translate(${l.x.toFixed(2)}px, ${l.y.toFixed(2)}px)`;
+          if (tr !== l.tr) {
+            l.tr = tr;
+            l.el.style.transform = tr;
+          }
+        }
+        biosEnReposo = !hayMovimiento;
       };
     }
     const FLIGHT_MARGIN = 100; // cuánto puede salirse la nave del viewport, en px
@@ -1177,6 +1294,17 @@ function drawStars() {
       }
     });
     let shipScale = 1;
+    // Posición actual de la nave (la misma que se escribe en su transform, pero en
+    // números): la lee js/esc4-game.js cada cuadro. Antes parseaba el texto del
+    // transform con un DOMMatrix nuevo en cada cuadro, y esa basura provocaba
+    // pausas de 35-50 ms cada tanto. Es un solo objeto, se pisa en el lugar.
+    const shipPose = (window.shipPose = {
+      x: 0,
+      y: 0,
+      rot: 0,
+      escala: 1,
+      listo: false,
+    });
     // Factor de cámara (CAMERA_ZOOM, u 1 con M apretada) y factor de altura
     // (achique por volar alto, ver SHIP_SPACE_SCALE_*) se suavizan por
     // separado y en el mismo ritmo que el fondo, para que subir o bajar el
@@ -1353,15 +1481,11 @@ function drawStars() {
       // Todo el rectángulo de la imagen cuenta como zona interactuable.
       const hitPlanet = (x, y) =>
         pointInRect(x, y, spacePlanet.getBoundingClientRect());
-      const planetAudio = new Audio("audio/Esc2/everyone.m4a");
-      planetAudio.preload = "none"; // sólo se baja si interactúan con el planeta, no en cada carga
-      planetAudio.volume = 0.5;
       const triggerPlanetGlow = () => {
         spacePlanet.classList.remove("bulb-blow");
         spacePlanet.offsetWidth; // reinicia la animación si ya estaba corriendo
         spacePlanet.classList.add("bulb-blow");
-        planetAudio.currentTime = 0;
-        planetAudio.play().catch(() => {});
+        sfxPlay("planeta");
       };
       spacePlanet.addEventListener("animationend", (ev) => {
         if (ev.animationName === "planetBulbBlow")
@@ -1451,6 +1575,10 @@ function drawStars() {
     // a las navecitas.
     let shipCarriedUntil = 0;
     let shipFaceUntil = 0;
+    // Cuadros de 60 Hz que pasaron en el último cuadro (ver cuadrosDe): los usa el
+    // tick de vuelo y también shipFace, que se llama desde el juego.
+    let shipPrevT = 0;
+    let shipCuadros = 1;
     const lockShip = () => {
       n = 0;
       r = 0;
@@ -1473,7 +1601,7 @@ function drawStars() {
       let d = deg - s;
       for (; d > 180; ) d -= 360;
       for (; d < -180; ) d += 360;
-      s += 0.15 * d;
+      s += suavizadoPor(0.15, shipCuadros) * d;
       shipFaceUntil = performance.now() + 100;
     };
     window.shipPlace = (x, y, conservarGiro) => {
@@ -1891,51 +2019,65 @@ function drawStars() {
           l = true;
         }
 
-        let c, u;
-        l && null !== i ? ((c = i), (u = o)) : ((c = e), (u = a));
-        const m = c - e,
-          h = u - a,
-          v = Math.sqrt(m * m + h * h);
-
         // Cada escenario puede pisar su propia velocidad (ver speedMult en
         // el registro de escenarios); por default todos usan la misma.
         let scene = scenes[currentSceneId];
         const speedMult = scene.speedMult;
-        if (gamepadActive) {
-          const thrust =
-            (boosting ? GAMEPAD_THRUST_BOOST : GAMEPAD_THRUST_BASE) * speedMult;
-          n += gx * thrust;
-          r += gy * thrust;
-        } else {
-          // Con el click izquierdo mantenido, la nave se acerca más rápido y
-          // más cerca del cursor -mismo boost que RB en el joystick (2x),
-          // más un umbral de seguimiento menor para que llegue más cerca-.
-          const boostMult = mouseBoost
-            ? GAMEPAD_THRUST_BOOST / GAMEPAD_THRUST_BASE
-            : 1;
-          const followThreshold = l
-            ? mouseBoost
-              ? 40
-              : isMobileTouch()
-                ? 120
-                : 220
-            : 0;
-          if (v > followThreshold + 1) {
-            const t = l ? (v - followThreshold) / v : 1;
-            ((n += m * t * 0.022 * speedMult * boostMult),
-              (r += h * t * 0.022 * speedMult * boostMult));
-          }
-        }
 
+        // Los cuadros de 60 Hz que pasaron desde el cuadro anterior (ver
+        // SIM_PASO_MS). Se parten en subpasos de ~1 cuadro (en 60 Hz es 1, en 30 Hz
+        // son 2 de tamaño 1; en 120 Hz es 1 de tamaño 0,5): la velocidad, el freno y
+        // la posición se avanzan de a un paso, como se afinó, y no de un saque.
+        const ahoraNave = performance.now();
+        const cuadros = shipPrevT ? cuadrosDe(ahoraNave - shipPrevT) : 1;
+        shipPrevT = ahoraNave;
+        shipCuadros = cuadros;
+        const subpasos = Math.max(1, Math.round(cuadros));
+        const paso = cuadros / subpasos;
+
+        // Con el click izquierdo mantenido, la nave se acerca más rápido y
+        // más cerca del cursor -mismo boost que RB en el joystick (2x),
+        // más un umbral de seguimiento menor para que llegue más cerca-.
+        const boostMult = mouseBoost
+          ? GAMEPAD_THRUST_BOOST / GAMEPAD_THRUST_BASE
+          : 1;
+        const followThreshold = l
+          ? mouseBoost
+            ? 40
+            : isMobileTouch()
+              ? 120
+              : 220
+          : 0;
+        const thrust =
+          (boosting ? GAMEPAD_THRUST_BOOST : GAMEPAD_THRUST_BASE) * speedMult;
         const p = gamepadActive ? GAMEPAD_DAMPING : l ? 0.15 : 0.995;
-        n *= p;
-        r *= p;
-        if (performance.now() < shipCarriedUntil) {
-          n = 0;
-          r = 0;
+        const frenoPaso = Math.pow(p, paso);
+        const sostenida = ahoraNave < shipCarriedUntil;
+        for (let sub = 0; sub < subpasos; sub++) {
+          if (gamepadActive) {
+            n += gx * thrust * paso;
+            r += gy * thrust * paso;
+          } else {
+            // Hacia dónde tira el mouse/dedo (o nada, si no hay).
+            const m = (l && null !== i ? i : e) - e;
+            const h = (l && null !== i ? o : a) - a;
+            const v = Math.sqrt(m * m + h * h);
+            if (v > followThreshold + 1) {
+              const t = l ? (v - followThreshold) / v : 1;
+              const k = 0.022 * speedMult * boostMult * paso;
+              n += m * t * k;
+              r += h * t * k;
+            }
+          }
+          n *= frenoPaso;
+          r *= frenoPaso;
+          if (sostenida) {
+            n = 0;
+            r = 0;
+          }
+          e += n * paso;
+          a += r * paso;
         }
-        e += n;
-        a += r;
 
         // Entrada de la nave (ver SHIP_ENTRY_*): el vuelo pisa la posición hasta
         // que termina o el jugador toma el control.
@@ -2033,7 +2175,7 @@ function drawStars() {
           let angle = Math.atan2(toY, toX) * (180 / Math.PI) + 90 - s;
           for (; angle > 180; ) angle -= 360;
           for (; angle < -180; ) angle += 360;
-          s += 0.25 * angle;
+          s += suavizadoPor(0.25, cuadros) * angle;
         }
 
         if (!gamepadActive && wasGamepadActive) l = false;
@@ -2049,7 +2191,7 @@ function drawStars() {
             Math.max(0, Math.min(1, (e + FLIGHT_MARGIN) / 80)),
           );
         }
-        shipAlpha += (1 - shipAlpha) * 0.05;
+        shipAlpha += (1 - shipAlpha) * suavizadoPor(0.05, cuadros);
         const f = introOpacity * shipAlpha;
         // 1 recién entrando por abajo (maxY) -> 0 arriba del todo (minY):
         // cuanto más arriba vuela la nave en esta escena, más chica se
@@ -2090,12 +2232,14 @@ function drawStars() {
         const targetCameraZoom = scene.camera
           ? scene.camera.zoom + (1 - scene.camera.zoom) * mapViewT
           : 1;
-        cameraZoom += (targetCameraZoom - cameraZoom) * 0.05;
+        cameraZoom +=
+          (targetCameraZoom - cameraZoom) * suavizadoPor(0.05, cuadros);
         const targetHeightScale = scene.heightScale
           ? scene.heightScale.far +
             (scene.heightScale.near - scene.heightScale.far) * spaceT
           : 1;
-        shipHeightScale += (targetHeightScale - shipHeightScale) * 0.05;
+        shipHeightScale +=
+          (targetHeightScale - shipHeightScale) * suavizadoPor(0.05, cuadros);
         // La nave "vive" en el mismo espacio que el fondo: se multiplica
         // por cameraZoom igual que rocas/planeta (que sí son hijos de
         // #space-scene y lo heredan solos) para escalar junto con todo lo
@@ -2144,13 +2288,25 @@ function drawStars() {
         // camino termine de asentarse aunque el usuario haya salido.
         const driftShipRect =
           currentSceneId === "space" ? t.getBoundingClientRect() : null;
-        spaceDrifters.forEach((update) => update(driftShipRect, n, r));
-        if (updateBiosRepel) updateBiosRepel(driftShipRect);
+        // Se miden todas las piedras juntas y recién después se les escribe.
+        const driftRects = driftShipRect
+          ? spaceDrifters.map((update) => update.measure())
+          : null;
+        spaceDrifters.forEach((update, i) =>
+          update(driftShipRect, n, r, driftRects && driftRects[i], cuadros),
+        );
+        if (updateBiosRepel) updateBiosRepel(driftShipRect, cuadros);
         updateShipFire(e, a, boosting || mouseBoost);
+        // window.shipZoom (1 por defecto) agranda la nave sobre su propio centro:
+        // el final del escenario 4 lo usa para el zoom a la nave.
+        const escalaNave = shipScale * (window.shipZoom || 1);
+        shipPose.x = e;
+        shipPose.y = a;
+        shipPose.rot = s;
+        shipPose.escala = escalaNave;
+        shipPose.listo = true;
         ((t.style.opacity = f),
-          // window.shipZoom (1 por defecto) agranda la nave sobre su propio centro:
-          // el final del escenario 4 lo usa para el zoom a la nave.
-          (t.style.transform = `translate(${e}px, ${a}px) rotate(${s}deg) scale(${shipScale * (window.shipZoom || 1)})`),
+          (t.style.transform = `translate(${e}px, ${a}px) rotate(${s}deg) scale(${escalaNave})`),
           requestAnimationFrame(tick));
       }));
     // Fuego de la nave (parallax/cohete_fuego.webp, mismo lienzo de 203x300 que el
@@ -2306,12 +2462,8 @@ function drawStars() {
             ? "parallax/cohete_on.webp"
             : "parallax/cohete.webp";
         if (silent) return;
-        const snd = new Audio(
-          lightOn ? "audio/light_on.m4a" : "audio/light_off.m4a",
-        );
         const light = scenes[currentSceneId].light;
-        snd.volume = light ? light.volume : 1;
-        snd.play().catch(() => {});
+        sfxPlay(lightOn ? "luzOn" : "luzOff", light ? light.volume : 1);
       };
       // Al prender/apagar a mano (click, Q, gamepad) el escenario 4 no suena
       // (light.silentToggle); el sonido de luz on de la intro sí, va por shipLightSet.
@@ -2347,9 +2499,6 @@ function drawStars() {
     (function () {
       const t = document.querySelector(".starry-p9");
       if (!t) return;
-      const e = new Audio("audio/satelite.m4a");
-      e.preload = "none"; // sólo se baja si tocan el satélite, no en cada carga
-      e.volume = 0.25;
       const triggerSatelite = () => {
         if (window.innerWidth <= 600) return;
         t.classList.remove("spinning");
@@ -2362,8 +2511,7 @@ function drawStars() {
             once: !0,
           },
         );
-        e.currentTime = 0;
-        e.play().catch(() => {});
+        sfxPlay("satelite");
       };
       const hitSatelite = createAlphaHitTester(t);
       t.addEventListener("click", (ev) => {
@@ -2386,9 +2534,6 @@ function drawStars() {
     bassGroup.querySelectorAll(".gl img")[0];
   if (!bassTarget) return;
 
-  const bassAudio = new Audio("audio/bass.m4a");
-  bassAudio.preload = "none"; // sólo se baja si tocan esa nota, no en cada carga
-  bassAudio.volume = 0.6;
 
   // Notas y ritmo reales del lick, confirmados: corchea (con silencio de
   // corchea detrás) - negra, negra, negra - dos corcheas juntas - negra,
@@ -2486,8 +2631,7 @@ function drawStars() {
   }
 
   const triggerBass = (x, y) => {
-    bassAudio.currentTime = 0;
-    bassAudio.play().catch(() => {});
+    sfxPlay("bajo");
     spawnLick(x, y);
   };
   const hitBass = createAlphaHitTester(bassTarget);

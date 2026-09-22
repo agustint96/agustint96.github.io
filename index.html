@@ -627,6 +627,13 @@
         var escenas = function () {
           root.classList.add("escenas-listas");
         };
+        // Medidor de rendimiento (fps, tirones, memoria): solo con ?perf=1.
+        if (/[?&]perf=1\b/.test(location.search)) {
+          var perf = document.createElement("script");
+          perf.src = "js/perf-debug.js";
+          perf.defer = true;
+          document.body.appendChild(perf);
+        }
         window.addEventListener("load", function () {
           if (window.requestIdleCallback)
             requestIdleCallback(escenas, { timeout: 3000 });

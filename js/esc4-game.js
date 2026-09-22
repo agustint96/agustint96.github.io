@@ -69,8 +69,8 @@
 // Cada pasaje por un agujero cuenta hacia atrás con la voz: 10, 9, ... 1
 // (audio/Esc4/conteo; ver CONTEO_ARCHIVOS). Al perder el conteo vuelve a 10.
 // En el último portal, tras el "1" (o en su lugar) suena una felicitación. Además,
-// hay dos voces de ánimo por partida (a los ~15 s y a los ~25 s, siempre) y de
-// cansancio pasados los 30 s (a los 30, 40, 50..., cada una con un 50 % de chance).
+// hay una voz de ánimo por partida (a los ~20 s, siempre) y de cansancio pasados
+// los 30 s (a los 30, 45, 60..., cada una con un 25 % de chance).
 // Todas comparten un canal y las de ánimo/cansancio no pisan a las de portal.
 // Se reproduce con Web Audio (el archivo se decodifica una vez y se loopea el
 // buffer): con un <audio loop> el bucle tenía un hueco al volver a empezar y
@@ -245,26 +245,25 @@
   // Y este, cada vez que la nave cruza un agujero, con su propio volumen (más
   // fuerte que el de apertura).
   const PORTAL_CRUCE_URL = "audio/Esc4/portales/portal++.m4a";
-  const PORTAL_CRUCE_VOLUMEN = 0.8;
+  const PORTAL_CRUCE_VOLUMEN = 0.4;
   // Voces (audio/Esc4, una carpeta por momento: 1- a 4- las instrucciones, conteo,
   // animo, cansancio y 5- final). Todas comparten un solo canal: suena una a la vez, y las
   // de los portales (el conteo y las felicitaciones) tienen prioridad, cortan la
   // que esté sonando; las de ánimo y de cansancio, en cambio, nunca cortan a una
   // de un portal, esperan a que termine.
   const VOZ_URL = "audio/Esc4/";
-  const VOZ_VOLUMEN = 0.2;
-  const VOZ_CHANCE = 0.5; // probabilidad de que suene cada tirada de cansancio (50 %)
-  // Ánimo: dos voces por partida, siempre (sin chance), a estos segundos de juego
+  const VOZ_VOLUMEN = 0.16;
+  const VOZ_CHANCE = 0.25; // probabilidad de que suene cada tirada de cansancio (25 %)
+  // Ánimo: una voz por partida, siempre (sin chance), a estos segundos de juego
   // más o menos: a cada uno se le suma o resta al azar hasta VOZ_ANIMO_MARGEN
-  // segundos, así no caen siempre en el mismo segundo. No se repite la voz.
+  // segundos, así no caen siempre en el mismo segundo. No se repite la voz (para
+  // más de una por partida, sumar segundos a VOZ_ANIMO_EN).
   const VOZ_ANIMO = [
     "animo/vamos.m4a",
     "animo/concentrate.m4a",
     "animo/atencionmp3.m4a",
-    "animo/vamosdalemp3.m4a",
-    "animo/vospodesmp3.m4a",
   ];
-  const VOZ_ANIMO_EN = [15, 25];
+  const VOZ_ANIMO_EN = [20];
   const VOZ_ANIMO_MARGEN = 2;
   // Cansancio: cuando el juego ya va rápido y lleva mucho: la primera tirada a
   // los VOZ_CANSADO_DESDE segundos y otra cada VOZ_CANSADO_CADA mientras siga.
@@ -279,7 +278,7 @@
     "cansancio/wowrapidisimomp3.m4a",
   ];
   const VOZ_CANSADO_DESDE = 30;
-  const VOZ_CANSADO_CADA = 10;
+  const VOZ_CANSADO_CADA = 15;
   // Felicitación: en el último portal, después del "1" o en lugar del "1".
   const VOZ_FELICITA = [
     "5- final/bien.m4a",
@@ -368,6 +367,39 @@
   const CUMULO_PRIMERO = 2.5; // segundos hasta el primer par
   const CUMULO_INTERVALO = [3, 6]; // segundos entre un par y el siguiente (al azar)
   const CUMULO_DISTANCIA_MIN = 160; // px del mundo: no aparecen encima de la nave
+  // Pulso: el agujero se estira y vuelve a su tamaño una vez por compás de la
+  // música (los dos del par a la vez). Solo es visual: la zona de entrada no
+  // cambia.
+  const CUMULO_PULSO_AMPLITUD = 0.4; // cuánto crece de más en lo más alto (0,4 = 40 %)
+  const CUMULO_PULSO_TIEMPOS = 1.25; // lo que dura cada pulso (estirar y volver), en tiempos de la música
+  const CUMULO_PULSO_ATAQUE = 0.25; // fracción del pulso que se dedica a estirar (el resto es volver)
+  // La música del juego (nivel4.ogg) está en 5 tiempos: 145,6 BPM y el bucle son
+  // exactamente 60 compases (123,62 s), y el archivo arranca en el primer tiempo
+  // (ahí entra el bombo). Se midió sobre el audio; si se cambia la canción hay que
+  // volver a medirlo.
+  // Números de estrellas: al cruzar un agujero, en el de salida las estrellas del
+  // cierre salen en todas direcciones (como las chispas de siempre), se acomodan
+  // formando el número del pasaje (10, 9, 8... 1, como la voz), se quedan un
+  // momento y caen achicándose. Son pocas estrellas (unas 30 o 40 para el 10, del
+  // tamaño de las chispas) puestas a lo largo de la línea central de cada dígito,
+  // a distancias parejas: se lee como un número dibujado con estrellas, no como
+  // una grilla de puntos ni como una masa.
+  const NUMERO_ALTO = 52; // px del mundo: alto de los dígitos
+  const NUMERO_ESPACIO = 5.6; // px del mundo: distancia mínima entre estrellas (más chico = más estrellas)
+  const NUMERO_RADIO = [1.3, 2.3]; // px del mundo: radio de cada estrella, al azar en este rango (las chispas: 2)
+  // Que no quede perfecto, como dibujado a mano con estrellas: cada vez el número
+  // sale con su propia inclinación y cada estrella se corre un poco de su lugar.
+  const NUMERO_TEMBLOR = 1.7; // px del mundo: cuánto se corre cada estrella (al azar)
+  const NUMERO_GIRO = 0.09; // radianes: cuánto puede girar el número entero (a cada lado)
+  const NUMERO_CURSIVA = [-0.04, 0.12]; // cuánto se tumba hacia un costado (como letra cursiva)
+  const NUMERO_CAE_A = 2.1; // segundos desde el cruce hasta que empiezan a caer (ya formado desde ~1 s)
+  const NUMERO_CAIDA = 0.9; // segundos que tardan en caer y achicarse del todo
+  const NUMERO_GRAVEDAD = 260; // px/s² del mundo
+  const NUMERO_DISTANCIA = 36; // px del mundo entre el agujero y el número (así no tapa la nave)
+  const MUSICA_TIEMPOS_COMPAS = 5;
+  const MUSICA_COMPASES_BUCLE = 60; // compases que dura el bucle entero
+  const MUSICA_PULSO_TIEMPO = 0; // en qué tiempo del compás cae el pulso (0 = el primero, 4 = el último): para correrlo si se siente desfasado
+  const MUSICA_COMPAS_RESPALDO = 2.0604; // segundos del compás a velocidad normal: se usa si no se puede saber dónde va la música
   // Final (victoria): la intro otra vez, con los parallax 7 en blanco y negro,
   // junto a la nave del jugador (que las mira) y con el zoom a la nave. Los
   // tiempos son los de la intro (INTRO_LLEGADA, INTRO_SALIDA...), salvo la espera.
@@ -520,6 +552,12 @@
   let ayuda = null;
   const sostenidas = new Set(); // teclas de las instrucciones que están apretadas ahora
   let musicaT = 0; // segundos que lleva sonando la música (para acelerarla)
+  // Dónde va la música dentro del bucle (segundos del audio original, sin la
+  // aceleración) para que los agujeros pulsen a tiempo: Web Audio no lo informa,
+  // así que se va sumando lo que avanza su reloj por la velocidad de reproducción.
+  let musicaPos = 0;
+  let musicaRelojPrev = 0; // audioCtx.currentTime en el cuadro anterior
+  let musicaLatencia = 0; // segundos entre que el reloj avanza y se oye
   let musica = null; // <audio> de respaldo si falla Web Audio
   let spriteP7 = null; // imagen del parallax 7, se carga al entrar por primera vez
   let spriteP7BN = null; // el parallax 7 en blanco y negro con sombra interna (canvas)
@@ -552,6 +590,7 @@
   let luzSprites = null; // la luz de la nave ya dibujada (degradado), en blanco y en salmón
   let cumulos = []; // cúmulos de estrellas azules en el mapa
   let particulas = []; // chispas de cuando se choca un cúmulo
+  let numeroEstrellas = []; // estrellas que forman el número del pasaje (ver crearNumeroEstrellas)
   let acumCumulo = 0;
   let proxCumulo = CUMULO_PRIMERO;
   let cumulosTomados = 0; // choques de esta partida
@@ -647,29 +686,39 @@
   // respecto del centro de su caja), así sigue bien la nave aunque esté
   // rotada; ese transform está en pantalla, se pasa al mundo deshaciendo el
   // zoom de la cámara.
+  //
+  // La pose la publica script.js en números (window.shipPose: posición, giro y
+  // escala): antes se parseaba el texto del transform con un DOMMatrix nuevo y un
+  // array nuevo en cada cuadro, y esa basura provocaba pausas de 35-50 ms del
+  // recolector cada ~10 s. Ahora se reusan los mismos objetos: lo que devuelve
+  // vale hasta el próximo cuadro (nadie lo guarda: quien necesita un punto de un
+  // cuadro a otro, como navePrev, lo copia).
+  const SIN_CIRCULOS = [];
+  const circulosBuf = NAVE_CIRCULOS.map(() => ({ x: 0, y: 0, r: 0 }));
   function circulosNave() {
-    if (!ship.style.transform) return [];
-    let m;
-    try {
-      m = new DOMMatrix(ship.style.transform);
-    } catch (e) {
-      return [];
-    }
+    const p = window.shipPose;
+    if (!p || !p.listo) return SIN_CIRCULOS;
+    // Matriz de translate(x, y) rotate(rot) scale(escala): a = escala cos,
+    // b = escala sen, c = -b, d = a, e = x, f = y.
+    const rad = (p.rot * Math.PI) / 180;
+    const ma = p.escala * Math.cos(rad);
+    const mb = p.escala * Math.sin(rad);
     const caja = cajaNave; // en mobile la caja es más chica
-    const k = Math.hypot(m.a, m.b) / cam.z;
+    const k = Math.abs(p.escala) / cam.z;
     const factor = caja / CAJA_NAVE;
     const mitad = caja / 2;
-    return NAVE_CIRCULOS.map((c) => {
+    for (let i = 0; i < NAVE_CIRCULOS.length; i++) {
+      const c = NAVE_CIRCULOS[i];
       const px = c.x * factor - mitad;
       const py = c.y * factor - mitad;
-      const sx = m.a * px + m.c * py + m.e + mitad;
-      const sy = m.b * px + m.d * py + m.f + mitad;
-      return {
-        x: cam.ox + (sx - cam.ox) / cam.z,
-        y: cam.oy + (sy - cam.oy) / cam.z,
-        r: c.r * factor * k,
-      };
-    });
+      const sx = ma * px - mb * py + p.x + mitad;
+      const sy = mb * px + ma * py + p.y + mitad;
+      const o = circulosBuf[i];
+      o.x = cam.ox + (sx - cam.ox) / cam.z;
+      o.y = cam.oy + (sy - cam.oy) / cam.z;
+      o.r = c.r * factor * k;
+    }
+    return circulosBuf;
   }
 
   // ¿El círculo toca el polígono? Sí si su centro está adentro o si algún
@@ -730,6 +779,7 @@
     // Nueva partida: sin cúmulos y la nave vuelve a blanco y negro.
     cumulos = [];
     particulas = [];
+    numeroEstrellas = [];
     acumCumulo = 0;
     proxCumulo = CUMULO_PRIMERO;
     cumulosTomados = 0;
@@ -1025,6 +1075,9 @@
       musicaFuente.loop = true;
       musicaFuente.connect(musicaGain);
       musicaFuente.start();
+      musicaPos = 0;
+      musicaRelojPrev = audioCtx.currentTime;
+      musicaLatencia = audioCtx.outputLatency || audioCtx.baseLatency || 0;
     } else if (musica) {
       musica.currentTime = 0;
       musica.play().catch(() => {}); // puede bloquearla si aún no hubo interacción
@@ -1038,6 +1091,36 @@
     const velocidad = 1 + Math.min(MUSICA_ACEL_MAX, musicaT * MUSICA_ACEL);
     if (musicaFuente) musicaFuente.playbackRate.value = velocidad;
     else if (musica && !musica.paused) musica.playbackRate = velocidad;
+  }
+
+  // Se llama una vez por cuadro: suma lo que avanzó el reloj del audio (por la
+  // velocidad de reproducción de ese momento, que sube de a poquito).
+  function avanzarPosicionMusica() {
+    if (!musicaFuente) return;
+    const reloj = audioCtx.currentTime;
+    musicaPos += (reloj - musicaRelojPrev) * musicaFuente.playbackRate.value;
+    musicaRelojPrev = reloj;
+  }
+
+  // Dónde está la música dentro de su compás, en segundos del audio original:
+  // { pos: segundos desde el pulso del compás, compas: lo que dura el compás }, o
+  // null si no hay música sonando o no se puede saber dónde va (ahí los agujeros
+  // pulsan con su propio reloj, ver dibujarCumulos).
+  function compasMusica() {
+    let pos, duracion;
+    if (musicaFuente && musicaBuffer) {
+      duracion = musicaBuffer.duration;
+      // Lo que se está oyendo ahora es lo que sonó hace un rato (latencia de salida).
+      pos = musicaPos - musicaLatencia * musicaFuente.playbackRate.value;
+    } else if (musica && !musica.paused && musica.duration) {
+      duracion = musica.duration;
+      pos = musica.currentTime;
+    } else return null;
+    const compas = duracion / MUSICA_COMPASES_BUCLE;
+    const tiempo = compas / MUSICA_TIEMPOS_COMPAS;
+    pos -= MUSICA_PULSO_TIEMPO * tiempo;
+    pos = ((pos % compas) + compas) % compas;
+    return { pos, compas };
   }
 
   // La música de las instrucciones, en bucle.
@@ -1746,6 +1829,180 @@
     sonarPortal();
   }
 
+  // Dónde van las estrellas de un número, relativas a su centro (px del mundo):
+  // se dibuja el número en un canvas aparte con una tipografía sans-serif en
+  // negrita, se queda con la franja central del trazo (los píxeles más alejados
+  // del borde: la línea del dígito) y ahí se reparten las estrellas a distancias
+  // parejas (nunca a menos de NUMERO_ESPACIO una de otra). Se arma una vez por
+  // número (ver prepararNumeros) y queda guardado.
+  const numerosGuardados = {};
+  function puntosNumero(numero) {
+    if (numerosGuardados[numero]) return numerosGuardados[numero];
+    const K = 4; // píxeles del canvas por px del mundo (para muestrear con precisión)
+    const texto = String(numero);
+    const familia = 'Arial, Helvetica, "Helvetica Neue", sans-serif';
+    const c = document.createElement("canvas");
+    const g = c.getContext("2d", { willReadFrequently: true });
+    // Tamaño de letra para que los dígitos midan NUMERO_ALTO de alto.
+    g.font = "bold 100px " + familia;
+    const m0 = g.measureText("0");
+    const tam =
+      (100 * NUMERO_ALTO * K) /
+      Math.max(1, m0.actualBoundingBoxAscent + m0.actualBoundingBoxDescent);
+    const fuente = "bold " + tam + "px " + familia;
+    g.font = fuente;
+    const m = g.measureText(texto);
+    const borde = 4;
+    const izq = m.actualBoundingBoxLeft;
+    const arr = m.actualBoundingBoxAscent;
+    const w = Math.ceil(izq + m.actualBoundingBoxRight) + borde * 2;
+    const h = Math.ceil(arr + m.actualBoundingBoxDescent) + borde * 2;
+    c.width = w;
+    c.height = h;
+    g.font = fuente; // al cambiar el tamaño del canvas se pierde
+    g.fillStyle = "#000";
+    g.fillText(texto, borde + izq, borde + arr);
+    const datos = g.getImageData(0, 0, w, h).data;
+    // Distancia de cada píxel del trazo al borde más cercano (dos pasadas).
+    const dist = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) dist[i] = datos[i * 4 + 3] > 128 ? 1e9 : 0;
+    for (let y = 1; y < h - 1; y++)
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        if (dist[i])
+          dist[i] = Math.min(
+            dist[i],
+            dist[i - 1] + 1,
+            dist[i - w] + 1,
+            dist[i - w - 1] + 1.414,
+            dist[i - w + 1] + 1.414,
+          );
+      }
+    for (let y = h - 2; y > 0; y--)
+      for (let x = w - 2; x > 0; x--) {
+        const i = y * w + x;
+        if (dist[i])
+          dist[i] = Math.min(
+            dist[i],
+            dist[i + 1] + 1,
+            dist[i + w] + 1,
+            dist[i + w - 1] + 1.414,
+            dist[i + w + 1] + 1.414,
+          );
+      }
+    // El trazo de la negrita mide ~0,14 del tamaño de letra: su mitad es lo más que
+    // puede valer la distancia al borde. Se toma la franja del medio (>= la mitad).
+    const umbral = tam * 0.035;
+    const candidatos = [];
+    for (let i = 0; i < w * h; i++) if (dist[i] >= umbral) candidatos.push(i);
+    // Se prueban primero los más centrados en el trazo (con un poco de azar, para
+    // que no sea siempre igual): las estrellas quedan sobre la línea del dígito.
+    const orden = new Map(
+      candidatos.map((i) => [i, dist[i] * (0.8 + 0.4 * Math.random())]),
+    );
+    candidatos.sort((p, q) => orden.get(q) - orden.get(p));
+    const minimo = NUMERO_ESPACIO * K;
+    const puntos = [];
+    for (const i of candidatos) {
+      const px = i % w;
+      const py = (i - px) / w;
+      let libre = true;
+      for (const p of puntos) {
+        const dx = p.px - px;
+        const dy = p.py - py;
+        if (dx * dx + dy * dy < minimo * minimo) {
+          libre = false;
+          break;
+        }
+      }
+      if (libre) puntos.push({ px, py });
+    }
+    return (numerosGuardados[numero] = {
+      puntos: puntos.map((p) => ({ dx: (p.px - w / 2) / K, dy: (p.py - h / 2) / K })),
+      ancho: w / K,
+      alto: h / K,
+    });
+  }
+
+  // Los 10 números, armados al entrar al escenario (así el primer cruce no tiene
+  // que armarlo).
+  function prepararNumeros() {
+    setTimeout(() => {
+      for (let n = 1; n <= CUMULOS_PARA_COLOR; n++) puntosNumero(n);
+    }, 0);
+  }
+
+  // Las estrellas del número que salen de (x, y) y se acomodan justo arriba (o
+  // abajo, si arriba no entra en pantalla).
+  function crearNumeroEstrellas(x, y, numero) {
+    const { puntos, ancho, alto } = puntosNumero(numero);
+    const v = vista();
+    const margen = 14;
+    const cx = Math.max(
+      v.x + ancho / 2 + margen,
+      Math.min(v.x + v.w - ancho / 2 - margen, x),
+    );
+    let cy = y - NUMERO_DISTANCIA - alto / 2;
+    if (cy - alto / 2 < v.y + margen) cy = y + NUMERO_DISTANCIA + alto / 2;
+    // Cada número sale distinto: gira un poco, se tumba un poco y se corre un poco.
+    const giro = (Math.random() * 2 - 1) * NUMERO_GIRO;
+    const cursiva =
+      NUMERO_CURSIVA[0] + Math.random() * (NUMERO_CURSIVA[1] - NUMERO_CURSIVA[0]);
+    const cos = Math.cos(giro);
+    const sen = Math.sin(giro);
+    const desx = (Math.random() - 0.5) * 6;
+    const desy = (Math.random() - 0.5) * 4;
+    for (const p of puntos) {
+      // Salen en todas direcciones, como las chispas, y un resorte las lleva a su lugar.
+      const ang = Math.random() * Math.PI * 2;
+      const vel = 60 + Math.random() * 90;
+      const inclx = p.dx - p.dy * cursiva; // tumbado hacia un costado
+      const rx = inclx * cos - p.dy * sen;
+      const ry = inclx * sen + p.dy * cos;
+      // El corrimiento de cada estrella, en un círculo (no en un cuadrado).
+      const ta = Math.random() * Math.PI * 2;
+      const td = Math.sqrt(Math.random()) * NUMERO_TEMBLOR;
+      numeroEstrellas.push({
+        x,
+        y,
+        vx: Math.cos(ang) * vel,
+        vy: Math.sin(ang) * vel,
+        tx: cx + desx + rx + Math.cos(ta) * td,
+        ty: cy + desy + ry + Math.sin(ta) * td,
+        r: NUMERO_RADIO[0] + Math.random() * (NUMERO_RADIO[1] - NUMERO_RADIO[0]),
+        t: -Math.random() * 0.08, // salen apenas escalonadas
+        cae: false,
+      });
+    }
+  }
+
+  // Salen disparadas y el resorte (un poco subamortiguado: se pasan y vuelven) las
+  // acomoda en su lugar; después caen con gravedad.
+  function actualizarNumeroEstrella(e, dt) {
+    e.t += dt;
+    if (e.t < 0) return;
+    if (e.t < NUMERO_CAE_A) {
+      const K = 130;
+      const C = 2 * Math.sqrt(K) * 0.7;
+      for (let resto = dt; resto > 0; resto -= 1 / 120) {
+        const h = Math.min(resto, 1 / 120);
+        e.vx += (K * (e.tx - e.x) - C * e.vx) * h;
+        e.vy += (K * (e.ty - e.y) - C * e.vy) * h;
+        e.x += e.vx * h;
+        e.y += e.vy * h;
+      }
+    } else {
+      if (!e.cae) {
+        e.cae = true;
+        e.vx = (Math.random() - 0.5) * 30;
+        e.vy = 0;
+      }
+      e.vy += NUMERO_GRAVEDAD * dt;
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+    }
+  }
+
   // Chispas en un punto (al entrar y al salir).
   function chispas(x, y) {
     for (let i = 0; i < 16; i++) {
@@ -1787,10 +2044,16 @@
       // cierran con chispas), y se pinta un poco más.
       const salida = entrado.par;
       chispas(entrado.x, entrado.y);
-      chispas(salida.x, salida.y);
       if (window.shipPlace) window.shipPlace(salida.x, salida.y, true);
       cumulos = cumulos.filter((c) => c !== entrado && c !== salida);
       cumulosTomados++;
+      // En el de salida las estrellas del cierre forman el número del pasaje:
+      // 10 en el primero ... 1 en el último (como la voz).
+      crearNumeroEstrellas(
+        salida.x,
+        salida.y,
+        CUMULOS_PARA_COLOR - cumulosTomados + 1,
+      );
       sonarCruce();
       sonarConteo(cumulosTomados - 1); // 1.er pasaje: "10" ... 10.º: "1"
       colorObjetivo = Math.min(1, cumulosTomados / CUMULOS_PARA_COLOR);
@@ -1811,6 +2074,10 @@
       p.vy *= 1 - 2 * dt;
     }
     particulas = particulas.filter((p) => p.t < 0.7);
+    for (const e of numeroEstrellas) actualizarNumeroEstrella(e, dt);
+    numeroEstrellas = numeroEstrellas.filter(
+      (e) => e.t < NUMERO_CAE_A + NUMERO_CAIDA,
+    );
   }
 
   function actualizar(dt, circulos) {
@@ -2029,11 +2296,36 @@
   // "agujero"). Empiezan blancos y, a medida que se colorea la nave, pasan a
   // naranja: son dos sprites (blanco y naranja) que se funden con colorNave.
   // Y las chispas de cuando se entra o se sale.
+  // 0..1: qué tanto se está estirando el agujero. pos = segundos desde el pulso
+  // del compás y tiempo = lo que dura un tiempo de la música (los dos en segundos
+  // del audio original). Sube rápido (el "estirón", que arranca justo con el
+  // bombo) y baja más despacio, los dos con suavizado.
+  function pulsoCumulo(pos, tiempo) {
+    const u = pos / (CUMULO_PULSO_TIEMPOS * tiempo);
+    if (u >= 1) return 0;
+    const s =
+      u < CUMULO_PULSO_ATAQUE
+        ? u / CUMULO_PULSO_ATAQUE
+        : 1 - (u - CUMULO_PULSO_ATAQUE) / (1 - CUMULO_PULSO_ATAQUE);
+    return s * s * (3 - 2 * s);
+  }
+
   function dibujarCumulos() {
     const k = Math.max(0, Math.min(1, colorNave));
+    // Dónde va la música en su compás (todos los agujeros pulsan a la vez, al
+    // compás). Sin música que seguir (audio bloqueado o sin cargar) pulsan con su
+    // propio reloj, a la velocidad normal.
+    const ritmo = compasMusica();
     for (const c of cumulos) {
-      // Aparecen y se van achicándose (no con transparencia).
-      const esc = Math.min(1, c.t / 0.5, (CUMULO_VIDA - c.t) / 1.5);
+      const compas = ritmo ? ritmo.compas : MUSICA_COMPAS_RESPALDO;
+      const pos = ritmo ? ritmo.pos : c.t % compas;
+      // Aparecen y se van achicándose (no con transparencia); en el medio
+      // pulsan (ver pulsoCumulo).
+      const esc =
+        Math.min(1, c.t / 0.5, (CUMULO_VIDA - c.t) / 1.5) *
+        (1 +
+          CUMULO_PULSO_AMPLITUD *
+            pulsoCumulo(pos, compas / MUSICA_TIEMPOS_COMPAS));
       // El agujero: un disco negro que tapa lo que hay detrás (la luz, las
       // estrellas del fondo).
       ctx.fillStyle = "#000";
@@ -2069,6 +2361,21 @@
         const r = 2 * (1 - p.t / 0.7);
         ctx.moveTo(p.x + r, p.y);
         ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+    if (numeroEstrellas.length) {
+      // Igual que las chispas: círculos sólidos del color de los agujeros, que se
+      // achican al caer (no se desvanecen), todos en un solo trazo.
+      ctx.fillStyle = mezclaAgujeros(k);
+      ctx.beginPath();
+      for (const e of numeroEstrellas) {
+        if (e.t < 0) continue;
+        const cayendo = e.t - NUMERO_CAE_A;
+        const r = e.r * (cayendo > 0 ? Math.max(0, 1 - cayendo / NUMERO_CAIDA) : 1);
+        if (r <= 0.05) continue;
+        ctx.moveTo(e.x + r, e.y);
+        ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
       }
       ctx.fill();
     }
@@ -2163,6 +2470,7 @@
     // (la intro se salteaba entera).
     const dt = Math.max(0, Math.min((ahora - ultimo) / 1000, 0.05));
     ultimo = ahora;
+    avanzarPosicionMusica();
 
     const circulos = circulosNave();
     reloj += dt;
@@ -2329,6 +2637,7 @@
       if (valor) {
         ajustarCanvas();
         if (!gusanoSprites) armarSprites(); // brillos y luz: se arman una sola vez
+        prepararNumeros(); // los números de estrellas (una sola vez por número)
         if (!musicaIniciada) {
           musicaIniciada = true;
           cargarMusica(); // que esté lista cuando termina la intro
