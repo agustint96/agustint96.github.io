@@ -645,8 +645,9 @@
     <!-- defer: el HTML se pinta sin esperar a los scripts (que antes lo
     frenaban, y typed.js —un CDN externo— iba en el medio: si tardaba, todo lo
     demás también). Siguen ejecutándose en este mismo orden. El tipeo del año
-    está ahora en script.js, sin dependencias. -->
-    <script src="js/esc4-game.js" defer></script>
+    está ahora en script.js, sin dependencias. El escenario 4 ya no carga acá
+    su juego (js/esc4-game.js): lo muestra en un iframe desde el repo
+    esc4-multiplayer (ver abrirEsc4 en script.js). -->
     <script src="script.js" defer></script>
     <script src="js/p7-pintura.js" defer></script>
   </body>

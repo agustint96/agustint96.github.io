@@ -1419,11 +1419,61 @@ function drawStars() {
     // es que acá no hay elementos que escalar por CSS: el juego dibuja en un
     // canvas y aplicar scale() al canvas lo pixelaría, así que recibe el zoom
     // y el origen por camera.onFrame (ver el tick) y se dibuja ya ampliado.
+    //
+    // El juego en sí vive en su propio repo (esc4-multiplayer, que GitHub Pages
+    // publica en /esc4-multiplayer/) y acá se muestra adentro, en un iframe que
+    // tapa todo: así lo que se cambia allá (el menú con el tutorial, contra la
+    // PC, dos jugadores y online) aparece acá sin copiar nada. Mientras está
+    // abierto, la nave del sitio queda quieta y tapada; "volver al sitio" (o
+    // Escape en el menú del juego) manda "esc4-volver" y la nave sale por el
+    // borde derecho, de vuelta al principal. ?esc4=<dirección> usa otra (para
+    // probarlo en la PC).
+    const ESC4_URL = new URL(
+      new URLSearchParams(location.search).get("esc4") || "/esc4-multiplayer/",
+      location.href,
+    );
+    let esc4Marco = null;
+    let esc4Quieta = 0;
+    function abrirEsc4() {
+      if (esc4Marco) return;
+      esc4Marco = document.createElement("iframe");
+      esc4Marco.className = "esc4-marco";
+      esc4Marco.src = ESC4_URL.href;
+      esc4Marco.title = "Escenario 4";
+      esc4Marco.allow = "autoplay; gamepad; fullscreen";
+      // Que el teclado vaya al juego apenas carga, sin tener que hacer click.
+      esc4Marco.addEventListener("load", () => {
+        if (esc4Marco) esc4Marco.contentWindow.focus();
+      });
+      document.body.appendChild(esc4Marco);
+      esc4Marco.focus();
+      // El joystick movería la nave del sitio aunque no se vea (el iframe no se
+      // queda con él): se la frena cada cuadro, como hacía el juego de antes.
+      const quieta = () => {
+        if (!esc4Marco) return;
+        if (window.shipMove) window.shipMove(0, 0);
+        esc4Quieta = requestAnimationFrame(quieta);
+      };
+      quieta();
+    }
+    function cerrarEsc4() {
+      if (!esc4Marco) return;
+      cancelAnimationFrame(esc4Quieta);
+      esc4Marco.remove();
+      esc4Marco = null;
+      window.focus();
+    }
+    window.addEventListener("message", (ev) => {
+      if (!esc4Marco || ev.source !== esc4Marco.contentWindow) return;
+      if (ev.origin !== ESC4_URL.origin) return;
+      if (ev.data && ev.data.tipo === "esc4-volver" && window.shipLeave)
+        window.shipLeave("right");
+    });
     let gameLightBefore = null;
     registerScene("game", {
       setVisible: (visible) => {
-        if (gameScene) gameScene.classList.toggle("game-visible", visible);
-        if (window.esc4Game) window.esc4Game.setActive(visible);
+        if (visible) abrirEsc4();
+        else cerrarEsc4();
         // La nave entra con la luz apagada (la intro es a color; la prende
         // esc4-game.js cuando se van las navecitas, ver shipLightSet) y al
         // salir vuelve a como estaba.

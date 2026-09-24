@@ -1803,3 +1803,15 @@ html.cargando .layer {
     cursor: default;
   }
 }
+
+/* Escenario 4: el juego del repo esc4-multiplayer, adentro (ver abrirEsc4 en
+   script.js). Tapa todo, la nave del sitio incluida; negro mientras carga. */
+.esc4-marco {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
